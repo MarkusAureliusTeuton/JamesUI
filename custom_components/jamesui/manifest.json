@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "documentation": "https://github.com/MarkusAureliusTeuton/JamesUI",
   "issue_tracker": "https://github.com/MarkusAureliusTeuton/JamesUI/issues",
-  "codeowners": [],
+  "codeowners": ["@MarkusAureliusTeuton"],
   "config_flow": true,
   "dependencies": ["frontend", "http"],
   "integration_type": "service",
