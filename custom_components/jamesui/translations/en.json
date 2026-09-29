@@ -1,0 +1,14 @@
+{
+  "title": "JamesUI",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up JamesUI",
+        "description": "Add JamesUI as a tablet interface for Home Assistant."
+      }
+    },
+    "abort": {
+      "already_configured": "JamesUI is already configured."
+    }
+  }
+}
