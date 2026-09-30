@@ -747,6 +747,17 @@ class JamesUIPanel extends HTMLElement {
     });
 
     this.shadowRoot.querySelector("[data-save-home-config]")?.addEventListener("click", () => this._saveHomeConfig());
+    this.shadowRoot.querySelector("[data-save-media-config]")?.addEventListener("click", () => this._saveMediaConfig());
+
+    this.shadowRoot.querySelector("[data-start-spotify]")?.addEventListener("click", () => this._startSpotifyPlaylist());
+
+    this.shadowRoot.querySelectorAll("[data-media-action]").forEach((button) => {
+      button.addEventListener("click", () => this._mediaTransport(button.dataset.mediaAction));
+    });
+
+    this.shadowRoot.querySelector("[data-media-volume]")?.addEventListener("change", (event) => {
+      this._setMediaVolume(event.target.value);
+    });
 
     this.shadowRoot.querySelectorAll("[data-house-category]").forEach((button) => {
       button.addEventListener("click", () => {
@@ -1577,6 +1588,7 @@ class JamesUIPanel extends HTMLElement {
 
   _settingsPage() {
     if (this._page === "home") return this._homeSettingsPage();
+    if (this._page === "media") return this._mediaSettingsPage();
 
     const descriptions = {
       home: "Wetterquelle, Darstellung, Quickinfo und Szenenreihenfolge",
@@ -2205,6 +2217,48 @@ class JamesUIPanel extends HTMLElement {
       .transport .play { width: 46px; height: 46px; background: var(--accent-soft); }
       .volume { justify-self: end; display: flex; align-items: center; gap: 9px; color: var(--muted); }
       .volume i { display: block; width: 120px; height: 3px; background: var(--surface-3); border-radius: 3px; }
+
+      .live-media { display:grid; grid-template-columns:1fr 1fr; grid-template-rows:auto 94px; gap:16px; align-content:start; }
+      .media-section-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:16px; }
+      .media-route-badge { border:1px solid var(--line); border-radius:99px; padding:5px 8px; color:var(--muted); font-size:8px; }
+      .media-route-badge.ready { color:var(--good); border-color:rgba(127,165,138,.28); }
+      .spotify-source { width:100%; display:grid; grid-template-columns:42px 1fr auto; align-items:center; gap:12px; min-height:64px; padding:10px 13px; border:1px solid rgba(94,205,128,.22); border-radius:15px; background:rgba(58,133,80,.075); text-align:left; cursor:default; }
+      .spotify-source > div { display:flex; flex-direction:column; gap:3px; }
+      .spotify-source small { color:var(--muted); font-size:9px; }
+      .spotify-source > b { color:#75c88b; }
+      .spotify-mark { width:38px; height:38px; display:grid; place-items:center; border-radius:50%; background:#202a23; color:#7fcb91; font-size:20px; }
+      .playlist-card { display:grid; grid-template-columns:64px 1fr 50px; align-items:center; gap:13px; margin-top:13px; padding:13px; min-height:88px; border:1px solid var(--line); border-radius:17px; background:linear-gradient(145deg,rgba(255,255,255,.025),rgba(255,255,255,.008)); }
+      .playlist-art { width:60px; height:60px; display:grid; place-items:center; border-radius:13px; background:radial-gradient(circle at 30% 25%,#4d694f,#202823 65%); font-size:27px; color:#d6ded6; }
+      .playlist-copy { min-width:0; display:flex; flex-direction:column; gap:3px; }
+      .playlist-copy strong { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:14px; }
+      .playlist-copy small { color:var(--muted); font-size:9px; }
+      .playlist-play { width:46px; height:46px; border:0; border-radius:50%; background:#75c88b; color:#0b110d; font-size:18px; cursor:pointer; box-shadow:0 8px 28px rgba(58,133,80,.18); }
+      .playlist-play:disabled { opacity:.55; cursor:wait; }
+      .receiver-card { display:grid; grid-template-columns:48px 1fr; align-items:center; gap:12px; min-height:76px; padding:13px; border:1px solid var(--line); border-radius:16px; background:rgba(255,255,255,.012); }
+      .receiver-card.ready { border-color:rgba(184,121,72,.22); }
+      .receiver-card > div { display:flex; flex-direction:column; gap:3px; }
+      .receiver-card small { color:var(--muted); font-size:9px; }
+      .receiver-icon { width:46px; height:46px; display:grid; place-items:center; border-radius:13px; background:#202326; color:#d5b185; font-size:22px; }
+      .route-arrow { grid-column:1/-1; color:#747a7e; font-size:8px; padding-top:7px; border-top:1px solid var(--line); }
+      .device-state-dot { width:8px; height:8px; border-radius:50%; background:#5b6063; }
+      .device-state-dot.on { background:var(--good); box-shadow:0 0 0 5px rgba(127,165,138,.08); }
+      .media-route-status { display:grid; grid-template-columns:9px 1fr; align-items:center; gap:10px; margin-top:13px; }
+      .media-route-status > div { display:flex; flex-direction:column; gap:2px; }
+      .media-route-status strong { font-size:10px; }
+      .media-route-status span { color:var(--muted); font-size:8px; }
+      .status-orb.warn { background:#9d7651; box-shadow:none; }
+      .media-message { margin-top:10px; padding:8px 10px; border-radius:10px; background:rgba(184,121,72,.08); color:#c9a27d; font-size:9px; }
+      .live-now-playing { grid-column:1/-1; display:grid; grid-template-columns:56px minmax(160px,1fr) auto minmax(240px,.8fr); gap:16px; align-items:center; padding:12px 18px; }
+      .now-art { width:52px; height:52px; display:grid; place-items:center; border-radius:11px; background:#202527; background-size:cover; background-position:center; color:#8b9295; }
+      .now-art.has-art { font-size:0; }
+      .now-copy { min-width:0; display:flex; flex-direction:column; gap:2px; }
+      .now-copy strong { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:12px; }
+      .now-copy > span:last-child { color:var(--muted); font-size:9px; }
+      .live-volume { display:grid; grid-template-columns:auto 1fr auto auto; align-items:center; gap:8px; }
+      .live-volume input { width:100%; accent-color:#b87948; }
+      .live-volume b { min-width:32px; color:var(--muted); font-size:9px; text-align:right; }
+      .media-settings .config-field input { width:100%; min-width:0; height:42px; box-sizing:border-box; padding:0 12px; border:1px solid var(--line-strong); border-radius:12px; background:#1b1e20; color:var(--text); outline:none; }
+      .media-settings .config-field input:focus { border-color:rgba(184,121,72,.55); }
 
       .door-layout { display: grid; grid-template-columns: 1.55fr .8fr; gap: 18px; min-height: 100%; }
       .camera-card { overflow: hidden; border: 1px solid var(--line); border-radius: 24px; background: var(--surface); display: grid; grid-template-rows: 1fr 64px; }
