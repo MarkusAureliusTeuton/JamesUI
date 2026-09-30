@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.0 — House
+
+- Added automatic Home Assistant area, device and entity registry loading.
+- Added live house overview for lights, sockets, devices and ventilation.
+- Added overall availability, update and low-battery health indicators.
+- Added current house statistics for active lights, sockets and fans.
+- Added room-aware category detail pages based on Home Assistant area assignments.
+- Added direct light, outlet and fan toggles through Home Assistant services.
+- Added automatic socket detection from outlet device class and common socket/plug names.
+- Added device-health discovery for update, battery and vacuum entities.
+- Kept the fixed JamesUI bottom navigation while House detail content scrolls independently.
+
+
 ## 0.2.0 — Home & Weather
 
 - Added persistent JamesUI configuration stored in the Home Assistant config entry.
