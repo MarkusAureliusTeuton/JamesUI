@@ -881,45 +881,147 @@ class JamesUIPanel extends HTMLElement {
   }
 
   _housePage() {
+    if (this._houseCategory) return this._houseDetailPage(this._houseCategory);
+
+    const h = this._houseSummary();
+    const statusTitle = h.unavailable ? `${h.unavailable} Gerät${h.unavailable === 1 ? "" : "e"} nicht erreichbar` : "Haus ist in Ordnung";
+    const statusText = [
+      h.updates ? `${h.updates} Update${h.updates === 1 ? "" : "s"} verfügbar` : null,
+      h.lowBattery ? `${h.lowBattery} niedrige Batteriestände` : null,
+    ].filter(Boolean).join(" · ") || "Keine auffälligen Gerätezustände erkannt.";
+
     return `
       <div class="page-stack">
         <section class="status-strip">
-          <article class="status-primary">
+          <article class="status-primary ${h.unavailable || h.lowBattery ? "attention" : ""}">
             <span class="status-orb"></span>
-            <div><span class="eyebrow">GESAMTSTATUS</span><h2>JamesUI ist bereit</h2><p>Hausdaten werden im nächsten Modul angebunden.</p></div>
+            <div><span class="eyebrow">GESAMTSTATUS</span><h2>${statusTitle}</h2><p>${statusText}</p></div>
           </article>
-          ${this._metric("HA Entities", '<span data-entity-count>0</span>', "verfügbar")}
-          ${this._metric("System", "Online", "Home Assistant")}
+          ${this._metric("Aktiv", String(h.lightsOn + h.socketsOn + h.fansOn), "Licht · Steckdosen · Lüftung")}
+          ${this._metric("Bereiche", String(this._areas.length || "–"), this._registriesLoaded ? "aus Home Assistant" : "werden geladen")}
         </section>
 
         <section class="section">
-          <div class="section-heading"><div><span class="eyebrow">STEUERUNG</span><h2>Bereiche</h2></div></div>
+          <div class="section-heading">
+            <div><span class="eyebrow">STEUERUNG</span><h2>Bereiche</h2></div>
+            <span class="muted">${this._registriesLoaded ? "Räume automatisch aus HA zugeordnet" : "HA-Registries werden geladen …"}</span>
+          </div>
           <div class="area-grid">
-            ${this._area("Licht", "Noch nicht konfiguriert", "✦")}
-            ${this._area("Steckdosen", "Noch nicht konfiguriert", "⌁")}
-            ${this._area("Geräte", "Noch nicht konfiguriert", "▦")}
-            ${this._area("Lüftung", "Noch nicht konfiguriert", "≋")}
+            ${this._houseAreaCard("lights", "Licht", h.lights, h.lightsOn, "✦")}
+            ${this._houseAreaCard("sockets", "Steckdosen", h.sockets, h.socketsOn, "⌁")}
+            ${this._houseAreaCard("devices", "Geräte", h.devices, h.updates + h.lowBattery, "▦")}
+            ${this._houseAreaCard("ventilation", "Lüftung", h.ventilation, h.fansOn, "≋")}
           </div>
         </section>
 
         <div class="two-column">
           <section class="section">
-            <div class="section-heading"><div><span class="eyebrow">HEUTE</span><h2>Statistik</h2></div></div>
-            <div class="chart-placeholder">
-              <div class="bars">${[34,52,43,70,58,81,66,74,48,61,55,72].map(v => `<i style="height:${v}%"></i>`).join("")}</div>
-              <span>Messwerte werden später aus HA-Statistiken geladen.</span>
+            <div class="section-heading"><div><span class="eyebrow">JETZT</span><h2>Hausstatistik</h2></div></div>
+            <div class="house-stat-grid">
+              <div><span>Lichter an</span><strong>${h.lightsOn}</strong><small>von ${h.lights.length}</small></div>
+              <div><span>Steckdosen an</span><strong>${h.socketsOn}</strong><small>von ${h.sockets.length}</small></div>
+              <div><span>Lüftungen an</span><strong>${h.fansOn}</strong><small>von ${h.ventilation.length}</small></div>
+              <div><span>Nicht erreichbar</span><strong>${h.unavailable}</strong><small>überwachte Entities</small></div>
             </div>
           </section>
+
           <section class="section">
-            <div class="section-heading"><div><span class="eyebrow">SYSTEM</span><h2>Geräte</h2></div></div>
-            <div class="device-list">
-              ${this._device("Home Assistant", "Verbunden", true)}
-              ${this._device("Raspberry Pi", "Monitoring folgt", false)}
-              ${this._device("Dreame", "Zuordnung folgt", false)}
+            <div class="section-heading"><div><span class="eyebrow">GERÄTEGESUNDHEIT</span><h2>Hinweise</h2></div></div>
+            <div class="health-list">
+              ${this._healthRow("Updates", h.updates ? `${h.updates} verfügbar` : "Aktuell", h.updates === 0)}
+              ${this._healthRow("Batterien", h.lowBattery ? `${h.lowBattery} unter 20 %` : "Unauffällig", h.lowBattery === 0)}
+              ${this._healthRow("Erreichbarkeit", h.unavailable ? `${h.unavailable} offline` : "Alles erreichbar", h.unavailable === 0)}
             </div>
           </section>
         </div>
       </div>
+    `;
+  }
+
+  _houseAreaCard(key, title, entities, active, icon) {
+    const areas = new Set(entities.map((e) => this._areaNameForEntity(e.entity_id)));
+    const detail = key === "devices"
+      ? `${entities.length} Status-Entities`
+      : `${active} aktiv · ${areas.size} Bereich${areas.size === 1 ? "" : "e"}`;
+    return `
+      <button class="area-card house-area-card" data-house-category="${key}">
+        <span class="area-icon">${icon}</span>
+        <div><strong>${title}</strong><span>${detail}</span></div>
+        <span class="area-count">${entities.length}</span>
+        <span class="chevron">›</span>
+      </button>
+    `;
+  }
+
+  _healthRow(label, value, good) {
+    return `<div class="health-row"><span class="device-dot ${good ? "on" : "warn"}"></span><strong>${label}</strong><span>${value}</span></div>`;
+  }
+
+  _houseDetailPage(category) {
+    const labels = {
+      lights: ["Licht", "✦"],
+      sockets: ["Steckdosen", "⌁"],
+      devices: ["Geräte", "▦"],
+      ventilation: ["Lüftung", "≋"],
+    };
+    const [title, icon] = labels[category] || ["Haus", "◇"];
+    const entities = this._houseEntities(category);
+    const grouped = new Map();
+    for (const entity of entities) {
+      const area = this._areaNameForEntity(entity.entity_id);
+      if (!grouped.has(area)) grouped.set(area, []);
+      grouped.get(area).push(entity);
+    }
+
+    return `
+      <div class="house-detail">
+        <div class="detail-titlebar">
+          <button data-house-back class="back-button">‹</button>
+          <span class="area-icon large">${icon}</span>
+          <div><span class="eyebrow">HAUS</span><h1>${title}</h1></div>
+          <span class="detail-count">${entities.length} Entities</span>
+        </div>
+
+        <div class="house-area-groups">
+          ${entities.length ? [...grouped.entries()].sort((a,b) => a[0].localeCompare(b[0],"de")).map(([area, items]) => `
+            <section class="section entity-group">
+              <div class="entity-group-head"><strong>${area}</strong><span>${items.length}</span></div>
+              <div class="entity-grid">
+                ${items.map((entity) => this._houseEntityCard(entity, category)).join("")}
+              </div>
+            </section>
+          `).join("") : `<section class="section empty-house-category">Keine passenden Entities erkannt.</section>`}
+        </div>
+      </div>
+    `;
+  }
+
+  _houseEntityCard(entity, category) {
+    const name = entity.attributes?.friendly_name || entity.entity_id;
+    const controllable = ["lights", "sockets", "ventilation"].includes(category);
+    const active = entity.state === "on";
+    let secondary = entity.state;
+
+    if (entity.attributes?.device_class === "battery") {
+      secondary = `${entity.state}${entity.attributes?.unit_of_measurement || "%"}`;
+    } else if (entity.entity_id.startsWith("update.")) {
+      secondary = active ? "Update verfügbar" : "Aktuell";
+    } else if (entity.entity_id.startsWith("vacuum.")) {
+      secondary = entity.state;
+    } else if (entity.state === "unavailable") {
+      secondary = "Nicht erreichbar";
+    } else if (controllable) {
+      secondary = active ? "Ein" : "Aus";
+    }
+
+    return `
+      <article class="entity-tile ${active ? "active" : ""} ${entity.state === "unavailable" ? "unavailable" : ""}">
+        <span class="entity-state-dot"></span>
+        <div class="entity-copy"><strong>${name}</strong><span>${secondary}</span></div>
+        ${controllable && entity.state !== "unavailable"
+          ? `<button class="entity-toggle ${active ? "on" : ""}" data-house-toggle="${entity.entity_id}" aria-label="${name} umschalten"><i></i></button>`
+          : `<span class="entity-meta">${entity.attributes?.device_class || entity.entity_id.split(".")[0]}</span>`}
+      </article>
     `;
   }
 
