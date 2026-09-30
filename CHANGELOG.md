@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.1 — Start visual refresh
+
+- Added 28 local weather background artworks: clear, partly cloudy, cloudy, rain, storm, snow and fog across day, golden hour, twilight and night.
+- Added automatic background selection from current Home Assistant weather condition and real sun elevation.
+- Added optional ambient-light sensor discovery and source selection.
+- Added visual dimming based on measured outdoor illuminance when a lux sensor is available.
+- Redesigned the Start layout around a large atmospheric weather scene.
+- Added a dedicated moon-phase card with phase rendering, approximate illumination, lunar age, cycle progress and next major phase.
+- Added sunrise/sunset and illuminance information to the weather scene.
+- Kept all weather artwork local to JamesUI for offline/kiosk operation.
+
+
 ## 0.3.0 — House
 
 - Added automatic Home Assistant area, device and entity registry loading.
