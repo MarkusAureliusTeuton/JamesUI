@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.5.0 — Media playback
+
+- Replaced the Media placeholder with a functional Spotify-to-receiver workflow.
+- Added automatic discovery of Spotify, Onkyo and Music Assistant media-player entities.
+- Added two playback routes: Music Assistant (preferred) and direct Spotify Connect fallback.
+- Added configurable Spotify playlist name/link, receiver, playback target and receiver input.
+- Added one-touch Spotify playlist playback through `music_assistant.play_media` or Spotify `media_player.play_media`.
+- Added Onkyo power/input preparation before playback.
+- Added live now-playing title/artist, transport controls and volume control.
+- Added media routing diagnostics directly on the Media page.
+- Added a dedicated Media settings page; configuration is stored centrally in the JamesUI Home Assistant config entry.
+
+
 ## 0.3.1 — Start visual refresh
 
 - Added 28 local weather background artworks: clear, partly cloudy, cloudy, rain, storm, snow and fog across day, golden hour, twilight and night.
