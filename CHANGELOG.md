@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.2 — Viewport & navigation fix
+
+- Fixed touch sliders losing pointer capture after each value change.
+- Calibration values now update live without rebuilding the UI.
+- Draggable calibration corners now move continuously.
+- Bound JamesUI to the current visual viewport using dynamic viewport sizing.
+- Removed minimum application heights that could push navigation outside the visible area.
+- Forced a dark document background to prevent exposed Home Assistant/browser background around the app.
+- Bottom navigation now remains outside the scrolling content area.
+- Only the page content scrolls between the fixed header and fixed bottom navigation.
+- Added live viewport updates when browser or kiosk dimensions change.
+
+
 ## 0.1.1 — Display setup
 
 - Added automatic viewport, panel size, orientation, touch and pixel-density detection.
