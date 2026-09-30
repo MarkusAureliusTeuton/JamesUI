@@ -12,6 +12,7 @@ from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
+from .api import async_register_websocket_commands
 from .const import (
     DOMAIN,
     FRONTEND_FILE,
@@ -24,6 +25,12 @@ from .const import (
 )
 
 _FRONTEND_DIR = Path(__file__).parent / "frontend"
+
+
+async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+    """Set up JamesUI integration-level APIs."""
+    async_register_websocket_commands(hass)
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
