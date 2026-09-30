@@ -1,4 +1,4 @@
-const VERSION = "0.2.0";
+const VERSION = "0.3.0";
 
 const NAV_ITEMS = [
   { id: "home", label: "Start", icon: "⌂" },
@@ -1719,6 +1719,48 @@ class JamesUIPanel extends HTMLElement {
       .device-row b { color: #65686b; font-size: 18px; }
       .device-dot.on { background: var(--good); }
 
+      .status-primary.attention .status-orb { background: #c59b63; box-shadow: 0 0 0 6px rgba(197,155,99,.1); }
+      .house-area-card { width: 100%; color: var(--text); text-align: left; cursor: pointer; font: inherit; }
+      .house-area-card:hover { border-color: rgba(184,121,72,.35); background: rgba(184,121,72,.055); }
+      .area-count { margin-left: auto; min-width: 27px; height: 27px; padding: 0 7px; display: grid; place-items: center; border-radius: 9px; background: rgba(255,255,255,.04); color: var(--muted); font-size: 10px; }
+      .house-stat-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; min-height: 135px; }
+      .house-stat-grid > div { display: flex; flex-direction: column; justify-content: center; padding: 12px; border: 1px solid var(--line); border-radius: 15px; background: rgba(255,255,255,.014); }
+      .house-stat-grid span { color: var(--muted); font-size: 9px; }
+      .house-stat-grid strong { font-size: 30px; font-weight: 360; margin: 4px 0 1px; }
+      .house-stat-grid small { color: #65696c; font-size: 8px; }
+      .health-list { display: flex; flex-direction: column; min-height: 135px; justify-content: center; }
+      .health-row { display: grid; grid-template-columns: 10px 1fr auto; align-items: center; gap: 10px; min-height: 42px; border-bottom: 1px solid var(--line); font-size: 11px; }
+      .health-row:last-child { border-bottom: 0; }
+      .health-row > span:last-child { color: var(--muted); }
+      .device-dot.warn { background: #c59b63; }
+
+      .house-detail { min-height: 100%; }
+      .detail-titlebar { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+      .detail-titlebar h1 { font-size: clamp(30px,3.5vw,48px); font-weight: 330; letter-spacing: -.035em; margin-top: 2px; }
+      .back-button { width: 44px; height: 44px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; font-size: 28px; line-height: 1; }
+      .area-icon.large { width: 44px; height: 44px; font-size: 20px; }
+      .detail-count { margin-left: auto; color: var(--muted); font-size: 10px; border: 1px solid var(--line); border-radius: 99px; padding: 6px 9px; }
+      .house-area-groups { display: flex; flex-direction: column; gap: 14px; }
+      .entity-group { padding: 14px 16px 16px; }
+      .entity-group-head { display: flex; justify-content: space-between; align-items: center; min-height: 34px; padding: 0 3px 8px; }
+      .entity-group-head strong { font-size: 14px; }
+      .entity-group-head span { color: var(--muted); font-size: 9px; }
+      .entity-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 9px; }
+      .entity-tile { min-height: 68px; display: grid; grid-template-columns: 8px 1fr auto; align-items: center; gap: 10px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,.014); }
+      .entity-tile.active { border-color: rgba(184,121,72,.26); background: rgba(184,121,72,.055); }
+      .entity-tile.unavailable { opacity: .5; }
+      .entity-state-dot { width: 6px; height: 6px; border-radius: 50%; background: #5e6265; }
+      .entity-tile.active .entity-state-dot { background: var(--accent-bright); box-shadow: 0 0 0 4px rgba(184,121,72,.1); }
+      .entity-copy { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+      .entity-copy strong { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; }
+      .entity-copy span { color: var(--muted); font-size: 9px; text-transform: capitalize; }
+      .entity-toggle { width: 39px; height: 23px; padding: 2px; border: 1px solid var(--line-strong); border-radius: 99px; background: #25282a; cursor: pointer; }
+      .entity-toggle i { display: block; width: 17px; height: 17px; border-radius: 50%; background: #777b7e; transition: transform .18s ease, background .18s ease; }
+      .entity-toggle.on { background: rgba(184,121,72,.24); border-color: rgba(184,121,72,.4); }
+      .entity-toggle.on i { transform: translateX(16px); background: var(--accent-bright); }
+      .entity-meta { color: #696d70; font-size: 8px; text-transform: uppercase; }
+      .empty-house-category { min-height: 180px; display: grid; place-items: center; color: var(--muted); font-size: 11px; }
+
       .climate-program { display: flex; align-items: center; justify-content: space-between; }
       .program-pills { display: flex; gap: 8px; }
       .program-pills button { border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 13px; padding: 10px 17px; }
@@ -1844,6 +1886,8 @@ class JamesUIPanel extends HTMLElement {
         .status-strip { grid-template-columns: 1fr 1fr; }
         .status-primary { grid-column: 1 / 3; }
         .area-grid { grid-template-columns: 1fr 1fr; }
+        .entity-grid { grid-template-columns: 1fr 1fr; }
+        .house-stat-grid { grid-template-columns: 1fr 1fr; }
         .two-column, .media-layout, .door-layout { grid-template-columns: 1fr; }
         .now-playing { grid-column: 1; }
         .room-header, .room-row { grid-template-columns: 1fr .6fr 1.2fr; }
