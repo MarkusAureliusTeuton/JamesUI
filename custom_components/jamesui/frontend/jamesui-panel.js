@@ -105,6 +105,35 @@ class JamesUIPanel extends HTMLElement {
     this.render();
   }
 
+  _startCornerDrag(corner, event) {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const start = { ...this._displayCalibration };
+    const clamp = (value) => Math.max(0, Math.min(120, Math.round(value)));
+
+    const move = (e) => {
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+
+      if (corner.includes("l")) this._displayCalibration.left = clamp(start.left + dx);
+      if (corner.includes("r")) this._displayCalibration.right = clamp(start.right - dx);
+      if (corner.includes("t")) this._displayCalibration.top = clamp(start.top + dy);
+      if (corner.includes("b")) this._displayCalibration.bottom = clamp(start.bottom - dy);
+
+      this._saveDisplayCalibration();
+      this.render();
+    };
+
+    const stop = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", stop);
+    };
+
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", stop, { once: true });
+  }
+
   _updateClock() {
     const now = new Date();
     const time = this.shadowRoot?.querySelectorAll("[data-live-time]");
@@ -200,6 +229,10 @@ class JamesUIPanel extends HTMLElement {
 
     this.shadowRoot.querySelectorAll("[data-calibration]").forEach((input) => {
       input.addEventListener("input", () => this._setDisplayCalibration(input.dataset.calibration, input.value));
+    });
+
+    this.shadowRoot.querySelectorAll("[data-cal-corner]").forEach((corner) => {
+      corner.addEventListener("pointerdown", (event) => this._startCornerDrag(corner.dataset.calCorner, event));
     });
   }
 
@@ -554,7 +587,7 @@ class JamesUIPanel extends HTMLElement {
       <div class="display-overlay">
         <div class="calibration-frame"
           style="top:${c.top}px;right:${c.right}px;bottom:${c.bottom}px;left:${c.left}px">
-          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <i class="corner tl" data-cal-corner="tl"></i><i class="corner tr" data-cal-corner="tr"></i><i class="corner bl" data-cal-corner="bl"></i><i class="corner br" data-cal-corner="br"></i>
         </div>
 
         <section class="display-panel">
@@ -574,7 +607,7 @@ class JamesUIPanel extends HTMLElement {
 
           <div class="calibration-help">
             <strong>Randkalibrierung</strong>
-            <span>Die vier kupferfarbenen Eckmarken sollen gerade vollständig sichtbar sein. Korrigiere nur einen Rand, wenn JamesUI dort abgeschnitten wird.</span>
+            <span>Die vier kupferfarbenen Eckmarken sollen gerade vollständig sichtbar sein. Du kannst eine Ecke direkt mit dem Finger ziehen oder darunter pixelgenau nachstellen.</span>
           </div>
 
           <div class="cal-grid">
@@ -932,7 +965,7 @@ class JamesUIPanel extends HTMLElement {
 
       .display-overlay { position: absolute; inset: 0; z-index: 90; background: rgba(4,5,6,.92); backdrop-filter: blur(16px); }
       .calibration-frame { position: absolute; pointer-events: none; z-index: 91; }
-      .corner { position: absolute; width: 54px; height: 54px; border-color: var(--accent-bright); border-style: solid; opacity: .95; }
+      .corner { position: absolute; width: 62px; height: 62px; border-color: var(--accent-bright); border-style: solid; opacity: .95; pointer-events: auto; touch-action: none; cursor: move; }
       .corner.tl { top: 0; left: 0; border-width: 3px 0 0 3px; border-radius: 8px 0 0 0; }
       .corner.tr { top: 0; right: 0; border-width: 3px 3px 0 0; border-radius: 0 8px 0 0; }
       .corner.bl { bottom: 0; left: 0; border-width: 0 0 3px 3px; border-radius: 0 0 0 8px; }
