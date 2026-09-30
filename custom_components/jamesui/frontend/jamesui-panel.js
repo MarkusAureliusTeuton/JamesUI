@@ -54,6 +54,7 @@ class JamesUIPanel extends HTMLElement {
     this._hass = value;
     this._updateLiveValues();
     this._updateHomeLiveValues();
+    this._updateMediaLiveValues();
 
     if (firstConnection) this._loadRegistries();
 
@@ -206,7 +207,7 @@ class JamesUIPanel extends HTMLElement {
     } finally {
       this._configLoading = false;
       this._ensureForecastSubscription();
-      if (this._page === "home") this.render();
+      if (this._page === "home" || this._page === "media") this.render();
     }
   }
 
@@ -1350,7 +1351,7 @@ class JamesUIPanel extends HTMLElement {
         </section>
 
         <section class="section media-selector target-panel">
-          <div class="media-section-head"><div><span class="eyebrow">2 · WIEDERGABEGERÄT</span><h2>Wohnzimmer</h2></div><span class="device-state-dot ${onkyo && onkyo.state !== "off" && onkyo.state !== "unavailable" ? "on" : ""}"></span></div>
+          <div class="media-section-head"><div><span class="eyebrow">2 · WIEDERGABEGERÄT</span><h2>Wohnzimmer</h2></div><span data-media-device-state class="device-state-dot ${onkyo && onkyo.state !== "off" && onkyo.state !== "unavailable" ? "on" : ""}"></span></div>
           <div class="receiver-card ${route.ready ? "ready" : ""}">
             <span class="receiver-icon">▰</span>
             <div><strong>${this._mediaEntityLabel(this._onkyoEntityId(), "Onkyo Receiver")}</strong><small>${targetLabel}</small></div>
@@ -1365,13 +1366,13 @@ class JamesUIPanel extends HTMLElement {
 
         <section class="now-playing live-now-playing">
           <div class="now-art ${artwork ? "has-art" : ""}" ${artwork ? `style="background-image:url('${artwork}')"` : ""}>♫</div>
-          <div class="now-copy"><span class="eyebrow">WIEDERGABE</span><strong>${title}</strong><span>${artist || targetLabel}</span></div>
+          <div class="now-copy"><span class="eyebrow">WIEDERGABE</span><strong data-media-title>${title}</strong><span data-media-artist>${artist || targetLabel}</span></div>
           <div class="transport">
             <button data-media-action="previous">‹‹</button>
             <button data-media-action="playpause" class="play">${now?.state === "playing" ? "Ⅱ" : "▶"}</button>
             <button data-media-action="next">››</button>
           </div>
-          <div class="volume live-volume"><span>−</span><input data-media-volume type="range" min="0" max="70" value="${Number.isFinite(volume) ? volume : 0}"><span>+</span><b>${Number.isFinite(volume) ? volume : 0}%</b></div>
+          <div class="volume live-volume"><span>−</span><input data-media-volume type="range" min="0" max="70" value="${Number.isFinite(volume) ? volume : 0}"><span>+</span><b data-media-volume-label>${Number.isFinite(volume) ? volume : 0}%</b></div>
         </section>
       </div>
     `;
@@ -1443,6 +1444,28 @@ class JamesUIPanel extends HTMLElement {
         </section>
       </div>
     `;
+  }
+
+  _updateMediaLiveValues() {
+    if (!this.shadowRoot || this._page !== "media" || this._settings) return;
+    const entityId = this._mediaNowPlayingEntity();
+    const now = entityId ? this._hass?.states?.[entityId] : null;
+    const onkyo = this._hass?.states?.[this._onkyoEntityId()];
+    const title = this.shadowRoot.querySelector("[data-media-title]");
+    const artist = this.shadowRoot.querySelector("[data-media-artist]");
+    const play = this.shadowRoot.querySelector('[data-media-action="playpause"]');
+    const volume = this.shadowRoot.querySelector("[data-media-volume]");
+    const volumeLabel = this.shadowRoot.querySelector("[data-media-volume-label]");
+    const deviceDot = this.shadowRoot.querySelector("[data-media-device-state]");
+    if (title) title.textContent = now?.attributes?.media_title || now?.attributes?.media_album_name || "Nichts aktiv";
+    if (artist) artist.textContent = now?.attributes?.media_artist || now?.attributes?.media_album_artist || this._mediaEntityLabel(entityId);
+    if (play) play.textContent = now?.state === "playing" ? "Ⅱ" : "▶";
+    const level = Math.round(Number((onkyo || now)?.attributes?.volume_level || 0) * 100);
+    if (Number.isFinite(level)) {
+      if (volume && document.activeElement !== volume) volume.value = String(level);
+      if (volumeLabel) volumeLabel.textContent = `${level}%`;
+    }
+    if (deviceDot) deviceDot.classList.toggle("on", Boolean(onkyo && !["off","unavailable","unknown"].includes(onkyo.state)));
   }
 
   async _saveMediaConfig() {
