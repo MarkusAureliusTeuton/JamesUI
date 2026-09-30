@@ -1234,6 +1234,15 @@ class JamesUIPanel extends HTMLElement {
     });
   }
 
+  _onkyoNetworkSource() {
+    if (this._config.media_onkyo_source) return this._config.media_onkyo_source;
+    const onkyo = this._hass?.states?.[this._onkyoEntityId()];
+    const sources = onkyo?.attributes?.source_list || [];
+    return sources.find((source) => /^(net|network|dlna|server)$/i.test(String(source).trim()))
+      || sources.find((source) => /net|network|dlna|server/i.test(String(source)))
+      || "";
+  }
+
   async _prepareOnkyo() {
     const onkyoId = this._onkyoEntityId();
     if (!onkyoId) return;
@@ -1246,7 +1255,7 @@ class JamesUIPanel extends HTMLElement {
         console.warn("JamesUI: Onkyo remained off after turn_on; playback may require manual power-on.");
       }
     }
-    const source = this._config.media_onkyo_source;
+    const source = this._onkyoNetworkSource();
     if (source) {
       try { await this._callAction("media_player", "select_source", onkyoId, { source }); } catch (_) {}
       await new Promise((resolve) => setTimeout(resolve, 500));
@@ -1438,7 +1447,7 @@ class JamesUIPanel extends HTMLElement {
           </div>
           <div class="config-field">
             <div><strong>Onkyo-Eingang</strong><span>Optional. Leer lassen, wenn Music Assistant/DLNA den Eingang selbst übernimmt.</span></div>
-            <select data-config-media-onkyo-source><option value="">Nicht vorwählen</option>${onkyoSources.map((source)=>`<option value="${source}" ${source===this._config.media_onkyo_source?"selected":""}>${source}</option>`).join("")}</select>
+            <select data-config-media-onkyo-source><option value="">Automatisch${this._onkyoNetworkSource() ? ` · ${this._onkyoNetworkSource()}` : " · nicht vorwählen"}</option>${onkyoSources.map((source)=>`<option value="${source}" ${source===this._config.media_onkyo_source?"selected":""}>${source}</option>`).join("")}</select>
           </div>
           <div class="config-field">
             <div><strong>Playlist-Name</strong><span>Name für die Kachel auf der Medienseite.</span></div>
