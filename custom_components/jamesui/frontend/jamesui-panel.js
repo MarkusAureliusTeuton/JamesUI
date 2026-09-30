@@ -38,6 +38,12 @@ class JamesUIPanel extends HTMLElement {
     this._forecastUnsubscribe = null;
     this._forecastOpen = false;
     this._configMessage = "";
+    this._areas = [];
+    this._devices = [];
+    this._registryEntities = [];
+    this._registriesLoaded = false;
+    this._registriesLoading = false;
+    this._houseCategory = null;
   }
 
   set hass(value) {
@@ -45,6 +51,8 @@ class JamesUIPanel extends HTMLElement {
     this._hass = value;
     this._updateLiveValues();
     this._updateHomeLiveValues();
+
+    if (firstConnection) this._loadRegistries();
 
     if (firstConnection || (!this._configLoaded && !this._configLoading)) {
       this._loadJamesConfig();
@@ -95,6 +103,91 @@ class JamesUIPanel extends HTMLElement {
     window.visualViewport?.removeEventListener("resize", this._viewportHandler);
     document.body.style.background = this._previousBodyBackground || "";
     document.documentElement.style.background = this._previousHtmlBackground || "";
+  }
+
+  async _loadRegistries() {
+    if (!this._hass || this._registriesLoading || this._registriesLoaded) return;
+    this._registriesLoading = true;
+    try {
+      const [areas, devices, entities] = await Promise.all([
+        this._hass.callWS({ type: "config/area_registry/list" }),
+        this._hass.callWS({ type: "config/device_registry/list" }),
+        this._hass.callWS({ type: "config/entity_registry/list" }),
+      ]);
+      this._areas = Array.isArray(areas) ? areas : [];
+      this._devices = Array.isArray(devices) ? devices : [];
+      this._registryEntities = Array.isArray(entities) ? entities : [];
+      this._registriesLoaded = true;
+      if (this._page === "house") this.render();
+    } catch (error) {
+      console.warn("JamesUI: registry loading failed", error);
+    } finally {
+      this._registriesLoading = false;
+    }
+  }
+
+  _registryEntity(entityId) {
+    return this._registryEntities.find((entry) => entry.entity_id === entityId);
+  }
+
+  _areaNameForEntity(entityId) {
+    const reg = this._registryEntity(entityId);
+    let areaId = reg?.area_id;
+    if (!areaId && reg?.device_id) {
+      areaId = this._devices.find((device) => device.id === reg.device_id)?.area_id;
+    }
+    return this._areas.find((area) => area.area_id === areaId)?.name || "Ohne Bereich";
+  }
+
+  _houseEntities(category) {
+    if (!this._hass) return [];
+    const states = Object.values(this._hass.states);
+    const visible = (entity) => !["unknown"].includes(entity.state);
+
+    if (category === "lights") return states.filter((e) => e.entity_id.startsWith("light.") && visible(e));
+    if (category === "sockets") {
+      return states.filter((e) => {
+        if (!e.entity_id.startsWith("switch.") || !visible(e)) return false;
+        const name = `${e.entity_id} ${e.attributes?.friendly_name || ""}`.toLowerCase();
+        return e.attributes?.device_class === "outlet" || /steckdose|socket|outlet|plug/.test(name);
+      });
+    }
+    if (category === "ventilation") return states.filter((e) => e.entity_id.startsWith("fan.") && visible(e));
+    if (category === "devices") {
+      return states.filter((e) =>
+        e.entity_id.startsWith("update.") ||
+        e.entity_id.startsWith("vacuum.") ||
+        (e.entity_id.startsWith("sensor.") && e.attributes?.device_class === "battery")
+      );
+    }
+    return [];
+  }
+
+  _houseSummary() {
+    const lights = this._houseEntities("lights");
+    const sockets = this._houseEntities("sockets");
+    const ventilation = this._houseEntities("ventilation");
+    const devices = this._houseEntities("devices");
+    const monitored = [...lights, ...sockets, ...ventilation, ...devices];
+    const unavailable = monitored.filter((e) => e.state === "unavailable").length;
+    const updates = devices.filter((e) => e.entity_id.startsWith("update.") && e.state === "on").length;
+    const lowBattery = devices.filter((e) => e.attributes?.device_class === "battery" && Number(e.state) < 20).length;
+    return {
+      lights, sockets, ventilation, devices, unavailable, updates, lowBattery,
+      lightsOn: lights.filter((e) => e.state === "on").length,
+      socketsOn: sockets.filter((e) => e.state === "on").length,
+      fansOn: ventilation.filter((e) => e.state === "on").length,
+    };
+  }
+
+  async _toggleHouseEntity(entityId) {
+    const domain = entityId?.split(".")[0];
+    if (!["light", "switch", "fan"].includes(domain) || !this._hass) return;
+    try {
+      await this._hass.callService(domain, "toggle", { entity_id: entityId });
+    } catch (error) {
+      console.error("JamesUI: toggle failed", entityId, error);
+    }
   }
 
   async _loadJamesConfig() {
@@ -507,6 +600,7 @@ class JamesUIPanel extends HTMLElement {
 
   _setPage(page) {
     this._page = page;
+    if (page !== "house") this._houseCategory = null;
     this._settings = false;
     this._appMenu = false;
     this.render();
@@ -590,6 +684,22 @@ class JamesUIPanel extends HTMLElement {
     });
 
     this.shadowRoot.querySelector("[data-save-home-config]")?.addEventListener("click", () => this._saveHomeConfig());
+
+    this.shadowRoot.querySelectorAll("[data-house-category]").forEach((button) => {
+      button.addEventListener("click", () => {
+        this._houseCategory = button.dataset.houseCategory;
+        this.render();
+      });
+    });
+
+    this.shadowRoot.querySelector("[data-house-back]")?.addEventListener("click", () => {
+      this._houseCategory = null;
+      this.render();
+    });
+
+    this.shadowRoot.querySelectorAll("[data-house-toggle]").forEach((button) => {
+      button.addEventListener("click", () => this._toggleHouseEntity(button.dataset.houseToggle));
+    });
   }
 
   render() {
