@@ -46,8 +46,8 @@ Primary reference: **OnePlus Pad 2**, landscape, 7:5 display ratio. The UI is re
 ## Roadmap
 
 - v0.1.x — application shell and design system
-- v0.2.x — Home/weather **(current)**
-- v0.3.x — House/status
+- v0.2.x — Home/weather
+- v0.3.x — House/status **(current)**
 - v0.4.x — Climate
 - v0.5.x — Media routing
 - v0.6.x — Door/Siedle
