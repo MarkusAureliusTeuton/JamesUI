@@ -1579,22 +1579,26 @@ class JamesUIPanel extends HTMLElement {
       .bottom-nav button.active::before { background: var(--accent-bright); }
       .nav-icon { font-size: 20px; line-height: 1; }
 
-      .home-grid { display: grid; grid-template-columns: 1.45fr 1fr; grid-template-rows: minmax(280px, 1fr) auto; gap: 18px; height: 100%; }
+      .home-grid { display: flex; flex-direction: column; gap: 16px; min-height: 100%; }
+      .home-top-grid { display: grid; grid-template-columns: minmax(0, 2.25fr) minmax(250px, .75fr); gap: 16px; min-height: clamp(360px, 51vh, 520px); }
       .weather-hero {
         position: relative; overflow: hidden; min-height: 300px;
         border: 1px solid var(--line); border-radius: 28px;
         background: #171a1d;
-        grid-row: 1 / 3;
       }
 
-      .weather-sky { position: absolute; inset: 0; background: linear-gradient(155deg,#31434a 0%,#242a2b 45%,#141618 100%); }
+      .weather-sky { position: absolute; inset: 0; background: #171a1d; }
+      .weather-background { position: absolute; inset: -1px; background-position: center; background-size: cover; background-repeat: no-repeat; transform: scale(1.01); filter: saturate(.88) contrast(1.04); transition: opacity .8s ease, filter .8s ease; }
+      .period-night .weather-background { filter: saturate(.7) brightness(.72) contrast(1.1); }
+      .period-twilight .weather-background { filter: saturate(.82) brightness(.86) contrast(1.07); }
+      .period-golden .weather-background { filter: saturate(.95) brightness(.93) contrast(1.04); }
       .weather-sky::before {
         content: ""; position: absolute; left: -5%; right: -5%; bottom: 0; height: 48%;
         background:
           linear-gradient(150deg, transparent 0 18%, #171918 18% 32%, transparent 32%),
           linear-gradient(205deg, transparent 0 28%, #20211e 28% 46%, transparent 46%),
           linear-gradient(to top, #0c0e0e, transparent);
-        opacity: .92;
+        opacity: .18;
       }
       .weather-sky::after {
         content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 27%;
@@ -1631,10 +1635,11 @@ class JamesUIPanel extends HTMLElement {
       h2 { font-size: clamp(19px, 1.55vw, 25px); font-weight: 620; margin-top: 3px; letter-spacing: -.02em; }
       .muted { color: var(--muted); font-size: 11px; }
 
-      .weather-hero.period-day .weather-sky { background: linear-gradient(155deg,#506872 0%,#394a4e 46%,#1d2324 100%); }
-      .weather-hero.period-golden .weather-sky { background: linear-gradient(155deg,#705a49 0%,#4b4640 46%,#1b2021 100%); }
-      .weather-hero.period-twilight .weather-sky { background: linear-gradient(155deg,#3d4658 0%,#36363e 46%,#171b1d 100%); }
-      .weather-hero.period-night .weather-sky { background: linear-gradient(155deg,#101925 0%,#11171e 50%,#090c0f 100%); }
+      .weather-hero.period-day .weather-sky { background: #3d4b4d; }
+      .weather-hero.period-golden .weather-sky { background: #5b493d; }
+      .weather-hero.period-twilight .weather-sky { background: #30333d; }
+      .weather-hero.period-night .weather-sky { background: #0d141c; }
+      .sun-disc { opacity: 0 !important; }
       .weather-hero.period-night .sun-disc { opacity: 0; }
       .weather-stars { position: absolute; inset: 0; opacity: 0; background-image: radial-gradient(circle at 12% 18%,rgba(255,255,255,.75) 0 1px,transparent 1.5px),radial-gradient(circle at 34% 12%,rgba(255,255,255,.5) 0 1px,transparent 1.5px),radial-gradient(circle at 63% 22%,rgba(255,255,255,.55) 0 1px,transparent 1.5px),radial-gradient(circle at 82% 14%,rgba(255,255,255,.7) 0 1px,transparent 1.5px),radial-gradient(circle at 73% 38%,rgba(255,255,255,.45) 0 1px,transparent 1.5px); }
       .weather-hero.period-night .weather-stars { opacity: .7; }
@@ -1681,6 +1686,47 @@ class JamesUIPanel extends HTMLElement {
       .forecast-button { justify-self: end; border: 1px solid rgba(255,255,255,.13); background: rgba(255,255,255,.055); border-radius: 11px; padding: 9px 12px; cursor: pointer; font-size: 10px; }
       .forecast-button:not(:disabled):hover { background: var(--accent-soft); border-color: rgba(184,121,72,.42); }
       .live-badge { color: var(--good); border: 1px solid rgba(127,165,138,.25); border-radius: 99px; padding: 4px 7px; font-size: 8px; letter-spacing: .12em; }
+
+      .moon-card {
+        position: relative; overflow: hidden; min-width: 0;
+        border: 1px solid var(--line); border-radius: 28px;
+        background:
+          radial-gradient(circle at 50% 39%, rgba(128,145,160,.14), transparent 29%),
+          linear-gradient(155deg,#171c22 0%,#111418 54%,#0d0f11 100%);
+        padding: clamp(20px,2vw,28px);
+        box-shadow: inset 0 1px rgba(255,255,255,.025);
+      }
+      .moon-card::before { content:""; position:absolute; inset:0; pointer-events:none; opacity:.5; background-image: radial-gradient(circle at 15% 16%,rgba(255,255,255,.7) 0 1px,transparent 1.5px),radial-gradient(circle at 72% 12%,rgba(255,255,255,.45) 0 1px,transparent 1.5px),radial-gradient(circle at 86% 31%,rgba(255,255,255,.5) 0 1px,transparent 1.5px),radial-gradient(circle at 28% 41%,rgba(255,255,255,.3) 0 1px,transparent 1.5px); }
+      .moon-card-head { position: relative; z-index: 2; display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+      .moon-phase-name { max-width: 46%; text-align:right; color:#c9ced2; font-size:10px; line-height:1.3; }
+      .moon-stage { position:relative; width:min(150px,48%); aspect-ratio:1; margin:18px auto 10px; display:grid; place-items:center; }
+      .moon-orbit { position:absolute; inset:4%; border:1px solid rgba(255,255,255,.07); border-radius:50%; }
+      .moon-glow { position:absolute; width:65%; height:65%; border-radius:50%; box-shadow:0 0 50px rgba(190,203,210,.16); }
+      .moon-disc { position:relative; z-index:2; width:58%; height:58%; border-radius:50%; overflow:hidden; background:radial-gradient(circle at 38% 34%,#f0eee5 0 7%,#c8c9c4 30%,#a9aca9 68%,#8f9492 100%); box-shadow:inset -9px -6px 16px rgba(31,37,40,.24),0 0 22px rgba(212,218,216,.16); }
+      .moon-craters { position:absolute; inset:0; opacity:.34; background:radial-gradient(circle at 30% 28%,#737b7a 0 5%,transparent 6%),radial-gradient(circle at 62% 38%,#747c7b 0 8%,transparent 9%),radial-gradient(circle at 38% 68%,#7c8380 0 7%,transparent 8%),radial-gradient(circle at 68% 72%,#737a78 0 4%,transparent 5%); }
+      .moon-shadow { position:absolute; z-index:3; inset:-2%; border-radius:50%; background:#11161b; opacity:.94; transition:transform .5s ease,opacity .5s ease; }
+      .phase-full_moon .moon-shadow { opacity:0; }
+      .phase-new_moon .moon-shadow { transform:translateX(0); opacity:.94; }
+      .phase-first_quarter .moon-shadow { transform:translateX(-50%); }
+      .phase-last_quarter .moon-shadow { transform:translateX(50%); }
+      .phase-waxing_crescent .moon-shadow { transform:translateX(-18%); }
+      .phase-waxing_gibbous .moon-shadow { transform:translateX(-72%); }
+      .phase-waning_gibbous .moon-shadow { transform:translateX(72%); }
+      .phase-waning_crescent .moon-shadow { transform:translateX(18%); }
+      .phase-unknown .moon-shadow { transform:translateX(-55%); opacity:.55; }
+      .moon-main { position:relative; z-index:2; display:flex; align-items:baseline; justify-content:center; gap:9px; }
+      .moon-main > strong { font-size:28px; font-weight:350; }
+      .moon-main > span { display:flex; flex-direction:column; color:#c7cbcd; font-size:10px; }
+      .moon-main small { color:#656b70; font-size:7px; margin-top:2px; }
+      .moon-progress { position:relative; z-index:2; height:3px; margin:14px 0 16px; border-radius:99px; background:rgba(255,255,255,.07); overflow:hidden; }
+      .moon-progress i { display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg,#717c83,#d5d6ce); }
+      .moon-facts { position:relative; z-index:2; display:grid; grid-template-columns:1fr; gap:7px; }
+      .moon-facts > div { display:grid; grid-template-columns:1fr auto; align-items:center; min-height:34px; border-top:1px solid rgba(255,255,255,.065); padding-top:7px; }
+      .moon-facts span { color:#777d81; font-size:8px; text-transform:uppercase; letter-spacing:.06em; }
+      .moon-facts strong { font-size:10px; font-weight:600; }
+      .moon-facts small { grid-column:2; color:#686d71; font-size:8px; text-align:right; }
+      .home-quick-grid { grid-template-columns:repeat(4,1fr); }
+      .quick-section, .scene-section { background:linear-gradient(145deg,rgba(20,22,24,.96),rgba(14,16,18,.98)); }
 
       .forecast-overlay { position: absolute; inset: 0; z-index: 95; display: grid; place-items: center; padding: 4vw; }
       .forecast-scrim { position: absolute; inset: 0; background: rgba(4,5,6,.82); backdrop-filter: blur(18px); }
