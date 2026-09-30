@@ -1,4 +1,4 @@
-const VERSION = "0.1.2";
+const VERSION = "0.2.0";
 
 const NAV_ITEMS = [
   { id: "home", label: "Start", icon: "⌂" },
@@ -29,11 +29,28 @@ class JamesUIPanel extends HTMLElement {
     this._scene = "Alltag";
     this._timer = null;
     this._displayCalibration = this._loadDisplayCalibration();
+    this._config = {};
+    this._configLoaded = false;
+    this._configLoading = false;
+    this._forecast = [];
+    this._forecastType = null;
+    this._forecastEntity = null;
+    this._forecastUnsubscribe = null;
+    this._forecastOpen = false;
+    this._configMessage = "";
   }
 
   set hass(value) {
+    const firstConnection = !this._hass && Boolean(value);
     this._hass = value;
     this._updateLiveValues();
+    this._updateHomeLiveValues();
+
+    if (firstConnection || (!this._configLoaded && !this._configLoading)) {
+      this._loadJamesConfig();
+    } else {
+      this._ensureForecastSubscription();
+    }
   }
 
   get hass() {
@@ -70,10 +87,282 @@ class JamesUIPanel extends HTMLElement {
 
   disconnectedCallback() {
     if (this._timer) window.clearInterval(this._timer);
+    if (this._forecastUnsubscribe) {
+      Promise.resolve(this._forecastUnsubscribe()).catch(() => {});
+      this._forecastUnsubscribe = null;
+    }
     window.removeEventListener("resize", this._viewportHandler);
     window.visualViewport?.removeEventListener("resize", this._viewportHandler);
     document.body.style.background = this._previousBodyBackground || "";
     document.documentElement.style.background = this._previousHtmlBackground || "";
+  }
+
+  async _loadJamesConfig() {
+    if (!this._hass || this._configLoading) return;
+    this._configLoading = true;
+    try {
+      const response = await this._hass.connection.sendMessagePromise({ type: "jamesui/config" });
+      this._config = response?.options || {};
+      this._configLoaded = true;
+    } catch (error) {
+      console.warn("JamesUI: configuration API unavailable", error);
+      this._config = {};
+    } finally {
+      this._configLoading = false;
+      this._ensureForecastSubscription();
+      if (this._page === "home") this.render();
+    }
+  }
+
+  _entityIds(domain) {
+    if (!this._hass) return [];
+    return Object.keys(this._hass.states)
+      .filter((id) => id.startsWith(`${domain}.`))
+      .sort((a, b) => {
+        const an = this._hass.states[a]?.attributes?.friendly_name || a;
+        const bn = this._hass.states[b]?.attributes?.friendly_name || b;
+        return an.localeCompare(bn, "de");
+      });
+  }
+
+  _weatherEntityId() {
+    const configured = this._config.weather_entity;
+    if (configured && this._hass?.states[configured]) return configured;
+    return this._entityIds("weather")[0] || null;
+  }
+
+  _moonEntityId() {
+    const configured = this._config.moon_entity;
+    if (configured && this._hass?.states[configured]) return configured;
+    const phases = new Set([
+      "new_moon", "waxing_crescent", "first_quarter", "waxing_gibbous",
+      "full_moon", "waning_gibbous", "last_quarter", "waning_crescent",
+    ]);
+    return this._entityIds("sensor").find((id) => phases.has(this._hass.states[id]?.state)) || null;
+  }
+
+  _outdoorTemperatureEntityId() {
+    const configured = this._config.outdoor_temperature_entity;
+    if (configured && this._hass?.states[configured]) return configured;
+    const candidates = this._entityIds("sensor").filter((id) => {
+      const entity = this._hass.states[id];
+      const dc = entity?.attributes?.device_class;
+      const unit = entity?.attributes?.unit_of_measurement || "";
+      if (dc !== "temperature" && !String(unit).includes("°")) return false;
+      const name = `${id} ${entity?.attributes?.friendly_name || ""}`.toLowerCase();
+      return /außen|aussen|outdoor|outside|garten|weather|wetter/.test(name);
+    });
+    return candidates[0] || null;
+  }
+
+  _forecastPreference(entity) {
+    const features = Number(entity?.attributes?.supported_features || 0);
+    if (features & 1) return "daily";
+    if (features & 4) return "twice_daily";
+    if (features & 2) return "hourly";
+    return null;
+  }
+
+  async _ensureForecastSubscription() {
+    if (!this._hass?.connection) return;
+    const entityId = this._weatherEntityId();
+    const entity = entityId ? this._hass.states[entityId] : null;
+    const type = this._forecastPreference(entity);
+
+    if (!entityId || !type) {
+      this._forecast = [];
+      return;
+    }
+
+    if (this._forecastEntity === entityId && this._forecastType === type && this._forecastUnsubscribe) return;
+
+    if (this._forecastUnsubscribe) {
+      try { await this._forecastUnsubscribe(); } catch (_) {}
+      this._forecastUnsubscribe = null;
+    }
+
+    this._forecastEntity = entityId;
+    this._forecastType = type;
+
+    try {
+      this._forecastUnsubscribe = await this._hass.connection.subscribeMessage(
+        (event) => {
+          this._forecast = Array.isArray(event?.forecast) ? event.forecast : [];
+          if (this._page === "home") this.render();
+        },
+        {
+          type: "weather/subscribe_forecast",
+          forecast_type: type,
+          entity_id: entityId,
+        }
+      );
+    } catch (error) {
+      console.warn("JamesUI: weather forecast subscription failed", error);
+      this._forecast = [];
+    }
+  }
+
+  _normalizedDailyForecast() {
+    if (!this._forecast.length) return [];
+    if (this._forecastType === "daily") return this._forecast.slice(0, 7);
+
+    const days = new Map();
+    for (const item of this._forecast) {
+      if (!item?.datetime) continue;
+      const key = new Date(item.datetime).toLocaleDateString("sv-SE");
+      if (!days.has(key)) {
+        days.set(key, { ...item, temperature: item.temperature, templow: item.templow ?? item.temperature });
+        continue;
+      }
+      const day = days.get(key);
+      if (Number.isFinite(item.temperature)) {
+        day.temperature = Math.max(Number(day.temperature ?? item.temperature), Number(item.temperature));
+        day.templow = Math.min(Number(day.templow ?? item.temperature), Number(item.templow ?? item.temperature));
+      }
+      day.precipitation_probability = Math.max(
+        Number(day.precipitation_probability || 0),
+        Number(item.precipitation_probability || 0)
+      );
+      if (!day.condition && item.condition) day.condition = item.condition;
+    }
+    return [...days.values()].slice(0, 7);
+  }
+
+  _weatherConditionLabel(condition) {
+    return ({
+      "clear-night": "Klar",
+      cloudy: "Bewölkt",
+      exceptional: "Unbeständig",
+      fog: "Nebel",
+      hail: "Hagel",
+      lightning: "Gewitter",
+      "lightning-rainy": "Gewitter & Regen",
+      partlycloudy: "Teilweise bewölkt",
+      pouring: "Starker Regen",
+      rainy: "Regen",
+      snowy: "Schnee",
+      "snowy-rainy": "Schneeregen",
+      sunny: "Sonnig",
+      windy: "Windig",
+      "windy-variant": "Windig",
+    })[condition] || condition || "Keine Wetterdaten";
+  }
+
+  _weatherSymbol(condition, night = false) {
+    if (night && (condition === "sunny" || condition === "clear-night")) return "☾";
+    return ({
+      "clear-night": "☾", cloudy: "☁", fog: "≋", hail: "◆",
+      lightning: "ϟ", "lightning-rainy": "ϟ", partlycloudy: "◒",
+      pouring: "☂", rainy: "☂", snowy: "❄", "snowy-rainy": "❄",
+      sunny: "☀", windy: "≋", "windy-variant": "≋",
+    })[condition] || "◌";
+  }
+
+  _isNight() {
+    return this._hass?.states?.["sun.sun"]?.state === "below_horizon";
+  }
+
+  _sunPeriod() {
+    const sun = this._hass?.states?.["sun.sun"];
+    const elevation = Number(sun?.attributes?.elevation);
+    if (!Number.isFinite(elevation)) return this._isNight() ? "night" : "day";
+    if (elevation < -6) return "night";
+    if (elevation < 1) return "twilight";
+    if (elevation < 12) return "golden";
+    return "day";
+  }
+
+  _formatTemperature(value, unit = "°C") {
+    const n = Number(value);
+    return Number.isFinite(n) ? `${Math.round(n * 10) / 10}${unit.startsWith("°") ? unit : ` ${unit}`}` : "–";
+  }
+
+  _currentTemperature() {
+    const sensorId = this._outdoorTemperatureEntityId();
+    const sensor = sensorId ? this._hass?.states?.[sensorId] : null;
+    if (sensor && !["unknown", "unavailable"].includes(sensor.state)) {
+      return this._formatTemperature(sensor.state, sensor.attributes?.unit_of_measurement || "°C");
+    }
+    const weather = this._hass?.states?.[this._weatherEntityId()];
+    return this._formatTemperature(weather?.attributes?.temperature, weather?.attributes?.temperature_unit || "°C");
+  }
+
+  _moonInfo() {
+    const entity = this._hass?.states?.[this._moonEntityId()];
+    const state = entity?.state;
+    const labels = {
+      new_moon: ["Neumond", "●"],
+      waxing_crescent: ["Zunehmende Sichel", "◔"],
+      first_quarter: ["Erstes Viertel", "◐"],
+      waxing_gibbous: ["Zunehmender Mond", "◕"],
+      full_moon: ["Vollmond", "○"],
+      waning_gibbous: ["Abnehmender Mond", "◕"],
+      last_quarter: ["Letztes Viertel", "◑"],
+      waning_crescent: ["Abnehmende Sichel", "◔"],
+    };
+    return labels[state] || ["Mondphase nicht eingerichtet", "○"];
+  }
+
+  _nextMoonPhase() {
+    const synodic = 29.53058867;
+    const epoch = Date.UTC(2000, 0, 6, 18, 14, 0);
+    const now = Date.now();
+    let age = ((now - epoch) / 86400000) % synodic;
+    if (age < 0) age += synodic;
+    const targets = [
+      [0, "Neumond"], [synodic / 4, "Erstes Viertel"],
+      [synodic / 2, "Vollmond"], [3 * synodic / 4, "Letztes Viertel"],
+      [synodic, "Neumond"],
+    ];
+    let next = targets.find(([target]) => target > age + 0.15) || [synodic, "Neumond"];
+    const date = new Date(now + (next[0] - age) * 86400000);
+    return {
+      label: next[1],
+      date: new Intl.DateTimeFormat("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" }).format(date),
+    };
+  }
+
+  _updateHomeLiveValues() {
+    if (!this.shadowRoot || this._page !== "home") return;
+    const weather = this._hass?.states?.[this._weatherEntityId()];
+    const sun = this._hass?.states?.["sun.sun"];
+    const temperature = this.shadowRoot.querySelector("[data-weather-temp]");
+    const condition = this.shadowRoot.querySelector("[data-weather-condition]");
+    const symbol = this.shadowRoot.querySelector("[data-weather-symbol]");
+    const elevation = this.shadowRoot.querySelector("[data-sun-elevation]");
+    if (temperature) temperature.textContent = this._currentTemperature();
+    if (condition) condition.textContent = this._weatherConditionLabel(weather?.state);
+    if (symbol) symbol.textContent = this._weatherSymbol(weather?.state, this._isNight());
+    if (elevation) elevation.textContent = Number.isFinite(Number(sun?.attributes?.elevation)) ? `${Number(sun.attributes.elevation).toFixed(1)}°` : "–";
+  }
+
+  async _saveHomeConfig() {
+    if (!this._hass) return;
+    const root = this.shadowRoot;
+    const data = {
+      type: "jamesui/config/update",
+      weather_entity: root.querySelector("[data-config-weather]")?.value || null,
+      outdoor_temperature_entity: root.querySelector("[data-config-outdoor-temp]")?.value || null,
+      moon_entity: root.querySelector("[data-config-moon]")?.value || null,
+    };
+    this._configMessage = "Speichere …";
+    this._updateConfigMessage();
+    try {
+      const response = await this._hass.connection.sendMessagePromise(data);
+      this._config = response?.options || {};
+      this._configMessage = "Gespeichert";
+      this._forecastEntity = null;
+      await this._ensureForecastSubscription();
+    } catch (error) {
+      console.error("JamesUI: saving configuration failed", error);
+      this._configMessage = "Speichern fehlgeschlagen · Admin-Rechte erforderlich";
+    }
+    this._updateConfigMessage();
+  }
+
+  _updateConfigMessage() {
+    const node = this.shadowRoot?.querySelector("[data-config-message]");
+    if (node) node.textContent = this._configMessage;
   }
 
   _loadDisplayCalibration() {
