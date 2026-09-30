@@ -1,4 +1,4 @@
-const VERSION = "0.3.0";
+const VERSION = "0.3.1";
 
 const NAV_ITEMS = [
   { id: "home", label: "Start", icon: "⌂" },
@@ -365,6 +365,43 @@ class JamesUIPanel extends HTMLElement {
     return "day";
   }
 
+  _weatherBackground(condition, period) {
+    const buckets = {
+      sunny: "clear", "clear-night": "clear",
+      partlycloudy: "partly",
+      cloudy: "cloudy", windy: "cloudy", "windy-variant": "cloudy",
+      rainy: "rain", pouring: "rain", "snowy-rainy": "rain",
+      lightning: "storm", "lightning-rainy": "storm", hail: "storm", exceptional: "storm",
+      snowy: "snow",
+      fog: "fog",
+    };
+    const bucket = buckets[condition] || "cloudy";
+    const phase = ["day", "golden", "twilight", "night"].includes(period) ? period : "day";
+    return `/jamesui_static/assets/weather/${bucket}-${phase}.svg`;
+  }
+
+  _moonDetails() {
+    const synodic = 29.53058867;
+    const epoch = Date.UTC(2000, 0, 6, 18, 14, 0);
+    let age = ((Date.now() - epoch) / 86400000) % synodic;
+    if (age < 0) age += synodic;
+    const illumination = Math.round(((1 - Math.cos((2 * Math.PI * age) / synodic)) / 2) * 100);
+    const sensor = this._hass?.states?.[this._moonEntityId()];
+    return {
+      state: sensor?.state || "unknown",
+      age,
+      illumination,
+      progress: Math.round((age / synodic) * 100),
+    };
+  }
+
+  _formatSunEvent(value) {
+    if (!value) return "–";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "–";
+    return new Intl.DateTimeFormat("de-DE", { hour: "2-digit", minute: "2-digit" }).format(date);
+  }
+
   _formatTemperature(value, unit = "°C") {
     const n = Number(value);
     return Number.isFinite(n) ? `${Math.round(n * 10) / 10}${unit.startsWith("°") ? unit : ` ${unit}`}` : "–";
@@ -393,7 +430,8 @@ class JamesUIPanel extends HTMLElement {
       last_quarter: ["Letztes Viertel", "◑"],
       waning_crescent: ["Abnehmende Sichel", "◔"],
     };
-    return labels[state] || ["Mondphase nicht eingerichtet", "○"];
+    const info = labels[state] || ["Mondphase nicht eingerichtet", "○"];
+    return [...info, state || "unknown"];
   }
 
   _nextMoonPhase() {
@@ -764,84 +802,98 @@ class JamesUIPanel extends HTMLElement {
     const forecast = this._normalizedDailyForecast();
     const today = forecast[0] || {};
     const moon = this._moonInfo();
+    const moonDetails = this._moonDetails();
     const nextMoon = this._nextMoonPhase();
     const condition = weather?.state || "unknown";
     const period = this._sunPeriod();
+    const background = this._weatherBackground(condition, period);
     const unit = weather?.attributes?.temperature_unit || "°C";
     const high = this._formatTemperature(today.temperature, unit);
     const low = this._formatTemperature(today.templow, unit);
-    const precip = Number.isFinite(Number(today.precipitation_probability))
-      ? `${Math.round(Number(today.precipitation_probability))}%`
-      : "–";
-    const humidity = Number.isFinite(Number(weather?.attributes?.humidity))
-      ? `${Math.round(Number(weather.attributes.humidity))}%`
-      : "–";
+    const precip = Number.isFinite(Number(today.precipitation_probability)) ? `${Math.round(Number(today.precipitation_probability))}%` : "–";
+    const humidity = Number.isFinite(Number(weather?.attributes?.humidity)) ? `${Math.round(Number(weather.attributes.humidity))}%` : "–";
     const wind = Number.isFinite(Number(weather?.attributes?.wind_speed))
-      ? `${Math.round(Number(weather.attributes.wind_speed))} ${weather.attributes.wind_speed_unit || ""}`.trim()
-      : "–";
+      ? `${Math.round(Number(weather.attributes.wind_speed))} ${weather.attributes.wind_speed_unit || ""}`.trim() : "–";
     const elevation = Number(sun?.attributes?.elevation);
     const azimuth = Number(sun?.attributes?.azimuth);
     const lightCount = this._entityIds("light").filter((id) => this._hass.states[id]?.state === "on").length;
     const personIds = this._entityIds("person");
     const homeCount = personIds.filter((id) => this._hass.states[id]?.state === "home").length;
-    const climateTemps = this._entityIds("climate")
-      .map((id) => Number(this._hass.states[id]?.attributes?.current_temperature))
-      .filter(Number.isFinite);
-    const avgClimate = climateTemps.length
-      ? `${(climateTemps.reduce((a,b) => a+b, 0) / climateTemps.length).toFixed(1)}°`
-      : "noch offen";
+    const climateTemps = this._entityIds("climate").map((id) => Number(this._hass.states[id]?.attributes?.current_temperature)).filter(Number.isFinite);
+    const avgClimate = climateTemps.length ? `${(climateTemps.reduce((a,b) => a+b, 0) / climateTemps.length).toFixed(1)}°` : "noch offen";
+    const nextRising = this._formatSunEvent(sun?.attributes?.next_rising);
+    const nextSetting = this._formatSunEvent(sun?.attributes?.next_setting);
 
     return `
       <section class="home-grid">
-        <article class="weather-hero weather-${condition} period-${period}">
-          <div class="weather-sky">
-            <div class="weather-stars"></div>
-            <div class="weather-cloud cloud-a"></div>
-            <div class="weather-cloud cloud-b"></div>
-            <div class="weather-precip"></div>
-            <div class="sun-disc" style="--sun-x:${Number.isFinite(azimuth) ? Math.max(8, Math.min(92, azimuth / 360 * 100)) : 75}%"></div>
-            <div class="weather-gradient"></div>
-          </div>
+        <div class="home-top-grid">
+          <article class="weather-hero weather-${condition} period-${period}">
+            <div class="weather-sky">
+              <div class="weather-background" style="background-image:url('${background}')"></div>
+              <div class="weather-stars"></div>
+              <div class="weather-cloud cloud-a"></div>
+              <div class="weather-cloud cloud-b"></div>
+              <div class="weather-precip"></div>
+              <div class="sun-disc" style="--sun-x:${Number.isFinite(azimuth) ? Math.max(8, Math.min(92, azimuth / 360 * 100)) : 75}%"></div>
+              <div class="weather-gradient"></div>
+            </div>
 
-          <div class="hero-content">
-            <div class="hero-clock">
-              <div class="hero-date" data-live-date></div>
-              <div class="hero-time" data-live-time></div>
-              <div class="solar-line">
-                <span>${period === "night" ? "Nacht" : period === "twilight" ? "Dämmerung" : period === "golden" ? "Goldene Stunde" : "Tag"}</span>
-                <i></i>
-                <span>Sonne <b data-sun-elevation>${Number.isFinite(elevation) ? elevation.toFixed(1) + "°" : "–"}</b></span>
+            <div class="hero-content">
+              <div class="hero-clock">
+                <div class="hero-date" data-live-date></div>
+                <div class="hero-time" data-live-time></div>
+                <div class="solar-line">
+                  <span>${period === "night" ? "Nacht" : period === "twilight" ? "Dämmerung" : period === "golden" ? "Goldene Stunde" : "Tag"}</span>
+                  <i></i>
+                  <span>Sonne <b data-sun-elevation>${Number.isFinite(elevation) ? elevation.toFixed(1) + "°" : "–"}</b></span>
+                </div>
+              </div>
+
+              <div class="weather-current">
+                <span class="weather-main-symbol" data-weather-symbol>${this._weatherSymbol(condition, this._isNight())}</span>
+                <strong class="weather-temperature" data-weather-temp>${this._currentTemperature()}</strong>
+                <span class="weather-condition" data-weather-condition>${this._weatherConditionLabel(condition)}</span>
+                <div class="weather-detail-row"><span>↑ ${high}</span><span>↓ ${low}</span><span>Regen ${precip}</span></div>
               </div>
             </div>
 
-            <div class="weather-current">
-              <span class="weather-main-symbol" data-weather-symbol>${this._weatherSymbol(condition, this._isNight())}</span>
-              <strong class="weather-temperature" data-weather-temp>${this._currentTemperature()}</strong>
-              <span class="weather-condition" data-weather-condition>${this._weatherConditionLabel(condition)}</span>
-              <div class="weather-detail-row">
-                <span>↑ ${high}</span><span>↓ ${low}</span><span>Regen ${precip}</span>
-              </div>
+            <div class="hero-footer weather-footer">
+              <div><span>Feuchte</span><strong>${humidity}</strong></div>
+              <div><span>Wind</span><strong>${wind}</strong></div>
+              <div><span>Sonnenaufgang</span><strong>${nextRising}</strong></div>
+              <div><span>Sonnenuntergang</span><strong>${nextSetting}</strong></div>
+              <button class="forecast-button" data-open-forecast ${forecast.length ? "" : "disabled"}>3-Tage-Prognose →</button>
             </div>
-          </div>
+          </article>
 
-          <div class="hero-footer weather-footer">
-            <div><span>Feuchte</span><strong>${humidity}</strong></div>
-            <div><span>Wind</span><strong>${wind}</strong></div>
-            <div class="moon-mini"><span class="moon-glyph">${moon[1]}</span><span><small>Mond</small><strong>${moon[0]}</strong></span></div>
-            <div><span>Nächste Phase</span><strong>${nextMoon.label} · ${nextMoon.date}</strong></div>
-            <button class="forecast-button" data-open-forecast ${forecast.length ? "" : "disabled"}>3-Tage-Prognose →</button>
-          </div>
-        </article>
+          <aside class="moon-card">
+            <div class="moon-card-head">
+              <div><span class="eyebrow">HIMMEL</span><h2>Mondphase</h2></div>
+              <span class="moon-phase-name">${moon[0]}</span>
+            </div>
+            <div class="moon-stage">
+              <div class="moon-orbit"></div>
+              <div class="moon-disc phase-${moon[2]}"><div class="moon-shadow"></div><div class="moon-craters"></div></div>
+              <div class="moon-glow"></div>
+            </div>
+            <div class="moon-main">
+              <strong>${moonDetails.illumination}%</strong>
+              <span>Beleuchtung <small>astronomisch angenähert</small></span>
+            </div>
+            <div class="moon-progress"><i style="width:${moonDetails.progress}%"></i></div>
+            <div class="moon-facts">
+              <div><span>Mondalter</span><strong>${moonDetails.age.toFixed(1)} Tage</strong></div>
+              <div><span>Nächste Hauptphase</span><strong>${nextMoon.label}</strong><small>${nextMoon.date}</small></div>
+            </div>
+          </aside>
+        </div>
 
         <section class="section quick-section">
           <div class="section-heading">
-            <div>
-              <span class="eyebrow">AUF EINEN BLICK</span>
-              <h2>Quickinfo</h2>
-            </div>
+            <div><span class="eyebrow">AUF EINEN BLICK</span><h2>Quickinfo</h2></div>
             <span class="live-badge">${this._hass ? "LIVE" : "OFFLINE"}</span>
           </div>
-          <div class="quick-grid">
+          <div class="quick-grid home-quick-grid">
             ${this._quickCard("Haus", lightCount ? `${lightCount} Licht${lightCount === 1 ? "" : "er"} an` : "Alles ruhig", "◇")}
             ${this._quickCard("Klima", avgClimate, "◌")}
             ${this._quickCard("Energie", "Modul folgt", "ϟ")}
@@ -851,19 +903,14 @@ class JamesUIPanel extends HTMLElement {
 
         <section class="section scene-section">
           <div class="section-heading compact">
-            <div>
-              <span class="eyebrow">HAUSMODUS</span>
-              <h2>Szenen</h2>
-            </div>
-            <span class="muted">Hausmodus-Verknüpfung folgt mit Haus v0.3</span>
+            <div><span class="eyebrow">HAUSMODUS</span><h2>Szenen</h2></div>
+            <span class="muted">Hausmodus-Verknüpfung folgt mit Hausmodul</span>
           </div>
           <div class="scene-slider">
             ${["Morgen", "Alltag", "Fernsehen", "Abend", "Nacht"].map((scene) => `
               <button data-scene="${scene}" class="scene-pill ${this._scene === scene ? "selected" : ""}">
-                <span class="scene-dot"></span>
-                ${scene}
-              </button>
-            `).join("")}
+                <span class="scene-dot"></span>${scene}
+              </button>`).join("")}
           </div>
         </section>
       </section>
