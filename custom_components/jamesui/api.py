@@ -9,11 +9,22 @@ from homeassistant.core import HomeAssistant, callback
 
 from .const import DOMAIN
 
-CONFIG_KEYS = {
+ENTITY_CONFIG_KEYS = {
     "weather_entity",
     "outdoor_temperature_entity",
     "moon_entity",
     "illuminance_entity",
+    "media_spotify_entity",
+    "media_onkyo_entity",
+    "media_ma_player_entity",
+}
+
+VALUE_CONFIG_KEYS = {
+    "media_route",
+    "media_spotify_source",
+    "media_onkyo_source",
+    "media_playlist_name",
+    "media_playlist_uri",
 }
 
 
@@ -47,6 +58,16 @@ def websocket_get_config(
         vol.Optional("outdoor_temperature_entity"): vol.Any(str, None),
         vol.Optional("moon_entity"): vol.Any(str, None),
         vol.Optional("illuminance_entity"): vol.Any(str, None),
+        vol.Optional("media_spotify_entity"): vol.Any(str, None),
+        vol.Optional("media_onkyo_entity"): vol.Any(str, None),
+        vol.Optional("media_ma_player_entity"): vol.Any(str, None),
+        vol.Optional("media_route"): vol.Any(
+            vol.In(["auto", "music_assistant", "spotify_connect"]), None
+        ),
+        vol.Optional("media_spotify_source"): vol.Any(str, None),
+        vol.Optional("media_onkyo_source"): vol.Any(str, None),
+        vol.Optional("media_playlist_name"): vol.Any(str, None),
+        vol.Optional("media_playlist_uri"): vol.Any(str, None),
     }
 )
 @callback
@@ -62,7 +83,7 @@ def websocket_update_config(
         return
 
     options = dict(entry.options)
-    for key in CONFIG_KEYS:
+    for key in ENTITY_CONFIG_KEYS:
         if key not in msg:
             continue
         value = msg[key]
@@ -72,6 +93,17 @@ def websocket_update_config(
                     msg["id"], "entity_not_found", f"Entity {value} was not found"
                 )
                 return
+            options[key] = value
+        else:
+            options.pop(key, None)
+
+    for key in VALUE_CONFIG_KEYS:
+        if key not in msg:
+            continue
+        value = msg[key]
+        if isinstance(value, str):
+            value = value.strip()
+        if value:
             options[key] = value
         else:
             options.pop(key, None)
