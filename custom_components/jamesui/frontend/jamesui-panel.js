@@ -88,6 +88,8 @@ class JamesUIPanel extends HTMLElement {
       screenWidth: window.screen?.width || 0,
       screenHeight: window.screen?.height || 0,
       dpr: window.devicePixelRatio || 1,
+      physicalWidth: Math.round((window.screen?.width || 0) * (window.devicePixelRatio || 1)),
+      physicalHeight: Math.round((window.screen?.height || 0) * (window.devicePixelRatio || 1)),
       orientation: window.matchMedia("(orientation: landscape)").matches ? "Querformat" : "Hochformat",
       touch: navigator.maxTouchPoints > 0 ? "Touch erkannt" : "Kein Touch erkannt",
     };
@@ -600,6 +602,7 @@ class JamesUIPanel extends HTMLElement {
             <div><span class="eyebrow">AUTOMATISCH ERKANNT</span><strong>${m.panelWidth} × ${m.panelHeight} CSS px</strong></div>
             <div><span>Viewport</span><b>${m.viewportWidth} × ${m.viewportHeight}</b></div>
             <div><span>Display</span><b>${m.screenWidth} × ${m.screenHeight}</b></div>
+            <div><span>Physisch ≈</span><b>${m.physicalWidth} × ${m.physicalHeight}</b></div>
             <div><span>Pixeldichte</span><b>${m.dpr.toFixed(2)}×</b></div>
             <div><span>Ausrichtung</span><b>${m.orientation}</b></div>
             <div><span>Eingabe</span><b>${m.touch}</b></div>
@@ -973,7 +976,7 @@ class JamesUIPanel extends HTMLElement {
       .display-panel { position: absolute; z-index: 92; width: min(720px, calc(100% - 100px)); max-height: calc(100% - 100px); overflow: auto; top: 50%; left: 50%; transform: translate(-50%,-50%); border: 1px solid var(--line-strong); border-radius: 24px; background: #141618; box-shadow: 0 35px 120px rgba(0,0,0,.65); padding: 24px; }
       .display-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
       .display-close { width: 38px; height: 38px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2); cursor: pointer; font-size: 22px; }
-      .auto-detect { display: grid; grid-template-columns: 1.4fr repeat(5,1fr); gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,255,255,.018); }
+      .auto-detect { display: grid; grid-template-columns: 1.4fr repeat(6,1fr); gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,255,255,.018); }
       .auto-detect > div { min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 3px; padding: 5px 7px; }
       .auto-detect span { color: var(--muted); font-size: 9px; }
       .auto-detect strong { font-size: 17px; font-weight: 580; }
