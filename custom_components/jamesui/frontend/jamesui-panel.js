@@ -1,4 +1,4 @@
-const VERSION = "0.1.1";
+const VERSION = "0.1.2";
 
 const NAV_ITEMS = [
   { id: "home", label: "Start", icon: "⌂" },
@@ -53,13 +53,27 @@ class JamesUIPanel extends HTMLElement {
   }
 
   connectedCallback() {
+    this._previousBodyBackground = document.body.style.background;
+    this._previousHtmlBackground = document.documentElement.style.background;
+    document.body.style.background = "#0b0c0d";
+    document.documentElement.style.background = "#0b0c0d";
+
+    this._viewportHandler = () => this._applyViewportMetrics();
+    window.addEventListener("resize", this._viewportHandler);
+    window.visualViewport?.addEventListener("resize", this._viewportHandler);
+
     this.render();
     this._timer = window.setInterval(() => this._updateClock(), 1000);
     this._updateClock();
+    this._applyViewportMetrics();
   }
 
   disconnectedCallback() {
     if (this._timer) window.clearInterval(this._timer);
+    window.removeEventListener("resize", this._viewportHandler);
+    window.visualViewport?.removeEventListener("resize", this._viewportHandler);
+    document.body.style.background = this._previousBodyBackground || "";
+    document.documentElement.style.background = this._previousHtmlBackground || "";
   }
 
   _loadDisplayCalibration() {
@@ -98,7 +112,44 @@ class JamesUIPanel extends HTMLElement {
   _setDisplayCalibration(key, value) {
     this._displayCalibration[key] = Number(value);
     this._saveDisplayCalibration();
-    this.render();
+    this._applyCalibrationLive(key);
+  }
+
+  _applyCalibrationLive(changedKey = null) {
+    const c = this._displayCalibration;
+    const shell = this.shadowRoot?.querySelector(".app-shell");
+    const frame = this.shadowRoot?.querySelector(".calibration-frame");
+
+    if (shell) {
+      shell.style.setProperty("--cal-top", `${c.top}px`);
+      shell.style.setProperty("--cal-right", `${c.right}px`);
+      shell.style.setProperty("--cal-bottom", `${c.bottom}px`);
+      shell.style.setProperty("--cal-left", `${c.left}px`);
+      shell.style.setProperty("--ui-scale", String(c.scale / 100));
+    }
+
+    if (frame) {
+      frame.style.top = `${c.top}px`;
+      frame.style.right = `${c.right}px`;
+      frame.style.bottom = `${c.bottom}px`;
+      frame.style.left = `${c.left}px`;
+    }
+
+    if (changedKey) {
+      const valueNode = this.shadowRoot?.querySelector(`[data-cal-value="${changedKey}"]`);
+      if (valueNode) valueNode.textContent = changedKey === "scale" ? `${c.scale}%` : `${c[changedKey]}px`;
+    }
+  }
+
+  _applyViewportMetrics() {
+    const viewport = window.visualViewport;
+    const height = Math.round(viewport?.height || window.innerHeight);
+    const width = Math.round(viewport?.width || window.innerWidth);
+    const shell = this.shadowRoot?.querySelector(".app-shell");
+    if (shell) {
+      shell.style.setProperty("--viewport-height", `${height}px`);
+      shell.style.setProperty("--viewport-width", `${width}px`);
+    }
   }
 
   _resetDisplayCalibration() {
@@ -124,7 +175,7 @@ class JamesUIPanel extends HTMLElement {
       if (corner.includes("b")) this._displayCalibration.bottom = clamp(start.bottom - dy);
 
       this._saveDisplayCalibration();
-      this.render();
+      this._applyCalibrationLive();
     };
 
     const stop = () => {
@@ -581,7 +632,7 @@ class JamesUIPanel extends HTMLElement {
     const c = this._displayCalibration;
     const control = (key, label, value, max = 80) => `
       <label class="cal-control">
-        <div><strong>${label}</strong><span>${value}px</span></div>
+        <div><strong>${label}</strong><span data-cal-value="${key}">${value}px</span></div>
         <input type="range" min="0" max="${max}" step="1" value="${value}" data-calibration="${key}">
       </label>`;
 
@@ -621,7 +672,7 @@ class JamesUIPanel extends HTMLElement {
           </div>
 
           <label class="cal-control scale-control">
-            <div><strong>UI-Skalierung</strong><span>${c.scale}%</span></div>
+            <div><strong>UI-Skalierung</strong><span data-cal-value="scale">${c.scale}%</span></div>
             <input type="range" min="85" max="115" step="1" value="${c.scale}" data-calibration="scale">
           </label>
 
@@ -669,9 +720,13 @@ class JamesUIPanel extends HTMLElement {
         --danger: #b86d64;
         --radius: 22px;
         display: block;
-        width: 100%;
-        height: 100%;
-        min-height: 100%;
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100dvh;
+        min-width: 0;
+        min-height: 0;
+        overflow: hidden;
         color: var(--text);
         background: var(--bg);
         font-family: Inter, "Noto Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -683,12 +738,14 @@ class JamesUIPanel extends HTMLElement {
       button:disabled { opacity: .55; cursor: default; }
 
       .app-shell {
-        position: relative;
+        position: fixed;
+        inset: 0;
         display: grid;
         grid-template-rows: 76px minmax(0, 1fr) 88px;
-        width: 100%;
-        height: 100%;
-        min-height: 720px;
+        width: var(--viewport-width, 100vw);
+        height: var(--viewport-height, 100dvh);
+        min-width: 0;
+        min-height: 0;
         overflow: hidden;
         padding: var(--cal-top, 0px) var(--cal-right, 0px) var(--cal-bottom, 0px) var(--cal-left, 0px);
         background:
@@ -745,13 +802,19 @@ class JamesUIPanel extends HTMLElement {
       .content {
         min-height: 0;
         zoom: var(--ui-scale, 1);
-        overflow: auto;
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
         padding: clamp(18px, 2vw, 32px) clamp(22px, 2.5vw, 42px);
         scrollbar-width: thin;
         scrollbar-color: var(--surface-3) transparent;
       }
 
       .bottom-nav {
+        position: relative;
+        z-index: 20;
+        min-height: 0;
         display: grid;
         grid-template-columns: repeat(5, 1fr);
         align-items: stretch;
@@ -1024,7 +1087,7 @@ class JamesUIPanel extends HTMLElement {
       }
 
       @media (max-height: 760px) and (min-width: 901px) {
-        .app-shell { grid-template-rows: 66px minmax(0,1fr) 76px; min-height: 620px; }
+        .app-shell { grid-template-rows: 66px minmax(0,1fr) 76px; }
         .content { padding-top: 14px; padding-bottom: 14px; }
         .hero-time { font-size: 62px; }
         .weather-hero { min-height: 250px; }
