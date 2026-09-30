@@ -1,7 +1,7 @@
 {
   "domain": "jamesui",
   "name": "JamesUI",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "documentation": "https://github.com/MarkusAureliusTeuton/JamesUI",
   "issue_tracker": "https://github.com/MarkusAureliusTeuton/JamesUI/issues",
   "codeowners": ["@MarkusAureliusTeuton"],
