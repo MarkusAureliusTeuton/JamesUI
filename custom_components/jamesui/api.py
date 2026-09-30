@@ -13,6 +13,7 @@ CONFIG_KEYS = {
     "weather_entity",
     "outdoor_temperature_entity",
     "moon_entity",
+    "illuminance_entity",
 }
 
 
@@ -45,6 +46,7 @@ def websocket_get_config(
         vol.Optional("weather_entity"): vol.Any(str, None),
         vol.Optional("outdoor_temperature_entity"): vol.Any(str, None),
         vol.Optional("moon_entity"): vol.Any(str, None),
+        vol.Optional("illuminance_entity"): vol.Any(str, None),
     }
 )
 @callback
