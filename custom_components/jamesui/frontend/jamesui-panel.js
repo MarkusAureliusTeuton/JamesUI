@@ -365,6 +365,27 @@ class JamesUIPanel extends HTMLElement {
     return "day";
   }
 
+  _illuminanceEntityId() {
+    const configured = this._config.illuminance_entity;
+    if (configured && this._hass?.states[configured]) return configured;
+    return this._entityIds("sensor").find((id) => this._hass.states[id]?.attributes?.device_class === "illuminance") || null;
+  }
+
+  _ambientLight() {
+    const id = this._illuminanceEntityId();
+    const entity = id ? this._hass?.states?.[id] : null;
+    const lux = Number(entity?.state);
+    if (!Number.isFinite(lux)) return { lux: null, label: "Automatisch", dim: 0 };
+    let dim = 0;
+    if (this._sunPeriod() !== "night") {
+      if (lux < 20) dim = .22;
+      else if (lux < 100) dim = .16;
+      else if (lux < 500) dim = .10;
+      else if (lux < 2000) dim = .05;
+    }
+    return { lux, label: `${Math.round(lux).toLocaleString("de-DE")} lx`, dim };
+  }
+
   _weatherBackground(condition, period) {
     const buckets = {
       sunny: "clear", "clear-night": "clear",
@@ -475,6 +496,7 @@ class JamesUIPanel extends HTMLElement {
       weather_entity: root.querySelector("[data-config-weather]")?.value || null,
       outdoor_temperature_entity: root.querySelector("[data-config-outdoor-temp]")?.value || null,
       moon_entity: root.querySelector("[data-config-moon]")?.value || null,
+      illuminance_entity: root.querySelector("[data-config-illuminance]")?.value || null,
     };
     this._configMessage = "Speichere …";
     this._updateConfigMessage();
@@ -804,6 +826,7 @@ class JamesUIPanel extends HTMLElement {
     const moon = this._moonInfo();
     const moonDetails = this._moonDetails();
     const nextMoon = this._nextMoonPhase();
+    const ambient = this._ambientLight();
     const condition = weather?.state || "unknown";
     const period = this._sunPeriod();
     const background = this._weatherBackground(condition, period);
@@ -835,6 +858,7 @@ class JamesUIPanel extends HTMLElement {
               <div class="weather-cloud cloud-b"></div>
               <div class="weather-precip"></div>
               <div class="sun-disc" style="--sun-x:${Number.isFinite(azimuth) ? Math.max(8, Math.min(92, azimuth / 360 * 100)) : 75}%"></div>
+              <div class="ambient-dimmer" style="opacity:${ambient.dim}"></div>
               <div class="weather-gradient"></div>
             </div>
 
@@ -860,8 +884,8 @@ class JamesUIPanel extends HTMLElement {
             <div class="hero-footer weather-footer">
               <div><span>Feuchte</span><strong>${humidity}</strong></div>
               <div><span>Wind</span><strong>${wind}</strong></div>
-              <div><span>Sonnenaufgang</span><strong>${nextRising}</strong></div>
-              <div><span>Sonnenuntergang</span><strong>${nextSetting}</strong></div>
+              <div><span>Helligkeit</span><strong>${ambient.label}</strong></div>
+              <div><span>Auf · Unter</span><strong>${nextRising} · ${nextSetting}</strong></div>
               <button class="forecast-button" data-open-forecast ${forecast.length ? "" : "disabled"}>3-Tage-Prognose →</button>
             </div>
           </article>
@@ -1204,10 +1228,12 @@ class JamesUIPanel extends HTMLElement {
       "full_moon", "waning_gibbous", "last_quarter", "waning_crescent",
     ]);
     const moonIds = this._entityIds("sensor").filter((id) => phases.has(this._hass?.states?.[id]?.state));
+    const illuminanceIds = this._entityIds("sensor").filter((id) => this._hass?.states?.[id]?.attributes?.device_class === "illuminance");
 
     const weatherAuto = this._weatherEntityId();
     const tempAuto = this._outdoorTemperatureEntityId();
     const moonAuto = this._moonEntityId();
+    const illuminanceAuto = this._illuminanceEntityId();
 
     return `
       <div class="settings-layout home-settings">
@@ -1239,6 +1265,14 @@ class JamesUIPanel extends HTMLElement {
             <select data-config-moon>
               <option value="">Automatisch${moonAuto ? ` · ${this._hass.states[moonAuto]?.attributes?.friendly_name || moonAuto}` : ""}</option>
               ${moonIds.map((id) => this._entityOption(id, this._config.moon_entity)).join("")}
+            </select>
+          </div>
+
+          <div class="config-field">
+            <div><strong>Außenhelligkeit</strong><span>Optionaler Lux-Sensor zur feineren visuellen Anpassung an die tatsächliche Helligkeit</span></div>
+            <select data-config-illuminance>
+              <option value="">Automatisch${illuminanceAuto ? ` · ${this._hass.states[illuminanceAuto]?.attributes?.friendly_name || illuminanceAuto}` : ""}</option>
+              ${illuminanceIds.map((id) => this._entityOption(id, this._config.illuminance_entity)).join("")}
             </select>
           </div>
 
@@ -1611,6 +1645,7 @@ class JamesUIPanel extends HTMLElement {
         box-shadow: 0 0 60px rgba(216,183,131,.28);
         opacity: .9;
       }
+      .ambient-dimmer { position:absolute; inset:0; background:#050708; pointer-events:none; transition:opacity 1.2s ease; }
       .weather-gradient { position: absolute; inset: 0; background: linear-gradient(90deg,rgba(6,7,8,.62),transparent 55%),linear-gradient(to top,rgba(6,7,8,.8),transparent 50%); }
       .hero-content { position: absolute; inset: 0 0 64px; padding: clamp(28px, 3vw, 50px); justify-content: space-between; align-items: flex-start; }
       .hero-date { font-size: 16px; color: rgba(255,255,255,.75); text-transform: capitalize; }
