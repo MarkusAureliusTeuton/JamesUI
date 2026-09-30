@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.2.0 — Home & Weather
+
+- Added persistent JamesUI configuration stored in the Home Assistant config entry.
+- Added automatic weather, outdoor-temperature and moon-phase entity discovery.
+- Added page-specific source selection under Start settings.
+- Added live current weather, temperature, humidity and wind.
+- Added live daily/twice-daily/hourly forecast subscription through Home Assistant WebSocket API.
+- Added normalization of non-daily forecasts into daily summaries.
+- Added 3-day forecast overlay.
+- Added real sun state, elevation and azimuth from Home Assistant.
+- Added day, golden-hour, twilight and night visual states.
+- Added condition-aware clouds, rain and snow presentation.
+- Added current moon phase plus an approximate next major lunar-phase preview.
+- Added live Quickinfo basics for lights, climate and persons.
+- Kept house-mode/scene activation unbound until the House module defines the persistent mode helper.
+
+
 ## 0.1.2 — Viewport & navigation fix
 
 - Fixed touch sliders losing pointer capture after each value change.
