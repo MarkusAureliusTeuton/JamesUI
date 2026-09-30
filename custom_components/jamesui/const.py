@@ -2,7 +2,7 @@
 
 DOMAIN = "jamesui"
 NAME = "JamesUI"
-VERSION = "0.1.0"
+VERSION = "0.1.1"
 
 PANEL_URL = "jamesui"
 PANEL_TITLE = "JamesUI"
