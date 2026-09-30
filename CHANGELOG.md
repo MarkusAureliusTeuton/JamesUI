@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.1 — Display setup
+
+- Added automatic viewport, panel size, orientation, touch and pixel-density detection.
+- Added per-device display calibration stored locally in the browser.
+- Added draggable corner markers plus pixel-precise edge controls.
+- Added optional UI scale control and one-click reset to automatic sizing.
+- Added Display & Kalibrierung to the JamesUI application menu.
+
+
 ## 0.1.0 — Foundation
 
 - Added HACS-compatible Home Assistant custom integration.
