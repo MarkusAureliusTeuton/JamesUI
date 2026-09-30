@@ -1240,13 +1240,24 @@ class JamesUIPanel extends HTMLElement {
     const onkyo = this._hass.states[onkyoId];
     if (onkyo?.state === "off") {
       try { await this._callAction("media_player", "turn_on", onkyoId); } catch (_) {}
-      await new Promise((resolve) => setTimeout(resolve, 900));
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      const refreshed = this._hass.states[onkyoId];
+      if (refreshed?.state === "off") {
+        console.warn("JamesUI: Onkyo remained off after turn_on; playback may require manual power-on.");
+      }
     }
     const source = this._config.media_onkyo_source;
     if (source) {
       try { await this._callAction("media_player", "select_source", onkyoId, { source }); } catch (_) {}
       await new Promise((resolve) => setTimeout(resolve, 500));
     }
+  }
+
+  _musicAssistantPlaylistId(uri) {
+    const value = String(uri || "").trim();
+    const colon = value.match(/^spotify:playlist:([A-Za-z0-9]+)$/);
+    if (colon) return `spotify://playlist/${colon[1]}`;
+    return value;
   }
 
   async _startSpotifyPlaylist() {
@@ -1271,7 +1282,7 @@ class JamesUIPanel extends HTMLElement {
       await this._prepareOnkyo();
       if (route.route === "music_assistant") {
         await this._callAction("music_assistant", "play_media", route.maPlayer, {
-          media_id: uri,
+          media_id: this._musicAssistantPlaylistId(uri),
           media_type: "playlist",
           enqueue: "replace",
           radio_mode: false,
