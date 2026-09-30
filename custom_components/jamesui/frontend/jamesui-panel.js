@@ -576,6 +576,20 @@ class JamesUIPanel extends HTMLElement {
     this.shadowRoot.querySelectorAll("[data-cal-corner]").forEach((corner) => {
       corner.addEventListener("pointerdown", (event) => this._startCornerDrag(corner.dataset.calCorner, event));
     });
+
+    this.shadowRoot.querySelector("[data-open-forecast]")?.addEventListener("click", () => {
+      this._forecastOpen = true;
+      this.render();
+    });
+
+    this.shadowRoot.querySelectorAll("[data-close-forecast]").forEach((button) => {
+      button.addEventListener("click", () => {
+        this._forecastOpen = false;
+        this.render();
+      });
+    });
+
+    this.shadowRoot.querySelector("[data-save-home-config]")?.addEventListener("click", () => this._saveHomeConfig());
   }
 
   render() {
@@ -591,6 +605,7 @@ class JamesUIPanel extends HTMLElement {
         ${this._bottomNav()}
         ${this._appMenu ? this._appMenuPanel() : ""}
         ${this._displaySetup ? this._displaySetupOverlay() : ""}
+        ${this._forecastOpen ? this._forecastOverlay() : ""}
         ${this._doorbellDemo ? this._doorbellOverlay() : ""}
       </div>
     `;
@@ -634,30 +649,77 @@ class JamesUIPanel extends HTMLElement {
   }
 
   _homePage() {
+    const weather = this._hass?.states?.[this._weatherEntityId()];
+    const sun = this._hass?.states?.["sun.sun"];
+    const forecast = this._normalizedDailyForecast();
+    const today = forecast[0] || {};
+    const moon = this._moonInfo();
+    const nextMoon = this._nextMoonPhase();
+    const condition = weather?.state || "unknown";
+    const period = this._sunPeriod();
+    const unit = weather?.attributes?.temperature_unit || "°C";
+    const high = this._formatTemperature(today.temperature, unit);
+    const low = this._formatTemperature(today.templow, unit);
+    const precip = Number.isFinite(Number(today.precipitation_probability))
+      ? `${Math.round(Number(today.precipitation_probability))}%`
+      : "–";
+    const humidity = Number.isFinite(Number(weather?.attributes?.humidity))
+      ? `${Math.round(Number(weather.attributes.humidity))}%`
+      : "–";
+    const wind = Number.isFinite(Number(weather?.attributes?.wind_speed))
+      ? `${Math.round(Number(weather.attributes.wind_speed))} ${weather.attributes.wind_speed_unit || ""}`.trim()
+      : "–";
+    const elevation = Number(sun?.attributes?.elevation);
+    const azimuth = Number(sun?.attributes?.azimuth);
+    const lightCount = this._entityIds("light").filter((id) => this._hass.states[id]?.state === "on").length;
+    const personIds = this._entityIds("person");
+    const homeCount = personIds.filter((id) => this._hass.states[id]?.state === "home").length;
+    const climateTemps = this._entityIds("climate")
+      .map((id) => Number(this._hass.states[id]?.attributes?.current_temperature))
+      .filter(Number.isFinite);
+    const avgClimate = climateTemps.length
+      ? `${(climateTemps.reduce((a,b) => a+b, 0) / climateTemps.length).toFixed(1)}°`
+      : "noch offen";
+
     return `
       <section class="home-grid">
-        <article class="weather-hero">
+        <article class="weather-hero weather-${condition} period-${period}">
           <div class="weather-sky">
-            <div class="sun-disc"></div>
+            <div class="weather-stars"></div>
+            <div class="weather-cloud cloud-a"></div>
+            <div class="weather-cloud cloud-b"></div>
+            <div class="weather-precip"></div>
+            <div class="sun-disc" style="--sun-x:${Number.isFinite(azimuth) ? Math.max(8, Math.min(92, azimuth / 360 * 100)) : 75}%"></div>
             <div class="weather-gradient"></div>
           </div>
+
           <div class="hero-content">
-            <div>
+            <div class="hero-clock">
               <div class="hero-date" data-live-date></div>
               <div class="hero-time" data-live-time></div>
+              <div class="solar-line">
+                <span>${period === "night" ? "Nacht" : period === "twilight" ? "Dämmerung" : period === "golden" ? "Goldene Stunde" : "Tag"}</span>
+                <i></i>
+                <span>Sonne <b data-sun-elevation>${Number.isFinite(elevation) ? elevation.toFixed(1) + "°" : "–"}</b></span>
+              </div>
             </div>
-            <div class="weather-now">
-              <span class="weather-symbol">◐</span>
-              <div>
-                <strong>Wetter</strong>
-                <span>Modul folgt in v0.2</span>
+
+            <div class="weather-current">
+              <span class="weather-main-symbol" data-weather-symbol>${this._weatherSymbol(condition, this._isNight())}</span>
+              <strong class="weather-temperature" data-weather-temp>${this._currentTemperature()}</strong>
+              <span class="weather-condition" data-weather-condition>${this._weatherConditionLabel(condition)}</span>
+              <div class="weather-detail-row">
+                <span>↑ ${high}</span><span>↓ ${low}</span><span>Regen ${precip}</span>
               </div>
             </div>
           </div>
-          <div class="hero-footer">
-            <span>Aktuell</span>
-            <span>Tagesprognose</span>
-            <button class="text-button" disabled>3-Tage-Prognose →</button>
+
+          <div class="hero-footer weather-footer">
+            <div><span>Feuchte</span><strong>${humidity}</strong></div>
+            <div><span>Wind</span><strong>${wind}</strong></div>
+            <div class="moon-mini"><span class="moon-glyph">${moon[1]}</span><span><small>Mond</small><strong>${moon[0]}</strong></span></div>
+            <div><span>Nächste Phase</span><strong>${nextMoon.label} · ${nextMoon.date}</strong></div>
+            <button class="forecast-button" data-open-forecast ${forecast.length ? "" : "disabled"}>3-Tage-Prognose →</button>
           </div>
         </article>
 
@@ -667,12 +729,13 @@ class JamesUIPanel extends HTMLElement {
               <span class="eyebrow">AUF EINEN BLICK</span>
               <h2>Quickinfo</h2>
             </div>
+            <span class="live-badge">${this._hass ? "LIVE" : "OFFLINE"}</span>
           </div>
           <div class="quick-grid">
-            ${this._quickCard("Haus", "Status folgt", "◇")}
-            ${this._quickCard("Klima", "Raumdaten folgen", "◌")}
-            ${this._quickCard("Energie", "Messwerte folgen", "ϟ")}
-            ${this._quickCard("Anwesend", "Präsenz folgt", "◎")}
+            ${this._quickCard("Haus", lightCount ? `${lightCount} Licht${lightCount === 1 ? "" : "er"} an` : "Alles ruhig", "◇")}
+            ${this._quickCard("Klima", avgClimate, "◌")}
+            ${this._quickCard("Energie", "Modul folgt", "ϟ")}
+            ${this._quickCard("Anwesend", personIds.length ? `${homeCount} von ${personIds.length}` : "keine Personen-Entity", "◎")}
           </div>
         </section>
 
@@ -682,7 +745,7 @@ class JamesUIPanel extends HTMLElement {
               <span class="eyebrow">HAUSMODUS</span>
               <h2>Szenen</h2>
             </div>
-            <span class="muted">Auswahl wird später mit HA verknüpft</span>
+            <span class="muted">Hausmodus-Verknüpfung folgt mit Haus v0.3</span>
           </div>
           <div class="scene-slider">
             ${["Morgen", "Alltag", "Fernsehen", "Abend", "Nacht"].map((scene) => `
