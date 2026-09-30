@@ -102,7 +102,7 @@ class JamesUIPanel extends HTMLElement {
     this._configLoading = true;
     try {
       const response = await this._hass.connection.sendMessagePromise({ type: "jamesui/config" });
-      this._config = response?.options || {};
+      this._config = response?.result?.options || response?.options || {};
       this._configLoaded = true;
     } catch (error) {
       console.warn("JamesUI: configuration API unavailable", error);
@@ -349,7 +349,7 @@ class JamesUIPanel extends HTMLElement {
     this._updateConfigMessage();
     try {
       const response = await this._hass.connection.sendMessagePromise(data);
-      this._config = response?.options || {};
+      this._config = response?.result?.options || response?.options || {};
       this._configMessage = "Gespeichert";
       this._forecastEntity = null;
       await this._ensureForecastSubscription();
@@ -928,7 +928,83 @@ class JamesUIPanel extends HTMLElement {
     `;
   }
 
+  _entityOption(entityId, selected) {
+    const entity = this._hass?.states?.[entityId];
+    const label = entity?.attributes?.friendly_name || entityId;
+    return `<option value="${entityId}" ${entityId === selected ? "selected" : ""}>${label} · ${entityId}</option>`;
+  }
+
+  _homeSettingsPage() {
+    const weatherIds = this._entityIds("weather");
+    const tempIds = this._entityIds("sensor").filter((id) => {
+      const e = this._hass?.states?.[id];
+      return e?.attributes?.device_class === "temperature" || String(e?.attributes?.unit_of_measurement || "").includes("°");
+    });
+    const phases = new Set([
+      "new_moon", "waxing_crescent", "first_quarter", "waxing_gibbous",
+      "full_moon", "waning_gibbous", "last_quarter", "waning_crescent",
+    ]);
+    const moonIds = this._entityIds("sensor").filter((id) => phases.has(this._hass?.states?.[id]?.state));
+
+    const weatherAuto = this._weatherEntityId();
+    const tempAuto = this._outdoorTemperatureEntityId();
+    const moonAuto = this._moonEntityId();
+
+    return `
+      <div class="settings-layout home-settings">
+        <section class="settings-intro">
+          <span class="eyebrow">START · DATENQUELLEN</span>
+          <h1>Wetter & Umgebung</h1>
+          <p>JamesUI erkennt geeignete Home-Assistant-Entities automatisch. Nur wenn die Automatik nicht die gewünschte Quelle auswählt, musst du hier etwas fest zuordnen.</p>
+        </section>
+
+        <section class="section config-section">
+          <div class="config-field">
+            <div><strong>Wetter</strong><span>Aktueller Zustand, Temperatur, Feuchte, Wind und Prognose</span></div>
+            <select data-config-weather>
+              <option value="">Automatisch${weatherAuto ? ` · ${this._hass.states[weatherAuto]?.attributes?.friendly_name || weatherAuto}` : ""}</option>
+              ${weatherIds.map((id) => this._entityOption(id, this._config.weather_entity)).join("")}
+            </select>
+          </div>
+
+          <div class="config-field">
+            <div><strong>Außentemperatur</strong><span>Optionaler separater Sensor; sonst verwendet JamesUI die Wetter-Entity</span></div>
+            <select data-config-outdoor-temp>
+              <option value="">Automatisch${tempAuto ? ` · ${this._hass.states[tempAuto]?.attributes?.friendly_name || tempAuto}` : ""}</option>
+              ${tempIds.map((id) => this._entityOption(id, this._config.outdoor_temperature_entity)).join("")}
+            </select>
+          </div>
+
+          <div class="config-field">
+            <div><strong>Mondphase</strong><span>Home-Assistant-Mondphasensensor; die nächste Hauptphase wird separat angenähert</span></div>
+            <select data-config-moon>
+              <option value="">Automatisch${moonAuto ? ` · ${this._hass.states[moonAuto]?.attributes?.friendly_name || moonAuto}` : ""}</option>
+              ${moonIds.map((id) => this._entityOption(id, this._config.moon_entity)).join("")}
+            </select>
+          </div>
+
+          <div class="config-field readonly-field">
+            <div><strong>Sonnenstand</strong><span>Wird direkt aus sun.sun gelesen und folgt dem in Home Assistant konfigurierten Standort</span></div>
+            <span class="config-value">${this._hass?.states?.["sun.sun"] ? "sun.sun · erkannt" : "sun.sun · nicht verfügbar"}</span>
+          </div>
+
+          <div class="config-actions">
+            <span data-config-message>${this._configMessage}</span>
+            <button data-save-home-config>Zuordnung speichern</button>
+          </div>
+        </section>
+
+        <section class="settings-note">
+          <span>Automatik ist die empfohlene Einstellung.</span>
+          <p>Die Entity-Zuordnung wird zentral in JamesUI/Home Assistant gespeichert und gilt damit auch auf anderen Geräten. Die Displaykalibrierung bleibt dagegen lokal auf dem jeweiligen Tablet.</p>
+        </section>
+      </div>
+    `;
+  }
+
   _settingsPage() {
+    if (this._page === "home") return this._homeSettingsPage();
+
     const descriptions = {
       home: "Wetterquelle, Darstellung, Quickinfo und Szenenreihenfolge",
       house: "Bereiche, Statistiken und Geräteanzeige",
@@ -976,6 +1052,45 @@ class JamesUIPanel extends HTMLElement {
         <button data-reload><span>↻</span><div><strong>Oberfläche neu laden</strong><small>Browseransicht aktualisieren</small></div><b>›</b></button>
         <div class="menu-foot">JamesUI Foundation · OnePlus Pad 2</div>
       </aside>
+    `;
+  }
+
+  _forecastOverlay() {
+    const weather = this._hass?.states?.[this._weatherEntityId()];
+    const unit = weather?.attributes?.temperature_unit || "°C";
+    const days = this._normalizedDailyForecast().slice(0, 3);
+
+    return `
+      <div class="forecast-overlay">
+        <div class="forecast-scrim" data-close-forecast></div>
+        <section class="forecast-panel">
+          <div class="forecast-head">
+            <div><span class="eyebrow">WETTER</span><h1>3-Tage-Prognose</h1></div>
+            <button data-close-forecast>×</button>
+          </div>
+          <div class="forecast-days">
+            ${days.length ? days.map((day, index) => {
+              const date = new Date(day.datetime);
+              const label = index === 0 ? "Heute" : new Intl.DateTimeFormat("de-DE", { weekday: "long" }).format(date);
+              const dateLabel = new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit" }).format(date);
+              const rain = Number.isFinite(Number(day.precipitation_probability)) ? `${Math.round(Number(day.precipitation_probability))}%` : "–";
+              return `
+                <article class="forecast-day">
+                  <div class="forecast-date"><span>${label}</span><small>${dateLabel}</small></div>
+                  <span class="forecast-symbol">${this._weatherSymbol(day.condition, false)}</span>
+                  <strong>${this._weatherConditionLabel(day.condition)}</strong>
+                  <div class="forecast-temps"><b>${this._formatTemperature(day.temperature, unit)}</b><span>${this._formatTemperature(day.templow, unit)}</span></div>
+                  <div class="forecast-rain"><span>Regenwahrscheinlichkeit</span><b>${rain}</b></div>
+                </article>
+              `;
+            }).join("") : `<div class="forecast-empty">Für die gewählte Wetter-Entity steht keine unterstützte Prognose zur Verfügung.</div>`}
+          </div>
+          <div class="forecast-foot">
+            <span>Quelle</span>
+            <strong>${weather?.attributes?.friendly_name || this._weatherEntityId() || "nicht konfiguriert"}</strong>
+          </div>
+        </section>
+      </div>
     `;
   }
 
