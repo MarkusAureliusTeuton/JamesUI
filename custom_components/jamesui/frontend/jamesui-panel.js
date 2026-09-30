@@ -1,4 +1,4 @@
-const VERSION = "0.1.0";
+const VERSION = "0.1.1";
 
 const NAV_ITEMS = [
   { id: "home", label: "Start", icon: "⌂" },
@@ -25,8 +25,10 @@ class JamesUIPanel extends HTMLElement {
     this._settings = false;
     this._appMenu = false;
     this._doorbellDemo = false;
+    this._displaySetup = false;
     this._scene = "Alltag";
     this._timer = null;
+    this._displayCalibration = this._loadDisplayCalibration();
   }
 
   set hass(value) {
@@ -58,6 +60,49 @@ class JamesUIPanel extends HTMLElement {
 
   disconnectedCallback() {
     if (this._timer) window.clearInterval(this._timer);
+  }
+
+  _loadDisplayCalibration() {
+    try {
+      return {
+        top: 0, right: 0, bottom: 0, left: 0, scale: 100,
+        ...JSON.parse(localStorage.getItem("jamesui-display-calibration") || "{}"),
+      };
+    } catch (_) {
+      return { top: 0, right: 0, bottom: 0, left: 0, scale: 100 };
+    }
+  }
+
+  _saveDisplayCalibration() {
+    localStorage.setItem("jamesui-display-calibration", JSON.stringify(this._displayCalibration));
+  }
+
+  _displayMetrics() {
+    const viewport = window.visualViewport;
+    const rect = this.getBoundingClientRect();
+    return {
+      viewportWidth: Math.round(viewport?.width || window.innerWidth),
+      viewportHeight: Math.round(viewport?.height || window.innerHeight),
+      panelWidth: Math.round(rect.width),
+      panelHeight: Math.round(rect.height),
+      screenWidth: window.screen?.width || 0,
+      screenHeight: window.screen?.height || 0,
+      dpr: window.devicePixelRatio || 1,
+      orientation: window.matchMedia("(orientation: landscape)").matches ? "Querformat" : "Hochformat",
+      touch: navigator.maxTouchPoints > 0 ? "Touch erkannt" : "Kein Touch erkannt",
+    };
+  }
+
+  _setDisplayCalibration(key, value) {
+    this._displayCalibration[key] = Number(value);
+    this._saveDisplayCalibration();
+    this.render();
+  }
+
+  _resetDisplayCalibration() {
+    this._displayCalibration = { top: 0, right: 0, bottom: 0, left: 0, scale: 100 };
+    this._saveDisplayCalibration();
+    this.render();
   }
 
   _updateClock() {
@@ -139,6 +184,23 @@ class JamesUIPanel extends HTMLElement {
     });
 
     this.shadowRoot.querySelector("[data-reload]")?.addEventListener("click", () => window.location.reload());
+
+    this.shadowRoot.querySelector("[data-display-setup]")?.addEventListener("click", () => {
+      this._appMenu = false;
+      this._displaySetup = true;
+      this.render();
+    });
+
+    this.shadowRoot.querySelector("[data-close-display]")?.addEventListener("click", () => {
+      this._displaySetup = false;
+      this.render();
+    });
+
+    this.shadowRoot.querySelector("[data-reset-display]")?.addEventListener("click", () => this._resetDisplayCalibration());
+
+    this.shadowRoot.querySelectorAll("[data-calibration]").forEach((input) => {
+      input.addEventListener("input", () => this._setDisplayCalibration(input.dataset.calibration, input.value));
+    });
   }
 
   render() {
@@ -146,13 +208,14 @@ class JamesUIPanel extends HTMLElement {
 
     this.shadowRoot.innerHTML = `
       <style>${this._styles()}</style>
-      <div class="app-shell">
+      <div class="app-shell" style="--cal-top:${this._displayCalibration.top}px;--cal-right:${this._displayCalibration.right}px;--cal-bottom:${this._displayCalibration.bottom}px;--cal-left:${this._displayCalibration.left}px;--ui-scale:${this._displayCalibration.scale / 100}">
         ${this._header()}
         <main class="content">
           ${this._settings ? this._settingsPage() : this._pageContent()}
         </main>
         ${this._bottomNav()}
         ${this._appMenu ? this._appMenuPanel() : ""}
+        ${this._displaySetup ? this._displaySetupOverlay() : ""}
         ${this._doorbellDemo ? this._doorbellOverlay() : ""}
       </div>
     `;
@@ -471,9 +534,68 @@ class JamesUIPanel extends HTMLElement {
         <div class="menu-head"><div><span class="eyebrow">ANWENDUNGSSTEUERUNG</span><h2>JamesUI</h2></div><span class="version">v${VERSION}</span></div>
         <div class="menu-status"><span class="connection" data-connection>Verbinden…</span><span><b data-entity-count>0</b> HA Entities</span></div>
         <button data-demo-doorbell><span>▣</span><div><strong>Türklingel-Overlay testen</strong><small>Nur UI-Demo, keine Türaktion</small></div><b>›</b></button>
+        <button data-display-setup><span>⌗</span><div><strong>Display & Kalibrierung</strong><small>Automatische Erkennung und Randkorrektur</small></div><b>›</b></button>
         <button data-reload><span>↻</span><div><strong>Oberfläche neu laden</strong><small>Browseransicht aktualisieren</small></div><b>›</b></button>
         <div class="menu-foot">JamesUI Foundation · OnePlus Pad 2</div>
       </aside>
+    `;
+  }
+
+  _displaySetupOverlay() {
+    const m = this._displayMetrics();
+    const c = this._displayCalibration;
+    const control = (key, label, value, max = 80) => `
+      <label class="cal-control">
+        <div><strong>${label}</strong><span>${value}px</span></div>
+        <input type="range" min="0" max="${max}" step="1" value="${value}" data-calibration="${key}">
+      </label>`;
+
+    return `
+      <div class="display-overlay">
+        <div class="calibration-frame"
+          style="top:${c.top}px;right:${c.right}px;bottom:${c.bottom}px;left:${c.left}px">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        </div>
+
+        <section class="display-panel">
+          <div class="display-head">
+            <div><span class="eyebrow">JAMESUI · DISPLAY</span><h2>Bildschirm einrichten</h2></div>
+            <button data-close-display class="display-close">×</button>
+          </div>
+
+          <div class="auto-detect">
+            <div><span class="eyebrow">AUTOMATISCH ERKANNT</span><strong>${m.panelWidth} × ${m.panelHeight} CSS px</strong></div>
+            <div><span>Viewport</span><b>${m.viewportWidth} × ${m.viewportHeight}</b></div>
+            <div><span>Display</span><b>${m.screenWidth} × ${m.screenHeight}</b></div>
+            <div><span>Pixeldichte</span><b>${m.dpr.toFixed(2)}×</b></div>
+            <div><span>Ausrichtung</span><b>${m.orientation}</b></div>
+            <div><span>Eingabe</span><b>${m.touch}</b></div>
+          </div>
+
+          <div class="calibration-help">
+            <strong>Randkalibrierung</strong>
+            <span>Die vier kupferfarbenen Eckmarken sollen gerade vollständig sichtbar sein. Korrigiere nur einen Rand, wenn JamesUI dort abgeschnitten wird.</span>
+          </div>
+
+          <div class="cal-grid">
+            ${control("top", "Oben", c.top)}
+            ${control("right", "Rechts", c.right)}
+            ${control("bottom", "Unten", c.bottom)}
+            ${control("left", "Links", c.left)}
+          </div>
+
+          <label class="cal-control scale-control">
+            <div><strong>UI-Skalierung</strong><span>${c.scale}%</span></div>
+            <input type="range" min="85" max="115" step="1" value="${c.scale}" data-calibration="scale">
+          </label>
+
+          <div class="display-actions">
+            <button data-reset-display>Automatik / 100 % zurücksetzen</button>
+            <button data-close-display class="primary">Übernehmen</button>
+          </div>
+          <small class="local-note">Diese Einstellung wird nur auf diesem Browser/Tablet gespeichert.</small>
+        </section>
+      </div>
     `;
   }
 
@@ -532,6 +654,7 @@ class JamesUIPanel extends HTMLElement {
         height: 100%;
         min-height: 720px;
         overflow: hidden;
+        padding: var(--cal-top, 0px) var(--cal-right, 0px) var(--cal-bottom, 0px) var(--cal-left, 0px);
         background:
           radial-gradient(circle at 15% -10%, rgba(184,121,72,.08), transparent 30%),
           var(--bg);
@@ -585,6 +708,7 @@ class JamesUIPanel extends HTMLElement {
 
       .content {
         min-height: 0;
+        zoom: var(--ui-scale, 1);
         overflow: auto;
         padding: clamp(18px, 2vw, 32px) clamp(22px, 2.5vw, 42px);
         scrollbar-width: thin;
@@ -805,6 +929,34 @@ class JamesUIPanel extends HTMLElement {
       .app-menu > button small { color: var(--muted); }
       .app-menu > button > b { color: #666; font-size: 20px; }
       .menu-foot { color: #5f6265; font-size: 9px; padding-top: 10px; text-align: center; }
+
+      .display-overlay { position: absolute; inset: 0; z-index: 90; background: rgba(4,5,6,.92); backdrop-filter: blur(16px); }
+      .calibration-frame { position: absolute; pointer-events: none; z-index: 91; }
+      .corner { position: absolute; width: 54px; height: 54px; border-color: var(--accent-bright); border-style: solid; opacity: .95; }
+      .corner.tl { top: 0; left: 0; border-width: 3px 0 0 3px; border-radius: 8px 0 0 0; }
+      .corner.tr { top: 0; right: 0; border-width: 3px 3px 0 0; border-radius: 0 8px 0 0; }
+      .corner.bl { bottom: 0; left: 0; border-width: 0 0 3px 3px; border-radius: 0 0 0 8px; }
+      .corner.br { bottom: 0; right: 0; border-width: 0 3px 3px 0; border-radius: 0 0 8px 0; }
+      .display-panel { position: absolute; z-index: 92; width: min(720px, calc(100% - 100px)); max-height: calc(100% - 100px); overflow: auto; top: 50%; left: 50%; transform: translate(-50%,-50%); border: 1px solid var(--line-strong); border-radius: 24px; background: #141618; box-shadow: 0 35px 120px rgba(0,0,0,.65); padding: 24px; }
+      .display-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+      .display-close { width: 38px; height: 38px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2); cursor: pointer; font-size: 22px; }
+      .auto-detect { display: grid; grid-template-columns: 1.4fr repeat(5,1fr); gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,255,255,.018); }
+      .auto-detect > div { min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 3px; padding: 5px 7px; }
+      .auto-detect span { color: var(--muted); font-size: 9px; }
+      .auto-detect strong { font-size: 17px; font-weight: 580; }
+      .auto-detect b { font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .calibration-help { display: flex; flex-direction: column; gap: 4px; margin: 18px 2px 12px; }
+      .calibration-help span { color: var(--muted); font-size: 10px; line-height: 1.45; }
+      .cal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 18px; }
+      .cal-control { display: block; padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,.015); }
+      .cal-control > div { display: flex; justify-content: space-between; align-items: center; margin-bottom: 7px; font-size: 11px; }
+      .cal-control > div span { color: var(--accent-bright); }
+      .cal-control input { width: 100%; accent-color: var(--accent); }
+      .scale-control { margin-top: 10px; }
+      .display-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 16px; }
+      .display-actions button { min-height: 42px; padding: 0 15px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2); cursor: pointer; }
+      .display-actions .primary { background: var(--accent-soft); border-color: rgba(184,121,72,.45); color: var(--accent-bright); }
+      .local-note { display: block; text-align: right; color: #686b6e; margin-top: 8px; font-size: 9px; }
 
       .doorbell-overlay { position: absolute; inset: 0; z-index: 100; display: grid; place-items: center; padding: 4vw; background: rgba(5,6,7,.88); backdrop-filter: blur(20px); }
       .doorbell-card { width: min(1050px, 94%); max-height: 92%; border: 1px solid rgba(255,255,255,.14); border-radius: 30px; background: #111315; padding: clamp(20px, 2.5vw, 38px); box-shadow: 0 35px 120px rgba(0,0,0,.6); }
