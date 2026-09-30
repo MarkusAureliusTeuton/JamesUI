@@ -1,4 +1,4 @@
-const VERSION = "0.3.1";
+const VERSION = "0.5.0";
 
 const NAV_ITEMS = [
   { id: "home", label: "Start", icon: "⌂" },
@@ -44,6 +44,9 @@ class JamesUIPanel extends HTMLElement {
     this._registriesLoaded = false;
     this._registriesLoading = false;
     this._houseCategory = null;
+    this._mediaBusy = false;
+    this._mediaMessage = "";
+    this._mediaSelectedSource = "spotify";
   }
 
   set hass(value) {
@@ -118,7 +121,7 @@ class JamesUIPanel extends HTMLElement {
       this._devices = Array.isArray(devices) ? devices : [];
       this._registryEntities = Array.isArray(entities) ? entities : [];
       this._registriesLoaded = true;
-      if (this._page === "house") this.render();
+      if (this._page === "house" || this._page === "media") this.render();
     } catch (error) {
       console.warn("JamesUI: registry loading failed", error);
     } finally {
@@ -1145,39 +1148,316 @@ class JamesUIPanel extends HTMLElement {
     `;
   }
 
+  _mediaPlayerIds() {
+    return this._entityIds("media_player");
+  }
+
+  _registryPlatform(entityId) {
+    return this._registryEntity(entityId)?.platform || "";
+  }
+
+  _spotifyEntityId() {
+    const configured = this._config.media_spotify_entity;
+    if (configured && this._hass?.states?.[configured]) return configured;
+    return this._mediaPlayerIds().find((id) => this._registryPlatform(id) === "spotify")
+      || this._mediaPlayerIds().find((id) => /spotify/.test(`${id} ${this._hass.states[id]?.attributes?.friendly_name || ""}`.toLowerCase()))
+      || null;
+  }
+
+  _onkyoEntityId() {
+    const configured = this._config.media_onkyo_entity;
+    if (configured && this._hass?.states?.[configured]) return configured;
+    return this._mediaPlayerIds().find((id) => this._registryPlatform(id) === "onkyo")
+      || this._mediaPlayerIds().find((id) => /onkyo|tx-nr/.test(`${id} ${this._hass.states[id]?.attributes?.friendly_name || ""}`.toLowerCase()))
+      || null;
+  }
+
+  _musicAssistantPlayerIds() {
+    return this._mediaPlayerIds().filter((id) => this._registryPlatform(id) === "music_assistant");
+  }
+
+  _musicAssistantPlayerId() {
+    const configured = this._config.media_ma_player_entity;
+    if (configured && this._hass?.states?.[configured]) return configured;
+    const players = this._musicAssistantPlayerIds();
+    return players.find((id) => /onkyo|receiver|wohnzimmer|living/.test(`${id} ${this._hass.states[id]?.attributes?.friendly_name || ""}`.toLowerCase()))
+      || players[0] || null;
+  }
+
+  _spotifySource() {
+    if (this._config.media_spotify_source) return this._config.media_spotify_source;
+    const spotify = this._hass?.states?.[this._spotifyEntityId()];
+    const sources = spotify?.attributes?.source_list || [];
+    return sources.find((source) => /onkyo|receiver|wohnzimmer|living/.test(String(source).toLowerCase())) || "";
+  }
+
+  _mediaRouteInfo() {
+    const preference = this._config.media_route || "auto";
+    const maPlayer = this._musicAssistantPlayerId();
+    const spotify = this._spotifyEntityId();
+    const spotifySource = this._spotifySource();
+    let route = preference;
+    if (route === "auto") route = maPlayer ? "music_assistant" : (spotify && spotifySource ? "spotify_connect" : "unavailable");
+    const ready = route === "music_assistant" ? Boolean(maPlayer) : route === "spotify_connect" ? Boolean(spotify && spotifySource) : false;
+    return { preference, route, ready, maPlayer, spotify, spotifySource };
+  }
+
+  _mediaEntityLabel(entityId, fallback = "Nicht eingerichtet") {
+    return entityId ? (this._hass?.states?.[entityId]?.attributes?.friendly_name || entityId) : fallback;
+  }
+
+  _mediaNowPlayingEntity() {
+    const route = this._mediaRouteInfo();
+    return route.route === "music_assistant" ? route.maPlayer : route.spotify;
+  }
+
+  async _callAction(domain, service, entityId, serviceData = {}) {
+    if (!this._hass?.connection || !entityId) throw new Error("Zielgerät fehlt");
+    return this._hass.connection.sendMessagePromise({
+      type: "call_service",
+      domain,
+      service,
+      service_data: serviceData,
+      target: { entity_id: entityId },
+    });
+  }
+
+  async _prepareOnkyo() {
+    const onkyoId = this._onkyoEntityId();
+    if (!onkyoId) return;
+    const onkyo = this._hass.states[onkyoId];
+    if (onkyo?.state === "off") {
+      try { await this._callAction("media_player", "turn_on", onkyoId); } catch (_) {}
+      await new Promise((resolve) => setTimeout(resolve, 900));
+    }
+    const source = this._config.media_onkyo_source;
+    if (source) {
+      try { await this._callAction("media_player", "select_source", onkyoId, { source }); } catch (_) {}
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+  }
+
+  async _startSpotifyPlaylist() {
+    if (this._mediaBusy) return;
+    const uri = String(this._config.media_playlist_uri || "").trim();
+    const route = this._mediaRouteInfo();
+    if (!uri) {
+      this._mediaMessage = "Bitte zuerst unter Medien → Einstellungen eine Spotify-Playlist hinterlegen.";
+      this.render();
+      return;
+    }
+    if (!route.ready) {
+      this._mediaMessage = "Noch kein funktionierender Spotify-Wiedergabepfad erkannt. Öffne Medien → Einstellungen.";
+      this.render();
+      return;
+    }
+
+    this._mediaBusy = true;
+    this._mediaMessage = "Wiedergabe wird vorbereitet …";
+    this.render();
+    try {
+      await this._prepareOnkyo();
+      if (route.route === "music_assistant") {
+        await this._callAction("music_assistant", "play_media", route.maPlayer, {
+          media_id: uri,
+          media_type: "playlist",
+          enqueue: "replace",
+          radio_mode: false,
+        });
+      } else {
+        await this._callAction("media_player", "select_source", route.spotify, { source: route.spotifySource });
+        await new Promise((resolve) => setTimeout(resolve, 450));
+        await this._callAction("media_player", "play_media", route.spotify, {
+          media_content_id: uri,
+          media_content_type: "playlist",
+        });
+      }
+      this._mediaMessage = `${this._config.media_playlist_name || "Spotify-Playlist"} gestartet.`;
+    } catch (error) {
+      console.error("JamesUI: Spotify playback failed", error);
+      this._mediaMessage = `Start fehlgeschlagen: ${error?.message || "Home Assistant hat die Wiedergabe abgelehnt."}`;
+    } finally {
+      this._mediaBusy = false;
+      this.render();
+    }
+  }
+
+  async _mediaTransport(action) {
+    const entityId = this._mediaNowPlayingEntity();
+    if (!entityId) return;
+    const map = {
+      previous: "media_previous_track",
+      playpause: "media_play_pause",
+      next: "media_next_track",
+      stop: "media_stop",
+    };
+    try { await this._callAction("media_player", map[action], entityId); }
+    catch (error) { console.warn("JamesUI media transport failed", error); }
+  }
+
+  async _setMediaVolume(value) {
+    const route = this._mediaRouteInfo();
+    const entityId = this._onkyoEntityId() || route.maPlayer || route.spotify;
+    if (!entityId) return;
+    try { await this._callAction("media_player", "volume_set", entityId, { volume_level: Number(value) / 100 }); }
+    catch (error) { console.warn("JamesUI volume failed", error); }
+  }
+
   _mediaPage() {
+    const route = this._mediaRouteInfo();
+    const nowId = this._mediaNowPlayingEntity();
+    const now = nowId ? this._hass?.states?.[nowId] : null;
+    const onkyo = this._hass?.states?.[this._onkyoEntityId()];
+    const title = now?.attributes?.media_title || now?.attributes?.media_album_name || "Nichts aktiv";
+    const artist = now?.attributes?.media_artist || now?.attributes?.media_album_artist || "";
+    const artwork = now?.attributes?.entity_picture || "";
+    const volume = Math.round(Number((onkyo || now)?.attributes?.volume_level || 0) * 100);
+    const routeLabel = route.route === "music_assistant" ? "Music Assistant" : route.route === "spotify_connect" ? "Spotify Connect" : "Nicht eingerichtet";
+    const targetLabel = route.route === "music_assistant"
+      ? this._mediaEntityLabel(route.maPlayer)
+      : (route.spotifySource || "Kein Spotify-Ziel");
+
     return `
-      <div class="media-layout">
-        <section class="section media-selector">
-          <span class="eyebrow">1 · QUELLE</span>
-          <h2>Was möchtest du hören oder sehen?</h2>
-          <div class="source-grid">
-            ${this._source("Spotify", "♫")}
-            ${this._source("Fernsehen", "▣")}
-            ${this._source("Radio", "◉")}
-            ${this._source("Bluetooth", "⌁")}
+      <div class="media-layout live-media">
+        <section class="section media-selector source-panel">
+          <div class="media-section-head"><div><span class="eyebrow">1 · QUELLE</span><h2>Spotify</h2></div><span class="media-route-badge ${route.ready ? "ready" : ""}">${routeLabel}</span></div>
+          <button class="spotify-source selected" data-media-source="spotify">
+            <span class="spotify-mark">♫</span>
+            <div><strong>Spotify</strong><small>${route.spotify ? this._mediaEntityLabel(route.spotify) : route.route === "music_assistant" ? "über Music Assistant" : "Spotify-Integration nicht erkannt"}</small></div>
+            <b>✓</b>
+          </button>
+
+          <div class="playlist-card">
+            <span class="playlist-art">♫</span>
+            <div class="playlist-copy">
+              <span class="eyebrow">PLAYLIST</span>
+              <strong>${this._config.media_playlist_name || "Noch keine Playlist hinterlegt"}</strong>
+              <small>${this._config.media_playlist_uri ? "Spotify-Playlist bereit" : "In den Medien-Einstellungen Spotify-Link eintragen"}</small>
+            </div>
+            <button class="playlist-play" data-start-spotify ${this._mediaBusy ? "disabled" : ""}>${this._mediaBusy ? "…" : "▶"}</button>
           </div>
         </section>
-        <section class="section media-selector">
-          <span class="eyebrow">2 · WIEDERGABEGERÄT</span>
-          <h2>Wo soll es wiedergegeben werden?</h2>
-          <div class="playback-placeholder">
-            <span class="large-symbol">◎</span>
-            <strong>Routing folgt in v0.5</strong>
-            <p>JamesUI wird nur kompatible Kombinationen aus Quelle und Wiedergabegerät anbieten.</p>
+
+        <section class="section media-selector target-panel">
+          <div class="media-section-head"><div><span class="eyebrow">2 · WIEDERGABEGERÄT</span><h2>Wohnzimmer</h2></div><span class="device-state-dot ${onkyo && onkyo.state !== "off" && onkyo.state !== "unavailable" ? "on" : ""}"></span></div>
+          <div class="receiver-card ${route.ready ? "ready" : ""}">
+            <span class="receiver-icon">▰</span>
+            <div><strong>${this._mediaEntityLabel(this._onkyoEntityId(), "Onkyo Receiver")}</strong><small>${targetLabel}</small></div>
+            <span class="route-arrow">Spotify → ${routeLabel} → Onkyo</span>
           </div>
+          <div class="media-route-status">
+            <span class="status-orb ${route.ready ? "" : "warn"}"></span>
+            <div><strong>${route.ready ? "Wiedergabepfad bereit" : "Einrichtung erforderlich"}</strong><span>${route.ready ? "Ein Knopfdruck startet die hinterlegte Playlist." : "Unter ⚙ Wiedergabepfad und Playlist konfigurieren."}</span></div>
+          </div>
+          ${this._mediaMessage ? `<div class="media-message">${this._mediaMessage}</div>` : ""}
         </section>
-        <section class="now-playing">
-          <div><span class="eyebrow">WIEDERGABE</span><strong>Nichts aktiv</strong></div>
-          <div class="transport"><button disabled>‹‹</button><button disabled class="play">▶</button><button disabled>››</button></div>
-          <div class="volume"><span>−</span><i></i><span>+</span></div>
+
+        <section class="now-playing live-now-playing">
+          <div class="now-art ${artwork ? "has-art" : ""}" ${artwork ? `style="background-image:url('${artwork}')"` : ""}>♫</div>
+          <div class="now-copy"><span class="eyebrow">WIEDERGABE</span><strong>${title}</strong><span>${artist || targetLabel}</span></div>
+          <div class="transport">
+            <button data-media-action="previous">‹‹</button>
+            <button data-media-action="playpause" class="play">${now?.state === "playing" ? "Ⅱ" : "▶"}</button>
+            <button data-media-action="next">››</button>
+          </div>
+          <div class="volume live-volume"><span>−</span><input data-media-volume type="range" min="0" max="70" value="${Number.isFinite(volume) ? volume : 0}"><span>+</span><b>${Number.isFinite(volume) ? volume : 0}%</b></div>
         </section>
       </div>
     `;
   }
 
-  _source(label, icon) {
-    return `<button class="source-card" disabled><span>${icon}</span><strong>${label}</strong><small>noch nicht verknüpft</small></button>`;
+  _mediaSettingsPage() {
+    const mediaIds = this._mediaPlayerIds();
+    const spotifyIds = mediaIds.filter((id) => this._registryPlatform(id) === "spotify" || /spotify/.test(`${id} ${this._hass.states[id]?.attributes?.friendly_name || ""}`.toLowerCase()));
+    const onkyoIds = mediaIds.filter((id) => this._registryPlatform(id) === "onkyo" || /onkyo|tx-nr/.test(`${id} ${this._hass.states[id]?.attributes?.friendly_name || ""}`.toLowerCase()));
+    const maIds = this._musicAssistantPlayerIds();
+    const spotifyAuto = this._spotifyEntityId();
+    const onkyoAuto = this._onkyoEntityId();
+    const maAuto = this._musicAssistantPlayerId();
+    const spotify = spotifyAuto ? this._hass.states[spotifyAuto] : null;
+    const spotifySources = spotify?.attributes?.source_list || [];
+    const onkyo = onkyoAuto ? this._hass.states[onkyoAuto] : null;
+    const onkyoSources = onkyo?.attributes?.source_list || [];
+    const route = this._mediaRouteInfo();
+
+    return `
+      <div class="settings-layout media-settings">
+        <section class="settings-intro">
+          <span class="eyebrow">MEDIEN · ROUTING</span>
+          <h1>Spotify → Onkyo</h1>
+          <p>JamesUI trennt Musikquelle und Wiedergabegerät. Bevorzugt wird Music Assistant; direktes Spotify Connect bleibt als Alternative verfügbar.</p>
+        </section>
+
+        <section class="section config-section">
+          <div class="config-field">
+            <div><strong>Wiedergabepfad</strong><span>Automatisch bevorzugt Music Assistant, sobald ein MA-Player verfügbar ist.</span></div>
+            <select data-config-media-route>
+              <option value="auto" ${!this._config.media_route || this._config.media_route === "auto" ? "selected" : ""}>Automatisch · aktuell ${route.route === "music_assistant" ? "Music Assistant" : route.route === "spotify_connect" ? "Spotify Connect" : "nicht bereit"}</option>
+              <option value="music_assistant" ${this._config.media_route === "music_assistant" ? "selected" : ""}>Music Assistant</option>
+              <option value="spotify_connect" ${this._config.media_route === "spotify_connect" ? "selected" : ""}>Spotify Connect direkt</option>
+            </select>
+          </div>
+          <div class="config-field">
+            <div><strong>Onkyo</strong><span>Receiver für Power, Eingang und Lautstärke.</span></div>
+            <select data-config-media-onkyo><option value="">Automatisch${onkyoAuto ? ` · ${this._mediaEntityLabel(onkyoAuto)}` : ""}</option>${onkyoIds.map((id)=>this._entityOption(id,this._config.media_onkyo_entity)).join("")}</select>
+          </div>
+          <div class="config-field">
+            <div><strong>Music-Assistant-Player</strong><span>Der Player, der den Audiostream tatsächlich zum Onkyo ausgibt.</span></div>
+            <select data-config-media-ma><option value="">Automatisch${maAuto ? ` · ${this._mediaEntityLabel(maAuto)}` : " · keiner erkannt"}</option>${maIds.map((id)=>this._entityOption(id,this._config.media_ma_player_entity)).join("")}</select>
+          </div>
+          <div class="config-field">
+            <div><strong>Spotify-Entity</strong><span>Nur für den direkten Spotify-Connect-Pfad erforderlich.</span></div>
+            <select data-config-media-spotify><option value="">Automatisch${spotifyAuto ? ` · ${this._mediaEntityLabel(spotifyAuto)}` : " · keine erkannt"}</option>${spotifyIds.map((id)=>this._entityOption(id,this._config.media_spotify_entity)).join("")}</select>
+          </div>
+          <div class="config-field">
+            <div><strong>Spotify-Ausgabegerät</strong><span>Muss in Spotifys source_list auftauchen; für Music Assistant nicht nötig.</span></div>
+            <select data-config-media-spotify-source><option value="">Automatisch</option>${spotifySources.map((source)=>`<option value="${source}" ${source===this._config.media_spotify_source?"selected":""}>${source}</option>`).join("")}</select>
+          </div>
+          <div class="config-field">
+            <div><strong>Onkyo-Eingang</strong><span>Optional. Leer lassen, wenn Music Assistant/DLNA den Eingang selbst übernimmt.</span></div>
+            <select data-config-media-onkyo-source><option value="">Nicht vorwählen</option>${onkyoSources.map((source)=>`<option value="${source}" ${source===this._config.media_onkyo_source?"selected":""}>${source}</option>`).join("")}</select>
+          </div>
+          <div class="config-field">
+            <div><strong>Playlist-Name</strong><span>Name für die Kachel auf der Medienseite.</span></div>
+            <input data-config-media-playlist-name type="text" value="${this._config.media_playlist_name || ""}" placeholder="z. B. Wohnzimmer Mix">
+          </div>
+          <div class="config-field">
+            <div><strong>Spotify-Playlist</strong><span>Spotify-Link oder URI, z. B. spotify:playlist:…</span></div>
+            <input data-config-media-playlist-uri type="text" value="${this._config.media_playlist_uri || ""}" placeholder="Spotify Playlist-Link oder URI">
+          </div>
+          <div class="config-actions">
+            <span data-config-message>${this._configMessage || ""}</span>
+            <button data-save-media-config class="primary-action">Medien-Konfiguration speichern</button>
+          </div>
+        </section>
+      </div>
+    `;
+  }
+
+  async _saveMediaConfig() {
+    const root = this.shadowRoot;
+    const data = {
+      type: "jamesui/config/update",
+      media_route: root.querySelector("[data-config-media-route]")?.value || null,
+      media_onkyo_entity: root.querySelector("[data-config-media-onkyo]")?.value || null,
+      media_ma_player_entity: root.querySelector("[data-config-media-ma]")?.value || null,
+      media_spotify_entity: root.querySelector("[data-config-media-spotify]")?.value || null,
+      media_spotify_source: root.querySelector("[data-config-media-spotify-source]")?.value || null,
+      media_onkyo_source: root.querySelector("[data-config-media-onkyo-source]")?.value || null,
+      media_playlist_name: root.querySelector("[data-config-media-playlist-name]")?.value || null,
+      media_playlist_uri: root.querySelector("[data-config-media-playlist-uri]")?.value || null,
+    };
+    this._configMessage = "Speichere …";
+    this._updateConfigMessage();
+    try {
+      const response = await this._hass.connection.sendMessagePromise(data);
+      this._config = response?.result?.options || response?.options || {};
+      this._configMessage = "Gespeichert · Wiedergabepfad wird automatisch geprüft.";
+    } catch (error) {
+      console.error("JamesUI: saving media config failed", error);
+      this._configMessage = "Speichern fehlgeschlagen";
+    }
+    this._updateConfigMessage();
   }
 
   _doorPage() {
