@@ -14,7 +14,7 @@ This first milestone provides a native Home Assistant sidebar panel with:
 - direct access to the Home Assistant `hass` object
 - HACS-compatible custom integration structure
 
-The pages intentionally use placeholder/demo content in v0.1.0. Real Home Assistant entities will be mapped in later modules.
+The application shell is live. Home/weather data is connected in v0.2.0; the remaining functional modules are added incrementally.
 
 ## Installation with HACS
 
@@ -46,7 +46,7 @@ Primary reference: **OnePlus Pad 2**, landscape, 7:5 display ratio. The UI is re
 ## Roadmap
 
 - v0.1.x — application shell and design system
-- v0.2.x — Home/weather
+- v0.2.x — Home/weather **(current)**
 - v0.3.x — House/status
 - v0.4.x — Climate
 - v0.5.x — Media routing
