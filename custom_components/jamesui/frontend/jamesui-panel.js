@@ -1372,6 +1372,92 @@ class JamesUIPanel extends HTMLElement {
       h2 { font-size: clamp(19px, 1.55vw, 25px); font-weight: 620; margin-top: 3px; letter-spacing: -.02em; }
       .muted { color: var(--muted); font-size: 11px; }
 
+      .weather-hero.period-day .weather-sky { background: linear-gradient(155deg,#506872 0%,#394a4e 46%,#1d2324 100%); }
+      .weather-hero.period-golden .weather-sky { background: linear-gradient(155deg,#705a49 0%,#4b4640 46%,#1b2021 100%); }
+      .weather-hero.period-twilight .weather-sky { background: linear-gradient(155deg,#3d4658 0%,#36363e 46%,#171b1d 100%); }
+      .weather-hero.period-night .weather-sky { background: linear-gradient(155deg,#101925 0%,#11171e 50%,#090c0f 100%); }
+      .weather-hero.period-night .sun-disc { opacity: 0; }
+      .weather-stars { position: absolute; inset: 0; opacity: 0; background-image: radial-gradient(circle at 12% 18%,rgba(255,255,255,.75) 0 1px,transparent 1.5px),radial-gradient(circle at 34% 12%,rgba(255,255,255,.5) 0 1px,transparent 1.5px),radial-gradient(circle at 63% 22%,rgba(255,255,255,.55) 0 1px,transparent 1.5px),radial-gradient(circle at 82% 14%,rgba(255,255,255,.7) 0 1px,transparent 1.5px),radial-gradient(circle at 73% 38%,rgba(255,255,255,.45) 0 1px,transparent 1.5px); }
+      .weather-hero.period-night .weather-stars { opacity: .7; }
+      .weather-cloud { position: absolute; width: 42%; height: 24%; border-radius: 50%; background: radial-gradient(ellipse at center,rgba(205,211,211,.26),rgba(95,103,105,.12) 58%,transparent 70%); filter: blur(8px); opacity: .12; }
+      .cloud-a { top: 11%; left: 34%; }
+      .cloud-b { top: 28%; right: -6%; transform: scale(.78); }
+      .weather-cloudy .weather-cloud, .weather-partlycloudy .weather-cloud, .weather-fog .weather-cloud { opacity: .85; }
+      .weather-rainy .weather-cloud, .weather-pouring .weather-cloud, .weather-lightning-rainy .weather-cloud, .weather-snowy-rainy .weather-cloud { opacity: 1; }
+      .weather-precip { position: absolute; inset: 0; opacity: 0; pointer-events: none; }
+      .weather-rainy .weather-precip, .weather-pouring .weather-precip, .weather-lightning-rainy .weather-precip {
+        opacity: .34;
+        background-image: repeating-linear-gradient(105deg,transparent 0 22px,rgba(190,210,218,.7) 23px 24px,transparent 25px 45px);
+        background-size: 110px 110px;
+        animation: james-rain 1.8s linear infinite;
+      }
+      .weather-snowy .weather-precip, .weather-snowy-rainy .weather-precip {
+        opacity: .48;
+        background-image: radial-gradient(circle,rgba(255,255,255,.9) 0 2px,transparent 2.5px),radial-gradient(circle,rgba(255,255,255,.55) 0 1.5px,transparent 2px);
+        background-size: 54px 54px, 76px 76px;
+        background-position: 0 0, 18px 27px;
+        animation: james-snow 7s linear infinite;
+      }
+      @keyframes james-rain { from { transform: translateY(-40px); } to { transform: translateY(40px); } }
+      @keyframes james-snow { from { transform: translateY(-20px); } to { transform: translateY(34px); } }
+
+      .sun-disc { right: auto; left: var(--sun-x,75%); transform: translateX(-50%); transition: left 1s ease; }
+      .hero-clock { min-width: 0; }
+      .solar-line { display: flex; align-items: center; gap: 9px; margin-top: 12px; color: rgba(255,255,255,.62); font-size: 10px; }
+      .solar-line i { width: 28px; height: 1px; background: rgba(255,255,255,.24); }
+      .solar-line b { color: rgba(255,255,255,.88); font-weight: 600; }
+      .weather-current { display: flex; flex-direction: column; align-items: flex-end; text-align: right; margin-top: 3px; }
+      .weather-main-symbol { font-size: clamp(42px,4vw,66px); line-height: 1; color: #ead1aa; text-shadow: 0 5px 30px rgba(0,0,0,.25); }
+      .weather-temperature { font-size: clamp(42px,5vw,74px); line-height: 1; font-weight: 260; letter-spacing: -.05em; margin-top: 8px; }
+      .weather-condition { margin-top: 6px; color: rgba(255,255,255,.8); font-size: 14px; }
+      .weather-detail-row { display: flex; gap: 12px; margin-top: 10px; color: rgba(255,255,255,.62); font-size: 10px; }
+      .weather-footer { gap: 0; display: grid; grid-template-columns: .65fr .8fr 1.3fr 1.45fr auto; }
+      .weather-footer > div { min-width: 0; display: flex; flex-direction: column; padding: 0 16px; border-right: 1px solid rgba(255,255,255,.09); }
+      .weather-footer > div:first-child { padding-left: 0; }
+      .weather-footer > div > span, .moon-mini small { color: rgba(255,255,255,.52); font-size: 8px; text-transform: uppercase; letter-spacing: .08em; }
+      .weather-footer > div > strong, .moon-mini strong { color: rgba(255,255,255,.9); font-size: 10px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .weather-footer .moon-mini { flex-direction: row; align-items: center; gap: 8px; }
+      .moon-mini > span:last-child { display: flex; flex-direction: column; min-width: 0; }
+      .moon-glyph { font-size: 23px !important; color: #e7ddc7 !important; }
+      .forecast-button { justify-self: end; border: 1px solid rgba(255,255,255,.13); background: rgba(255,255,255,.055); border-radius: 11px; padding: 9px 12px; cursor: pointer; font-size: 10px; }
+      .forecast-button:not(:disabled):hover { background: var(--accent-soft); border-color: rgba(184,121,72,.42); }
+      .live-badge { color: var(--good); border: 1px solid rgba(127,165,138,.25); border-radius: 99px; padding: 4px 7px; font-size: 8px; letter-spacing: .12em; }
+
+      .forecast-overlay { position: absolute; inset: 0; z-index: 95; display: grid; place-items: center; padding: 4vw; }
+      .forecast-scrim { position: absolute; inset: 0; background: rgba(4,5,6,.82); backdrop-filter: blur(18px); }
+      .forecast-panel { position: relative; z-index: 1; width: min(1000px,94%); border: 1px solid var(--line-strong); border-radius: 28px; background: #121416; box-shadow: 0 35px 120px rgba(0,0,0,.58); padding: 26px; }
+      .forecast-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
+      .forecast-head h1 { font-size: clamp(30px,3vw,44px); font-weight: 330; letter-spacing: -.035em; margin-top: 3px; }
+      .forecast-head button { width: 42px; height: 42px; border: 1px solid var(--line); border-radius: 13px; background: var(--surface-2); cursor: pointer; font-size: 23px; }
+      .forecast-days { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+      .forecast-day { min-height: 260px; border: 1px solid var(--line); border-radius: 20px; padding: 18px; background: linear-gradient(155deg,rgba(255,255,255,.035),rgba(255,255,255,.01)); display: flex; flex-direction: column; }
+      .forecast-date { display: flex; align-items: baseline; justify-content: space-between; }
+      .forecast-date span { font-weight: 650; text-transform: capitalize; }
+      .forecast-date small { color: var(--muted); }
+      .forecast-symbol { font-size: 42px; color: #e1c39e; margin: 28px 0 9px; }
+      .forecast-day > strong { font-size: 13px; }
+      .forecast-temps { display: flex; align-items: baseline; gap: 8px; margin-top: auto; }
+      .forecast-temps b { font-size: 28px; font-weight: 400; }
+      .forecast-temps span { color: var(--muted); font-size: 16px; }
+      .forecast-rain { display: flex; justify-content: space-between; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); color: var(--muted); font-size: 9px; }
+      .forecast-rain b { color: var(--text); }
+      .forecast-foot { display: flex; justify-content: flex-end; gap: 7px; margin-top: 14px; color: var(--muted); font-size: 9px; }
+      .forecast-foot strong { color: #8d9093; }
+      .forecast-empty { grid-column: 1 / -1; min-height: 180px; display: grid; place-items: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 18px; }
+
+      .config-section { padding-top: 4px; padding-bottom: 4px; }
+      .config-field { display: grid; grid-template-columns: 1fr minmax(280px,42%); gap: 24px; align-items: center; min-height: 86px; border-bottom: 1px solid var(--line); }
+      .config-field > div { display: flex; flex-direction: column; gap: 4px; }
+      .config-field > div span { color: var(--muted); font-size: 10px; }
+      .config-field select { width: 100%; min-width: 0; height: 42px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 12px; background: #1b1e20; color: var(--text); outline: none; }
+      .config-field select:focus { border-color: rgba(184,121,72,.55); }
+      .config-value { justify-self: end; color: var(--good); font-size: 11px; }
+      .config-actions { display: flex; justify-content: flex-end; align-items: center; gap: 12px; min-height: 70px; }
+      .config-actions > span { color: var(--muted); font-size: 10px; }
+      .config-actions button { min-height: 42px; padding: 0 16px; border-radius: 12px; border: 1px solid rgba(184,121,72,.4); background: var(--accent-soft); color: var(--accent-bright); cursor: pointer; }
+      .settings-note { margin-top: 14px; padding: 14px 18px; border-left: 2px solid rgba(184,121,72,.45); color: var(--muted); font-size: 10px; line-height: 1.5; }
+      .settings-note > span { color: var(--text); font-weight: 650; }
+
       .quick-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
       .quick-card, .area-card {
         min-height: 74px; gap: 12px; padding: 12px 14px;
@@ -1551,6 +1637,12 @@ class JamesUIPanel extends HTMLElement {
         .room-header, .room-row { grid-template-columns: 1fr .6fr 1.2fr; }
         .room-header span:last-child, .room-state { display: none; }
         .door-side { display: grid; grid-template-columns: 1fr 1fr; }
+        .weather-footer { grid-template-columns: repeat(2,1fr); height: auto; padding: 10px 18px; gap: 8px; }
+        .weather-footer > div { border-right: 0; padding: 0; }
+        .forecast-button { grid-column: 1 / -1; justify-self: stretch; }
+        .forecast-days { grid-template-columns: 1fr; }
+        .forecast-panel { max-height: 90%; overflow: auto; }
+        .config-field { grid-template-columns: 1fr; gap: 8px; padding: 14px 0; }
       }
 
       @media (max-height: 760px) and (min-width: 901px) {
