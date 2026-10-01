@@ -2,79 +2,37 @@
 
 _Last updated: 2026-10-01_
 
-This file is the persistent handover document for continuing JamesUI work across ChatGPT conversations.
+This is the persistent handover for continuing JamesUI work across chats. Read this file first, then inspect the relevant repository files before changing code. After substantive JamesUI decisions or implementation steps, update this file again.
 
-## How to use this file
+## 1. Goal
 
-When starting a new chat in the **KNX Home** project, the user should be able to say only:
+JamesUI is a tablet-first Home Assistant interface for the user's KNX/Home Assistant home. It should feel like a calm, premium native smart-home application rather than a collection of Lovelace cards.
 
-> Schau ins Repository und mach mit JamesUI weiter.
+Core principles:
 
-The assistant should then read this file first, inspect the current repository state, and continue from the documented status instead of asking the user to repeat prior decisions.
+- Home Assistant remains backend/source of truth.
+- KNX remains the primary building-automation layer.
+- JamesUI owns presentation, navigation and interaction.
+- Local operation preferred; avoid unnecessary cloud dependence.
+- Automatic entity/device/area detection first; manual mapping only where required.
+- No hard-coded entity IDs in normal use.
+- Keep architecture maintainable and pragmatic; do not overengineer.
 
-### Maintenance rule
+Primary target device: **OnePlus Pad 2**, landscape. Fully Kiosk may provide kiosk/display-shell behavior, but JamesUI must not depend on Fully.
 
-After every substantive JamesUI development/design decision or implementation step, update this file in the repository before finishing the response. Keep it concise but current. If a previous decision changes, replace the obsolete state instead of keeping contradictory versions.
+## 2. Repository / architecture
 
----
+Repository: `MarkusAureliusTeuton/JamesUI`
 
-# 1. Project goal
+Branch: `main`
 
-**JamesUI** is a custom, tablet-first Home Assistant interface for the user's KNX/Home Assistant home.
+Current integration version: **v0.5.0**
 
-JamesUI is **not** intended to become a collection of normal Lovelace cards. It should feel like a high-quality native smart-home application.
-
-Primary goals:
-
-- modern, calm, premium-looking smart-home UI
-- optimized for a permanently mounted tablet
-- Home Assistant remains the backend and source of truth
-- KNX remains the primary building-automation layer
-- JamesUI handles visualization, interaction, media, climate, door/camera presentation, scenes and status
-- avoid hard-coded entity IDs wherever possible
-- automatic entity/device/area detection first; manual mapping only where needed
-- local operation preferred; avoid unnecessary cloud dependence
-- responsive and performant
-- simple maintainable architecture; no unnecessary overengineering
-
----
-
-# 2. Primary device / display
-
-Primary target:
-
-- **OnePlus Pad 2**
-- landscape orientation
-- wall/tablet use
-- Fully Kiosk Browser may be used as the kiosk/browser shell
-- JamesUI itself must **not depend on Fully Kiosk**
-- layout should respond to actual CSS viewport dimensions, not fixed physical pixels
-
-Fully Kiosk responsibilities may include fullscreen/kiosk behavior, wake/display handling and browser shell only.
-
----
-
-# 3. Current technical architecture
-
-JamesUI is implemented as a **Home Assistant custom integration with an integrated custom frontend panel**.
-
-Repository:
-
-- **MarkusAureliusTeuton/JamesUI**
-- branch: **main**
-- public repository
-
-Current integration version:
-
-- **v0.5.0**
-
-Confirmed in `custom_components/jamesui/manifest.json`.
+JamesUI is a Home Assistant custom integration with an integrated custom frontend panel.
 
 Important files:
 
 ```text
-hacs.json
-
 custom_components/jamesui/
 ├── __init__.py
 ├── api.py
@@ -82,330 +40,192 @@ custom_components/jamesui/
 ├── const.py
 ├── manifest.json
 └── frontend/
-    └── jamesui-panel.js
+    ├── jamesui-entry.js
+    ├── jamesui-panel.js
+    └── jamesui-home.js
 
-.github/
-└── workflows/
-    └── validate.yml
+tests/
+└── jamesui-home.test.js
+
+.github/workflows/validate.yml
 ```
 
-Architecture principles:
+Frontend loading now goes through `jamesui-entry.js`. The existing `jamesui-panel.js` remains the main implementation; `jamesui-home.js` applies the current Start-page refinement as a small, isolated layer. This avoids risky large rewrites of the existing media/house/climate frontend while the Start-page design is still evolving.
 
-- Home Assistant owns entities, states, automations, scripts, scenes, schedules and history
-- JamesUI owns presentation, navigation and interaction
-- frontend uses Home Assistant `hass` state/services directly
-- Web Components / custom JS/CSS frontend
-- real-time HA state updates
-- custom integration config/options for mapping where required
-- HACS-compatible repository structure
+## 3. Navigation
 
----
-
-# 4. Main navigation
-
-Current agreed primary navigation:
+Approved primary navigation remains:
 
 ```text
 Start | Haus | Klima | Medien | Tür
 ```
 
-This bottom navigation is the current product direction and should not be replaced casually by generic sidebar navigation from later visual experiments.
+Do not replace this with a generic sidebar because of later visual experiments.
 
----
-
-# 5. Visual design direction
+## 4. Visual direction
 
 Desired feel:
 
 - dark / near-black base
-- warm accents
+- warm restrained accents
 - calm and premium
-- clear hierarchy
-- large readable information
-- minimal visual clutter
-- should feel closer to a high-end native smart-home or automotive interface than a standard Home Assistant dashboard
-- avoid the typical colorful Lovelace-card look
+- strong hierarchy and large readable information
+- minimal clutter
+- closer to a premium native smart-home / automotive interface than standard Home Assistant
+- room imagery should eventually look realistic and close to the actual rooms
 
-## Room imagery
+Generic AI room imagery tested previously was not good enough. Realistic room visual direction remains open.
 
-The user wants high-quality, photo-like room representation / visualizations.
+## 5. Start page – current implementation
 
-Current status:
+**Status: ⚠️ implemented, practical tablet test still required**
 
-- previous generic AI room imagery was **not good enough**
-- desired visuals should feel more realistic and closer to the actual rooms
-- weather/time-of-day effects may later influence imagery
+The Start page has now been refined beyond the earlier weather + large moon-card concept.
 
-**Status: 🚧 not final**
+Current design:
 
----
+- large weather/time hero remains the visual anchor
+- date, time, current temperature, condition, high/low, precipitation, humidity, wind, illuminance and sunrise/sunset remain available
+- weather/time-of-day visual background logic remains in use
+- prominent former moon card has been removed from the primary hierarchy
+- moon phase is retained only as a compact secondary note
+- right-side `Zuhause` status panel summarizes important deviations
+- below the hero is a direct-access area for `Haus`, `Klima`, `Medien`, `Tür`
+- those cards are clickable and use the existing bottom-navigation routing
+- scenes are visually reduced to a compact house-mode row; actual scene/service mapping is still pending
 
-# 6. Latest visual mockup
+The home status model currently detects/summarizes:
 
-A recent design exploration included screens for:
+- lights on
+- monitored devices offline
+- low battery states already known through the Haus model
+- average current climate temperature when available
+- active media playback
+- open door/garage/opening binary sensors whose names look like door/gate/garage entities
 
-- Home
-- Wohnzimmer
-- Licht
-- Jalousien
-- Klima
-- Audio
-- Kameras
+Normal state: `Alles ruhig`.
 
-The mockup used:
+Relevant deviations switch the summary to `Aufmerksamkeit nötig`.
 
-- dark UI
-- warm room photography
-- cards / status panels
-- lighting controls
-- blind controls
-- climate cards
-- media player
-- camera tiles
+Automated tests cover a calm state and an alert/activity state.
 
-Important: this mockup is **design inspiration only**, not automatically the approved application architecture. It included a left-side navigation that conflicts with the currently agreed bottom navigation.
-
-Current approved navigation remains:
-
-```text
-Start | Haus | Klima | Medien | Tür
-```
-
----
-
-# 7. Start page
-
-Target direction:
-
-- large clock
-- date
-- weekday
-- weather / outside temperature
-- important house status
-- selected room status
-- media status where useful
-- door status / important events
-- selected scenes / quick actions
-
-The page should remain calm and not become a dense control dashboard.
-
-Original minimal concept was black background + clock/date/weekday; later concept expanded while retaining the minimalist feel.
-
-**Status: 🚧 design still to finalize**
-
----
-
-# 8. Haus module
-
-Implemented from approximately v0.3 onward:
-
-- loads HA Entity Registry
-- loads Device Registry
-- loads Area Registry
-- category detection
-- room/area grouping
-- summary values
-- detail views
-- toggles / service calls
-
-Typical categories:
-
-- lights
-- covers/blinds
-- climate
-- media players
-- sensors
-- switches
-
-Known limitations / open improvements:
-
-- automatic classification is not perfect
-- counting/grouping edge cases
-- KNX-specific entities may not map cleanly
-- entities without proper area assignment
-- multiple entities belonging to one physical device
+## 6. Haus module
 
 **Status: ⚠️ functional, not final**
 
----
+Implemented:
 
-# 9. Lighting
+- HA Area Registry
+- Device Registry
+- Entity Registry
+- category detection
+- room/area grouping
+- summaries
+- detail views
+- toggles/service calls
 
-Target features:
+Current categories include lights, sockets, ventilation and device-health/status entities.
 
-- state per room
-- count of active lights
+Open improvements:
+
+- classification edge cases
+- KNX-specific naming/mapping
+- entities without proper HA area assignment
+- multiple entities belonging to one physical device
+- presentation should move further toward room summaries rather than raw entity lists
+
+## 7. Lighting / blinds
+
+Lighting target:
+
+- room state / count active
 - room/group control
-- on/off
-- dimming
-- optional color temperature/color where supported
-- scenes / quick actions
+- on/off, dimming, optional color temperature/color
+- scenes/quick actions
 
-UI should summarize the room instead of exposing long raw entity lists.
-
-**Status: 🚧 further refinement required**
-
----
-
-# 10. Blinds / covers
-
-Target features:
+Blinds/covers target:
 
 - room overview
-- open/closed/intermediate status
-- position
+- open/closed/intermediate position
 - up/down/stop
 - optional slat position
-- grouped control
-- house-level overview
+- group control and house overview
 
-KNX remains responsible for the underlying building control; JamesUI operates the Home Assistant/KNX entities.
+KNX remains responsible for underlying control.
 
 **Status: 🚧 further refinement required**
 
----
+## 8. Climate
 
-# 11. Climate
+Target:
 
-Planned:
-
-- auto-detect `climate.*`
-- room temperature
-- target temperature
+- detect `climate.*`
+- actual/target temperature
 - heating state
-- optional humidity
-- outside temperature
-- heating circuit state
+- optional humidity/outside temperature
+- heating-circuit state
 - programs/modes/helpers
 
-Important architectural decision:
+JamesUI is not the heating controller. Regulation remains in KNX, Home Assistant or dedicated heating logic.
 
-**JamesUI does not become the heating controller.** Regulation stays in KNX / Home Assistant / dedicated heating-control logic. JamesUI is the presentation and interaction layer.
-
-For KNX, actual temperature, target value and heating status may exist as separate entities, so mapping may be required.
+Separate KNX entities may require mapping for actual temperature, target value and status.
 
 **Status: 🚧 not finished**
 
----
+## 9. Media
 
-# 12. Media module
+**Status: ⚠️ substantial frontend/logic exists; end-to-end practical verification still required**
 
-Media UI and basic logic have already been developed significantly.
-
-Target capabilities:
-
-- AV receiver
-- TV
-- Spotify
-- Music Assistant
-- volume
-- play/pause/skip
-- current title / artwork
-- source selection
-- playlists
-- room/zone selection
-- later multiroom where useful
-
-Existing frontend work includes:
-
-- media page
-- player presentation
-- transport controls
-- volume control
-- source selection
-- Spotify playlist start logic
-- Home Assistant media-player support
-- Music Assistant path prepared
-
-Existing internal functions include names such as:
-
-```javascript
-_prepareOnkyo()
-_startSpotifyPlaylist()
-```
-
-These names are legacy/current implementation details and should later be generalized so the architecture is **not tied to one receiver manufacturer**.
-
-Preferred long-term abstraction:
+Current direction:
 
 ```text
 JamesUI Media
     ↓
 Home Assistant / Music Assistant
     ↓
-Receiver / TV / other player
+Receiver / TV / player
 ```
 
-**Status: ⚠️ frontend/logic exists; end-to-end behavior still needs testing and cleanup**
+Existing work includes:
 
----
+- media page
+- player presentation
+- transport controls
+- volume
+- source selection
+- Spotify playlist start logic
+- Home Assistant media-player support
+- Music Assistant path
+- automatic Onkyo network-input preparation for Spotify playback
+- live media state updates
+- Spotify URI normalization work
 
-# 13. Music Assistant
+Legacy method names such as `_prepareOnkyo()` are implementation details and should later be generalized so the architecture is not manufacturer-specific.
 
-Music Assistant is part of the intended media architecture.
+Music Assistant still needs robust testing of service schema, player detection, URL/media-ID handling and error/status feedback.
 
-Desired use:
+## 10. Tür / camera
 
-- Spotify/library access
-- player selection
-- playlists
-- playback
-- multiroom where appropriate
+Dedicated navigation section: **Tür**.
 
-Still to verify/improve:
-
-- exact `music_assistant.play_media` service schema
-- Spotify playlist URL normalization
-- player detection
-- Spotify URL → MA media identifier handling
-- error handling
-- robust playback status feedback
-
-**Status: ⚠️ prepared/integrated, not fully finished**
-
----
-
-# 14. Door module
-
-Dedicated bottom-nav section: **Tür**.
-
-Planned UI:
+Planned/present groundwork:
 
 - door state
 - doorbell event
-- live image / camera image
-- snapshot
+- live/snapshot image
 - event/history view
-- optional door-open action if technically supported
-- prominent overlay when doorbell rings
+- optional door-open action where technically supported
+- prominent doorbell overlay
 
-Existing frontend already contains a demo/test doorbell overlay.
+The home uses a Siedle SG150. Reliable HA doorbell triggering remains an external backend issue; JamesUI should present the event once Home Assistant supplies it reliably.
 
-The home uses a Siedle SG150. Reliable Home Assistant doorbell triggering remains an external backend problem; JamesUI should display the event once HA can provide it reliably.
+Persistent camera/snapshot history remains open.
 
-**Status: 🚧 UI groundwork exists; backend trigger remains unresolved**
+**Status: 🚧 UI groundwork exists; backend trigger/history unresolved**
 
----
+## 11. Settings
 
-# 15. Camera / image history
-
-Long-term target:
-
-- entrance / front door
-- terrace / garden where useful
-- live image
-- snapshots
-- door-event history
-
-Single-frame capture from the Siedle path has been possible in earlier work. Persistent storage/history and polished JamesUI presentation remain future work.
-
-**Status: 🚧 open**
-
----
-
-# 16. JamesUI settings
-
-JamesUI has/needs its own settings layer for:
+JamesUI needs its own settings/mapping UX for:
 
 - entity mapping
 - room/device assignment
@@ -414,139 +234,76 @@ JamesUI has/needs its own settings layer for:
 - weather source
 - optional features
 
-Goal: the user should **not edit source code or hard-code entity IDs manually** for normal configuration.
+Basic config infrastructure exists, but the normal user should not need to edit source code/entity IDs manually.
 
-**Status: ⚠️ basic infrastructure exists; UX still needs refinement**
+**Status: ⚠️ infrastructure exists; UX needs refinement**
 
----
+## 12. Responsive / display behavior
 
-# 17. Frontend file / maintainability
+Primary target remains OnePlus Pad 2 landscape, but layout uses viewport-responsive CSS rather than fixed physical pixels.
 
-Main frontend file:
+Normal browser use is supported conceptually; phone support may follow later.
 
-```text
-custom_components/jamesui/frontend/jamesui-panel.js
-```
+Existing display calibration/view metrics should remain available.
 
-It currently contains or supports:
-
-- navigation
-- page routing
-- Start
-- Haus
-- Klima
-- Medien
-- Tür
-- settings
-- HA state handling
-- service calls
-- responsive CSS
-- door overlay
-- media controls
-- entity/device presentation
-
-If the file becomes too large, modularization is reasonable. Do **not** split it prematurely just for architectural purity.
-
----
-
-# 18. Responsive behavior
-
-Primary target remains a landscape tablet, but JamesUI should not depend on a fixed physical resolution.
-
-Desired support:
-
-- OnePlus Pad 2 landscape first
-- normal browser use
-- possibly phones later
-- CSS viewport responsive behavior
-
----
-
-# 19. HACS / releases
-
-JamesUI should be installable and updateable cleanly through HACS.
-
-Current known state:
+## 13. HACS / release workflow
 
 - `hacs.json` exists
-- public GitHub repository exists
-- integration structure is HACS-compatible
+- repository is public and HACS-compatible in structure
+- current manifest version remains `0.5.0`
+- current Start-page work is on `main` without a new version bump yet
+- HACS tag/release/update strategy is still to be finalized and should be verified against current HACS behavior before changing it
 
-Open item:
+## 14. Validation / tests
 
-- release/tag/update workflow has not yet been fully settled
-- do not assume HACS always tracks `main`
-- verify against current official HACS behavior before changing release strategy
+GitHub Actions currently validates:
 
-**Status: 🚧 workflow still to finalize**
+- Python syntax
+- JSON files
+- JavaScript syntax for all frontend `.js` files
+- Home-page state-summary tests using Node's built-in test runner
 
----
+For future behavior changes, add focused tests where practical rather than relying only on visual/manual testing.
 
-# 20. Version history / current milestone
+## 15. Current priorities
 
-Known milestones:
+Recommended next order:
 
-```text
-v0.3.x  House/registry/automatic detection work
-v0.5.0  Media/Spotify/Music Assistant and expanded UI work
-```
-
-Current repository manifest version:
-
-**v0.5.0**
-
----
-
-# 21. Working style / response rules
-
-For JamesUI work, start each answer with one of these explicit status labels:
-
-- **✅ Fertig:** fully implemented / should work
-- **⚠️ Test nötig:** implementation exists but needs practical verification
-- **🚧 Nicht fertig:** additional development is required
-
-If something is not final, say so explicitly.
-
-## Troubleshooting style
-
-- give only one useful next action at a time
-- wait for the result before giving the next step
-- avoid giant troubleshooting checklists
-
-## Development style
-
-- if repository write access is available, prefer editing the repository directly
-- avoid making the user manually copy code unnecessarily
-- prefer Git/HACS workflow
-- no hard-coded entity IDs unless unavoidable
-- avoid unnecessary libraries and overengineering
-
----
-
-# 22. Current priorities
-
-Recommended order:
-
-1. finalize visual/UI direction
-2. finalize Start page
+1. practical visual test of the new Start page on the actual HA/tablet viewport
+2. adjust spacing/proportions based on that real screenshot
 3. improve Haus/room presentation and classification
-4. improve realistic room visual direction
+4. realistic room visual direction
 5. implement/refine Klima
 6. complete and robustly test Medien
 7. expand Tür/Kamera
-8. simplify Settings / mapping UX
+8. simplify Settings/mapping UX
 9. settle HACS release/update process
 10. full tablet/Fully practical test
 
----
+## 16. Working style
 
-# 23. Next-chat instruction
+Start JamesUI answers with one of:
+
+- **✅ Fertig:** fully implemented / verified
+- **⚠️ Test nötig:** implementation exists but needs practical verification
+- **🚧 Nicht fertig:** more development required
+
+Troubleshooting: give one useful next action at a time and wait for the result.
+
+Development:
+
+- prefer editing the repository directly when write access is available
+- prefer Git/HACS workflow
+- avoid user copy/paste where unnecessary
+- avoid hard-coded entity IDs unless unavoidable
+- avoid unnecessary dependencies and premature modularization
+
+## 17. Next-chat instruction
 
 When continuing in a new chat:
 
 1. Read this file first.
-2. Inspect current repository files relevant to the requested area before changing code.
-3. Treat the repository as the current source of implementation truth.
-4. Treat this file as the current source of design/decision/progress context.
-5. Continue directly from the current state instead of asking the user to repeat history.
-6. After substantive JamesUI changes or decisions, update this file again before finishing the response.
+2. Inspect repository files relevant to the requested area.
+3. Repository code is implementation truth; this file is design/progress context.
+4. Continue directly without asking the user to repeat history.
+5. Update this file again after substantive JamesUI changes or decisions.
