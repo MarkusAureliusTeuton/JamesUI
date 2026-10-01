@@ -182,12 +182,15 @@ test("renders v2 as a flatter architectural surface with semantic weather facts"
   assert.doesNotMatch(html, /class="alpine-facts"/);
 });
 
-test("defines v3 as a portrait-first Alpine wall-tablet layout", () => {
+test("defines v4 as a portrait-first visible Alpine weather hero", () => {
   const html = renderAlpineHome(alpinePanel());
   assert.match(html, /class="alpine-home[^\"]*alpine-home-v3/);
   assert.match(homeSource, /@media\(orientation:portrait\)/);
   assert.match(homeSource, /height:calc\(100dvh - 172px\)/);
-  assert.match(homeSource, /background-size:100% 100%,100% 100%,100% auto/);
+  assert.match(homeSource, /background-size:100% 100%,100% 100%,cover/);
+  assert.match(homeSource, /background-position:center,center,center 28%/);
+  assert.match(homeSource, /grid-template-rows:minmax\(430px,58vh\) auto/);
+  assert.match(homeSource, /tone-night \.alpine-atmosphere\{filter:saturate\(\.86\) contrast\(1\.02\) brightness\(\.93\)\}/);
   assert.match(homeSource, /grid-template-columns:minmax\(0,1fr\) auto/);
   assert.match(homeSource, /grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
 });
