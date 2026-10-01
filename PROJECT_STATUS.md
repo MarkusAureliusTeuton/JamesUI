@@ -33,9 +33,9 @@ Active primary navigation:
 
 Current Start-page direction: **Alpine Interface**.
 
-The Alpine Start implementation and eight local WebP atmosphere assets are merged into `main`. GitHub Actions validation passed after the merge and after the subsequent status update. Practical visual acceptance on laptop and OnePlus Pad 2/Fully is still required.
+The Alpine Start implementation, eight local WebP atmosphere assets and the V2 visual refinement are merged into `main`. Pull-request validation passed before the V2 merge. Practical visual acceptance on laptop and OnePlus Pad 2/Fully is still required.
 
-A merged development branch `feature/startpage-alpine-interface` may still exist remotely. `main` is ahead of it; it is not an alternate source of truth and must not be used as the basis for new work.
+The remote branch `feature/startpage-alpine-interface` is a temporary development branch only. It must be kept synchronized with `main` after completed batches and is never an alternate source of truth.
 
 ## 3. Active runtime chain – do not casually change
 
@@ -89,6 +89,19 @@ Implemented in `jamesui-home.js`:
 - atmosphere mapping from HA weather condition + sun period
 - graceful missing-data fallback
 - no runtime cloud-image dependency
+
+### V2 visual refinement merged 2026-10-01
+
+The V2 pass deliberately reused the existing Alpine assets and architecture instead of creating a parallel redesign:
+
+- outer Start surface reduced from a strongly rounded/card-like shell to a much flatter architectural surface
+- weather image overlay lightened so actual outside/weather mood is more legible while text remains protected on the left
+- atmosphere image framing/background position tuned instead of generating another image family
+- weather facts changed from the more block-like `alpine-facts` grid into semantic `dl.alpine-weather-facts` with one hairline and free-standing facts
+- function strip made visually lighter: lower height, smaller icons, weaker background, subtler separators
+- warm accent is now expressed through a shared `--alpine-accent` variable with dusk/night variation rather than many unrelated hard-coded accents
+- root now exposes `data-atmosphere="..."` for a clear, inspectable visual state without changing weather logic
+- no Home Assistant entities, navigation targets, loader files or asset files were changed by this refinement
 
 Current local Alpine assets:
 
@@ -262,6 +275,8 @@ These are known maintenance items, **not permission to refactor them opportunist
 - guarded panel entrypoint test
 - Start/home Node tests
 
+Start tests now also pin the V2 structure (`alpine-home-v2`, `data-atmosphere`, semantic `alpine-weather-facts`) in addition to the existing state/fallback/navigation tests.
+
 **Noise-reduction rule:** Markdown-only changes are ignored by the workflow. This allows `PROJECT_STATUS.md`, README and design documentation to be maintained without running the whole software validation every time.
 
 Development workflow:
@@ -271,15 +286,16 @@ Development workflow:
 3. run focused/local checks first where possible,
 4. keep intentionally failing TDD states off `main`,
 5. do not open a PR merely to trigger checks if direct feature-branch development is sufficient,
-6. merge/push a complete green state to `main`, producing one meaningful CI run,
-7. update this status file in the same batch or directly afterwards if it is documentation-only.
+6. for UI batches where local runtime execution is unavailable, use one cohesive PR validation rather than multiple CI-triggering intermediate commits,
+7. merge only the complete green state to `main`,
+8. update this status file directly afterwards if it is documentation-only.
 
 The platform's own safety/review systems cannot be bypassed. To reduce long waits, avoid unnecessary image-generation/repeated binary operations and reuse existing generated/repository assets whenever possible.
 
 ## 16. Current priorities
 
-1. Practical visual verification of Alpine Start on laptop and Fully/OnePlus Pad 2.
-2. Tune Start spacing, contrast, atmosphere intensity and typography from a real screenshot.
+1. Practical visual verification of Alpine Start V2 on laptop and Fully/OnePlus Pad 2.
+2. From a real screenshot, tune only remaining spacing/contrast/typography issues rather than starting another redesign.
 3. Improve Haus toward room-first presentation without duplicating discovery/control logic.
 4. Replace Klima demo with real entity-driven implementation and remove demo code in the same change.
 5. Complete practical Media verification, then generalize receiver naming only if needed.
@@ -305,6 +321,8 @@ Other working rules:
 - no intentionally red `main`
 - no duplicate implementation alongside a temporary/legacy path: migrate and remove deliberately
 - preserve working fallback code until its replacement is proven
+- reuse existing visuals/assets before generating new ones
+- keep `PROJECT_STATUS.md` current enough that a new chat can continue without reconstructing architectural intent
 
 ## 18. Next-chat instruction
 
