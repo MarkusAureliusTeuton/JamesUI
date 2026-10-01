@@ -1,11 +1,17 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   summarizeHomeState,
   resolveHomeAtmosphere,
   homeNavItems,
   renderAlpineHome,
 } from "../custom_components/jamesui/frontend/jamesui-home.js";
+
+const homeSource = readFileSync(
+  new URL("../custom_components/jamesui/frontend/jamesui-home.js", import.meta.url),
+  "utf8"
+);
 
 function panelWith(states, house = {}) {
   return {
@@ -174,4 +180,14 @@ test("renders v2 as a flatter architectural surface with semantic weather facts"
   assert.match(html, /<dl class="alpine-weather-facts">/);
   assert.match(html, /<dt>Feuchte<\/dt><dd>74%<\/dd>/);
   assert.doesNotMatch(html, /class="alpine-facts"/);
+});
+
+test("defines v3 as a portrait-first Alpine wall-tablet layout", () => {
+  const html = renderAlpineHome(alpinePanel());
+  assert.match(html, /class="alpine-home[^\"]*alpine-home-v3/);
+  assert.match(homeSource, /@media\(orientation:portrait\)/);
+  assert.match(homeSource, /height:calc\(100dvh - 172px\)/);
+  assert.match(homeSource, /background-size:100% 100%,100% 100%,100% auto/);
+  assert.match(homeSource, /grid-template-columns:minmax\(0,1fr\) auto/);
+  assert.match(homeSource, /grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
 });
