@@ -1,8 +1,15 @@
-import { installHomeExperience } from "./jamesui-home.js?v=0.5.1";
+const current = new URL(import.meta.url);
+const revision = current.searchParams.get("v") || "dev";
+const homeModuleUrl = new URL("./jamesui-home.js", current);
+homeModuleUrl.searchParams.set("v", revision);
 
-customElements.whenDefined("jamesui-panel").then(() => {
-  installHomeExperience();
-  requestAnimationFrame(() => {
-    document.querySelectorAll("jamesui-panel").forEach((panel) => panel.render?.());
+import(homeModuleUrl.href)
+  .then(({ installHomeExperience }) => customElements.whenDefined("jamesui-panel").then(() => {
+    installHomeExperience();
+    requestAnimationFrame(() => {
+      document.querySelectorAll("jamesui-panel").forEach((panel) => panel.render?.());
+    });
+  }))
+  .catch((error) => {
+    console.error("JamesUI: Start enhancement could not be loaded", error);
   });
-});
