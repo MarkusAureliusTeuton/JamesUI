@@ -45,12 +45,15 @@ custom_components/jamesui/
     └── jamesui-home.js
 
 tests/
-└── jamesui-home.test.js
+├── jamesui-home.test.js
+└── test_frontend_entrypoint.py
 
 .github/workflows/validate.yml
 ```
 
-Frontend loading now goes through `jamesui-entry.js`. The existing `jamesui-panel.js` remains the main implementation; `jamesui-home.js` applies the current Start-page refinement as a small, isolated layer. This avoids risky large rewrites of the existing media/house/climate frontend while the Start-page design is still evolving.
+**Important loader decision after regression on 2026-10-01:** Home Assistant currently loads JamesUI through the integration's `_panel_custom.js_url`, so the active frontend entry must remain a classic script. `FRONTEND_FILE` is therefore restored to `jamesui-panel.js`. Do not point `FRONTEND_FILE` directly at an ES-module file containing top-level `import`/`export` unless the Home Assistant panel registration is first changed to an explicitly supported module-loading mechanism.
+
+`jamesui-entry.js` and `jamesui-home.js` remain in the repository as inactive experimental/refinement code for the Start page. They are **not currently loaded in production** because routing the panel directly through `jamesui-entry.js` caused a blank/black JamesUI panel on laptop and tablet.
 
 ## 3. Navigation
 
@@ -76,25 +79,25 @@ Desired feel:
 
 Generic AI room imagery tested previously was not good enough. Realistic room visual direction remains open.
 
-## 5. Start page – current implementation
+## 5. Start page – current state
 
-**Status: ⚠️ implemented, practical tablet test still required**
+**Status: 🚧 refinement code exists but is temporarily rolled back from the active frontend**
 
-The Start page has now been refined beyond the earlier weather + large moon-card concept.
+The planned refined Start page goes beyond the earlier weather + large moon-card concept.
 
-Current design:
+Target/refinement design:
 
 - large weather/time hero remains the visual anchor
 - date, time, current temperature, condition, high/low, precipitation, humidity, wind, illuminance and sunrise/sunset remain available
 - weather/time-of-day visual background logic remains in use
-- prominent former moon card has been removed from the primary hierarchy
-- moon phase is retained only as a compact secondary note
+- prominent former moon card should be removed from the primary hierarchy
+- moon phase retained only as a compact secondary note
 - right-side `Zuhause` status panel summarizes important deviations
 - below the hero is a direct-access area for `Haus`, `Klima`, `Medien`, `Tür`
-- those cards are clickable and use the existing bottom-navigation routing
-- scenes are visually reduced to a compact house-mode row; actual scene/service mapping is still pending
+- those cards should be clickable and use the existing bottom-navigation routing
+- scenes visually reduced to a compact house-mode row; actual scene/service mapping still pending
 
-The home status model currently detects/summarizes:
+The home status model in `jamesui-home.js` detects/summarizes:
 
 - lights on
 - monitored devices offline
@@ -107,7 +110,7 @@ Normal state: `Alles ruhig`.
 
 Relevant deviations switch the summary to `Aufmerksamkeit nötig`.
 
-Automated tests cover a calm state and an alert/activity state.
+Automated tests cover a calm state and an alert/activity state. The visual refinement itself must be integrated again using a loading approach compatible with Home Assistant before practical tablet testing continues.
 
 ## 6. Haus module
 
@@ -251,7 +254,7 @@ Existing display calibration/view metrics should remain available.
 - `hacs.json` exists
 - repository is public and HACS-compatible in structure
 - current manifest version remains `0.5.0`
-- current Start-page work is on `main` without a new version bump yet
+- current work is on `main` without a new version bump yet
 - HACS tag/release/update strategy is still to be finalized and should be verified against current HACS behavior before changing it
 
 ## 14. Validation / tests
@@ -262,6 +265,9 @@ GitHub Actions currently validates:
 - JSON files
 - JavaScript syntax for all frontend `.js` files
 - Home-page state-summary tests using Node's built-in test runner
+- Home Assistant panel entrypoint compatibility: the active `FRONTEND_FILE` may not be an ES-module script with top-level `import`/`export`
+
+The loader regression was reproduced test-first: the new entrypoint test failed with `jamesui-entry.js` active and passed after restoring `jamesui-panel.js`.
 
 For future behavior changes, add focused tests where practical rather than relying only on visual/manual testing.
 
@@ -269,16 +275,18 @@ For future behavior changes, add focused tests where practical rather than relyi
 
 Recommended next order:
 
-1. practical visual test of the new Start page on the actual HA/tablet viewport
-2. adjust spacing/proportions based on that real screenshot
-3. improve Haus/room presentation and classification
-4. realistic room visual direction
-5. implement/refine Klima
-6. complete and robustly test Medien
-7. expand Tür/Kamera
-8. simplify Settings/mapping UX
-9. settle HACS release/update process
-10. full tablet/Fully practical test
+1. confirm the restored classic panel loads again on laptop and Fully/tablet
+2. reintegrate the refined Start-page code without changing the active HA panel entry to an unsupported ES-module loader
+3. practical visual test of that refined Start page on the actual HA/tablet viewport
+4. adjust spacing/proportions based on the real screenshot
+5. improve Haus/room presentation and classification
+6. realistic room visual direction
+7. implement/refine Klima
+8. complete and robustly test Medien
+9. expand Tür/Kamera
+10. simplify Settings/mapping UX
+11. settle HACS release/update process
+12. full tablet/Fully practical test
 
 ## 16. Working style
 
