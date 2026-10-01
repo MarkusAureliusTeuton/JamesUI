@@ -10,4 +10,4 @@ PANEL_ICON = "mdi:home-assistant"
 PANEL_ELEMENT = "jamesui-panel"
 
 STATIC_URL = "/jamesui_static"
-FRONTEND_FILE = "jamesui-panel.js"
+FRONTEND_FILE = "jamesui-entry.js"
