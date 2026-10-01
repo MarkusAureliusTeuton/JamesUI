@@ -96,9 +96,9 @@ Implementation plan:
 
 ## 5. Start page – current state
 
-**Status: ⚠️ Alpine Interface implementation is complete on `feature/startpage-alpine-interface`; practical laptop + OnePlus Pad 2/Fully verification is still required before final visual acceptance.**
+**Status: ⚠️ Alpine Interface implementation is merged into `main` and CI-verified; practical laptop + OnePlus Pad 2/Fully verification is still required before final visual acceptance.**
 
-Implemented on the feature branch:
+Implemented on `main`:
 
 - one composed Alpine Start surface instead of a generic tile/card grid
 - large time/date + current weather hierarchy
@@ -138,7 +138,7 @@ Home status continues to summarize:
 Normal state: `Alles ruhig`.
 Relevant deviations: `Aufmerksamkeit nötig`.
 
-Automated home tests now cover atmosphere mapping, local asset contract, navigation model, Alpine structure, calm/alert states and missing optional data.
+Automated home tests cover atmosphere mapping, local asset contract, navigation model, Alpine structure, calm/alert states and missing optional data. Pull-request CI and the post-merge `main` validation both passed before this status update.
 
 ## 6. Haus module
 
@@ -303,16 +303,15 @@ Development workflow decision: intentionally failing TDD intermediate states sho
 
 Recommended next order:
 
-1. CI/review `feature/startpage-alpine-interface` and merge only if green
-2. practical verification of Alpine Start page on laptop and Fully/OnePlus Pad 2
-3. adjust Start-page spacing, contrast, atmosphere intensity and typography from a real screenshot
-4. improve Haus/room presentation and classification
-5. implement/refine Klima
-6. complete and robustly test Medien
-7. expand Tür/Kamera
-8. simplify Settings/mapping UX
-9. settle HACS release/update process
-10. full tablet/Fully practical test
+1. practical verification of Alpine Start page on laptop and Fully/OnePlus Pad 2
+2. adjust Start-page spacing, contrast, atmosphere intensity and typography from a real screenshot
+3. improve Haus/room presentation and classification
+4. implement/refine Klima
+5. complete and robustly test Medien
+6. expand Tür/Kamera
+7. simplify Settings/mapping UX
+8. settle HACS release/update process
+9. full tablet/Fully practical test
 
 ## 16. Working style
 
