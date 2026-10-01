@@ -33,15 +33,15 @@ Default branch: `main`
 
 Integration / manifest version: **0.5.1**
 
-Frontend asset revision: **0.5.1-r2**
+Frontend asset revision: **0.5.1-r3**
 
 `main` is always the implementation source of truth. Feature branches are temporary development aids only; completed branches must not become alternate product states.
 
 Latest functional validation:
 
-- **Validate JamesUI #105 → success**
-- commit: `145763f1b4216bb2cea3f76a4a9fdc8c0fd8361d`
-- scope: HA context/property upgrade bridge + frontend revision propagation
+- **Validate JamesUI #106 → success**
+- commit: `8c20be21f7d8a1bfc60b28117498abda9864abe4`
+- scope: Shadow-DOM-safe panel discovery + HA property upgrade + initial Alpine rerender
 
 ## 3. Active runtime chain – critical
 
@@ -51,20 +51,23 @@ Home Assistant loads JamesUI through this chain:
 2. `custom_components/jamesui/const.py` defines `FRONTEND_FILE = "jamesui-entry.js"`, integration `VERSION` and `FRONTEND_REVISION`.
 3. Home Assistant registers `jamesui-entry.js?v={FRONTEND_REVISION}`.
 4. `frontend/jamesui-entry.js` is a **classic script** and loads `jamesui-panel.js` first.
-5. After the panel script has defined `jamesui-panel`, the loader reapplies any properties Home Assistant may have assigned before the custom element upgrade (`hass`, `narrow`, `route`, `panel`).
-6. The loader then injects `jamesui-home-entry.js` as `type="module"`.
-7. `jamesui-home-entry.js` derives the same revision from its own URL and dynamically imports `jamesui-home.js` with that revision.
-8. `jamesui-home.js` installs the Alpine Start enhancement and rerenders the panel.
+5. The loader recursively searches the document **and open Shadow DOM roots** for `jamesui-panel`; it must not assume the panel lives in the light DOM.
+6. After the panel script has defined `jamesui-panel`, the loader reapplies any properties Home Assistant may have assigned before the custom element upgrade (`hass`, `narrow`, `route`, `panel`).
+7. The loader then injects `jamesui-home-entry.js` as `type="module"`.
+8. `jamesui-home-entry.js` derives the same revision from its own URL and dynamically imports `jamesui-home.js` with that revision.
+9. `jamesui-home.js` installs the Alpine Start enhancement.
+10. `jamesui-home-entry.js` uses the same Shadow-DOM-aware panel finder and rerenders the existing panel instance so the Alpine Start is visible immediately after page load.
 
 Why this structure exists:
 
 - A previous direct ES-module panel entry caused a blank/black JamesUI screen.
 - A later stale-cache issue caused old Start code to remain visible despite newer repository code.
-- The 2026-10-01 19:40 tablet screenshot showed Alpine V3 itself loading, but `HOME ASSISTANT OFFLINE`, `unknown` weather and no live state. Root cause identified: Home Assistant can assign `hass` to the element **before** the custom element class is defined; that own property then shadows the class setter after upgrade. `jamesui-entry.js` now explicitly reapplies these pre-upgrade properties after `jamesui-panel.js` loads.
+- Home Assistant can create/place the custom panel inside nested Shadow DOMs and can assign properties before the custom element class is defined.
+- Direct `document.querySelectorAll("jamesui-panel")` therefore missed the real panel instance. This caused **both** observed symptoms: `hass` was not upgraded (`HOME ASSISTANT OFFLINE`) and the Alpine enhancement did not rerender the already-visible Start page.
 
 Protection:
 
-- `tests/test_frontend_entrypoint.py` keeps the classic entry requirement, revision propagation and pre-upgrade property handoff covered.
+- `tests/test_frontend_entrypoint.py` keeps the classic entry requirement, revision propagation, Shadow-DOM panel discovery, pre-upgrade property handoff and post-enhancement rerender covered.
 
 **Removal rule:** never delete or bypass `jamesui-entry.js` / `jamesui-home-entry.js` independently. If this loader is redesigned, change the chain and its regression tests together.
 
@@ -77,20 +80,20 @@ Protection:
 | `custom_components/jamesui/api.py` | WebSocket config read/update for Start + Media mappings | Active |
 | `custom_components/jamesui/config_flow.py` | single-instance integration setup | Active |
 | `custom_components/jamesui/manifest.json` | HA integration metadata/version | Must match integration `VERSION` |
-| `frontend/jamesui-entry.js` | guarded classic loader, property-upgrade bridge, nested asset revision propagation | Critical active infrastructure |
-| `frontend/jamesui-home-entry.js` | ES-module bridge for Start enhancement | Critical active infrastructure |
+| `frontend/jamesui-entry.js` | guarded classic loader, Shadow-DOM panel finder, property-upgrade bridge, asset revision propagation | Critical active infrastructure |
+| `frontend/jamesui-home-entry.js` | ES-module bridge + initial rerender after Start enhancement | Critical active infrastructure |
 | `frontend/jamesui-panel.js` | app shell + Haus/Klima/Medien/Tür + settings/overlays + base/fallback Start | Active; large; refactor only deliberately |
 | `frontend/jamesui-home.js` | current Alpine Start, home summary, atmosphere mapping, portrait/landscape Start CSS | Active Start owner |
 | `frontend/assets/alpine/` | realistic Alpine atmosphere WebP assets | Active Start assets |
 | `frontend/assets/weather/` | older SVG weather backgrounds | Intentional fallback, not dead code yet |
 | `tests/jamesui-home.test.js` | Start summary/atmosphere/navigation/portrait/fallback tests | Active |
-| `tests/test_frontend_entrypoint.py` | loader/revision/HA-property regression protection | Critical active test |
+| `tests/test_frontend_entrypoint.py` | loader/revision/Shadow-DOM/HA-property/initial-rerender regression protection | Critical active test |
 | `.github/workflows/validate.yml` | syntax/JSON/loader/Start validation | Active; Markdown-only changes ignored |
 | `PROJECT_STATUS.md` | persistent handover + ownership/removal map | Must stay current |
 
 ## 5. Start page – Alpine Interface
 
-**Status: ⚠️ implemented and CI-verified; practical live-data verification on the OnePlus is still required after the HA-context bridge fix.**
+**Status: ⚠️ implemented and CI-verified; practical live-data and first-load verification on the OnePlus is required with frontend revision r3.**
 
 Current design authority:
 
@@ -142,16 +145,31 @@ Fix applied:
 - integration bumped to 0.5.1
 - cache-visible frontend URLs refreshed
 
-**19:40 screenshot:** Alpine V3 is now visibly loaded, confirming the cache issue is resolved. However live HA context is missing: `HOME ASSISTANT OFFLINE`, weather `unknown`, no temperature/forecast and no meaningful atmosphere selection.
+**19:40 screenshot:** Alpine V3 is visibly loaded, confirming the cache issue is resolved. However live HA context is missing: `HOME ASSISTANT OFFLINE`, weather `unknown`, no temperature/forecast and no meaningful atmosphere selection.
 
-Fix merged after this screenshot:
+Initial attempted fix:
 
-- pre-upgrade HA properties are reapplied after `jamesui-panel` definition
-- frontend cache revision separated from integration release version (`FRONTEND_REVISION = 0.5.1-r2`)
-- nested JS module URLs now derive the revision dynamically instead of hard-coding release query strings
-- no Start markup/CSS/assets were changed by this fix
+- pre-upgrade HA properties were reapplied after `jamesui-panel` definition
+- frontend revision separated from integration release version (`0.5.1-r2`)
 
-**Next visual decision must be based on a fresh screenshot after this fix is loaded.** Do not tune weather image contrast/position from the 19:40 screenshot because its weather state was not live.
+**19:54 screenshot:** symptoms remain, and user reports an additional repeatable behavior: choosing `… → Oberfläche neu laden` returns to the old/base Start presentation; only navigating `Haus → Start` causes the new Alpine Start to appear.
+
+Root cause confirmed from code:
+
+- both the property-upgrade bridge in `jamesui-entry.js` and the enhancement rerender in `jamesui-home-entry.js` used direct `document.querySelectorAll("jamesui-panel")`.
+- the actual HA panel lives below nested Shadow DOM roots, so both queries returned no panel instance.
+- later page navigation works because it invokes `panel.render()` from the existing instance, at which point the already-patched Alpine `_homePage()` is used.
+
+Fix merged as **frontend revision `0.5.1-r3`**:
+
+- one recursive `findJamesPanels()` walks document + open Shadow DOM roots
+- the same finder is exposed by the classic loader and reused by the home-entry bridge
+- pre-upgrade `hass/narrow/route/panel` properties are now applied to the real nested panel
+- after `installHomeExperience()`, the real nested panel is rerendered immediately
+- no Alpine layout, styles, images or Home Assistant entity logic were changed in this bugfix
+- Validate JamesUI #106 is green
+
+**Next visual decision must be based on a fresh screenshot after r3 is actually served.** Do not tune weather image contrast/position from screenshots where HA still shows offline/unknown.
 
 Current Alpine assets:
 
@@ -294,7 +312,9 @@ These are maintenance items, not permission for opportunistic rewrites:
 - frontend JavaScript syntax
 - classic/guarded panel entry
 - frontend revision propagation
+- Shadow-DOM-aware panel discovery
 - pre-upgrade HA property bridge contract
+- post-enhancement initial rerender contract
 - Start/home Node tests
 
 Development workflow:
@@ -310,15 +330,17 @@ The platform's own review/safety checks cannot be bypassed. Reduce delays by avo
 
 ## 15. Current priorities
 
-1. Update/reload JamesUI/Home Assistant so `jamesui-entry.js?v=0.5.1-r2` is served.
-2. Confirm on the OnePlus that `HOME ASSISTANT OFFLINE` disappears and live weather/state values populate.
-3. Capture a fresh portrait screenshot with real weather data.
-4. Only then tune Alpine atmosphere visibility, weather-image height/position, contrast, typography and bottom-strip proportions.
-5. Resolve any remaining real data-source mapping issues (`unknown`, `–`, `Noch nicht verknüpft`) without fake values.
-6. Continue Haus toward room-first presentation.
-7. Replace Klima demo with real entity-driven implementation and remove demo code in the same change.
-8. Complete Media verification.
-9. Replace Tür placeholders when Siedle/camera backend is reliable.
+1. Reload/update JamesUI/Home Assistant so `jamesui-entry.js?v=0.5.1-r3` is served.
+2. Confirm that the **first visible Start render** is Alpine V3 without needing `Haus → Start`.
+3. Confirm that `HOME ASSISTANT OFFLINE` disappears and live weather/state values populate.
+4. Verify `… → Oberfläche neu laden` returns directly to the current Alpine Start.
+5. Capture a fresh portrait screenshot with real weather data.
+6. Then tune Alpine atmosphere visibility, weather-image height/position, contrast, typography and bottom-strip proportions.
+7. Resolve any remaining real data-source mapping issues (`unknown`, `–`, `Noch nicht verknüpft`) without fake values.
+8. Continue Haus toward room-first presentation.
+9. Replace Klima demo with real entity-driven implementation and remove demo code in the same change.
+10. Complete Media verification.
+11. Replace Tür placeholders when Siedle/camera backend is reliable.
 
 ## 16. Working style
 
