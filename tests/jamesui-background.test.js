@@ -3,11 +3,12 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   HOME_BACKGROUND_SCENES,
-  resolveHomeAtmosphere,
-} from "../custom_components/jamesui/frontend/jamesui-home.js";
+  resolveConfiguredAtmosphere,
+  renderBackgroundSettings,
+} from "../custom_components/jamesui/frontend/jamesui-home-background.js";
 
-const homeSource = readFileSync(
-  new URL("../custom_components/jamesui/frontend/jamesui-home.js", import.meta.url),
+const backgroundSource = readFileSync(
+  new URL("../custom_components/jamesui/frontend/jamesui-home-background.js", import.meta.url),
   "utf8"
 );
 const apiSource = readFileSync(
@@ -15,10 +16,17 @@ const apiSource = readFileSync(
   "utf8"
 );
 
-test("manual background mode overrides automatic weather and day period", () => {
-  const manual = resolveHomeAtmosphere("sunny", "day", {
-    mode: "manual",
-    scene: "cloudy-night",
+const autoAtmosphere = {
+  key: "clear-day",
+  asset: "/jamesui_static/assets/alpine/clear-day.webp",
+  tone: "day",
+  weatherClass: "clear",
+};
+
+test("manual background mode overrides the automatic scene without changing weather data", () => {
+  const manual = resolveConfiguredAtmosphere(autoAtmosphere, {
+    background_mode: "manual",
+    background_scene: "cloudy-night",
   });
   assert.equal(manual.key, "cloudy-night");
   assert.equal(manual.tone, "night");
@@ -26,9 +34,12 @@ test("manual background mode overrides automatic weather and day period", () => 
   assert.match(manual.asset, /cloudy-night\.webp$/);
 });
 
-test("automatic background mode remains the default and invalid manual scenes fall back safely", () => {
-  assert.equal(resolveHomeAtmosphere("rainy", "day").key, "rain-day");
-  assert.equal(resolveHomeAtmosphere("sunny", "night", { mode: "manual", scene: "does-not-exist" }).key, "clear-night");
+test("automatic mode is the default and invalid manual scenes fall back safely", () => {
+  assert.deepEqual(resolveConfiguredAtmosphere(autoAtmosphere, {}), autoAtmosphere);
+  assert.deepEqual(
+    resolveConfiguredAtmosphere(autoAtmosphere, { background_mode: "manual", background_scene: "does-not-exist" }),
+    autoAtmosphere
+  );
 });
 
 test("exposes the eight approved manual Alpine background scenes", () => {
@@ -39,19 +50,29 @@ test("exposes the eight approved manual Alpine background scenes", () => {
   assert.ok(HOME_BACKGROUND_SCENES.every((scene) => scene.label && scene.asset.endsWith(".webp")));
 });
 
-test("Start settings hook into the existing config flow instead of a parallel settings system", () => {
-  assert.match(homeSource, /_homeSettingsPage/);
-  assert.match(homeSource, /_saveHomeConfig/);
-  assert.match(homeSource, /data-config-background-mode/);
-  assert.match(homeSource, /data-config-background-scene/);
+test("renders background controls for the existing Start settings flow", () => {
+  const html = renderBackgroundSettings({ background_mode: "manual", background_scene: "fog" });
+  assert.match(html, /data-config-background-mode/);
+  assert.match(html, /value="manual" selected/);
+  assert.match(html, /data-config-background-scene/);
+  assert.match(html, /value="fog" selected/);
+  assert.match(html, /Automatisch/);
+  assert.match(html, /Bewölkte Nacht/);
+});
+
+test("Start background controls reuse the existing Home config save path", () => {
+  assert.match(backgroundSource, /_homeSettingsPage/);
+  assert.match(backgroundSource, /_saveHomeConfig/);
+  assert.match(backgroundSource, /jamesui\/config\/update/);
   assert.match(apiSource, /background_mode/);
   assert.match(apiSource, /background_scene/);
   assert.match(apiSource, /clear-day/);
   assert.match(apiSource, /cloudy-night/);
 });
 
-test("r7 keeps photo visibility by using a restrained overlay instead of the old near-black veil", () => {
-  assert.doesNotMatch(homeSource, /rgba\(8,10,11,\.84\)/);
-  assert.doesNotMatch(homeSource, /rgba\(8,9,10,\.88\)/);
-  assert.match(homeSource, /alpine-atmosphere/);
+test("r7 replaces the old near-black veil with a restrained photo overlay", () => {
+  assert.doesNotMatch(backgroundSource, /rgba\(8,10,11,\.84\)/);
+  assert.doesNotMatch(backgroundSource, /rgba\(8,9,10,\.88\)/);
+  assert.match(backgroundSource, /rgba\(8,10,11,\.46\)/);
+  assert.match(backgroundSource, /rgba\(8,9,10,\.62\)/);
 });
