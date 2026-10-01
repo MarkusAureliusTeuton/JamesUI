@@ -37,5 +37,8 @@ jobs:
       - name: Test Home Assistant panel entrypoint
         run: python -m unittest tests/test_frontend_entrypoint.py
 
+      - name: Validate Alpine atmosphere assets
+        run: python -m unittest tests/test_alpine_assets.py
+
       - name: Test home status model
         run: node --experimental-default-type=module --test tests/jamesui-home.test.js
