@@ -53,13 +53,20 @@ class FrontendEntrypointTest(unittest.TestCase):
         self.assertNotRegex(entry, r'jamesui-(?:panel|home|home-entry)\.js\?v=\d')
         self.assertNotRegex(home_entry, r'jamesui-home\.js\?v=\d')
 
-    def test_loader_reapplies_properties_set_before_custom_element_upgrade(self):
+    def test_loader_finds_nested_panel_and_rerenders_after_home_enhancement(self):
         entry = Path("custom_components/jamesui/frontend/jamesui-entry.js").read_text(encoding="utf-8")
+        home_entry = Path("custom_components/jamesui/frontend/jamesui-home-entry.js").read_text(encoding="utf-8")
+
+        self.assertIn("findJamesPanels", entry)
+        self.assertIn("shadowRoot", entry)
+        self.assertIn("window.__jamesUIFindPanels", entry)
         self.assertIn("upgradePredefinedProperty", entry)
-        self.assertIn("Object.prototype.hasOwnProperty.call(element, property)", entry)
-        self.assertIn("delete element[property]", entry)
-        self.assertIn("element[property] = value", entry)
         self.assertIn('["hass", "narrow", "route", "panel"]', entry)
+        self.assertNotIn('document.querySelectorAll("jamesui-panel")', entry)
+
+        self.assertIn("window.__jamesUIFindPanels", home_entry)
+        self.assertIn("panel.render?.()", home_entry)
+        self.assertNotIn('document.querySelectorAll("jamesui-panel")', home_entry)
 
 
 if __name__ == "__main__":
