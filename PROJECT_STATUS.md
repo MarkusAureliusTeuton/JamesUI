@@ -17,7 +17,8 @@ Core rules:
 - Automatic entity/device/area discovery first; manual mapping only where required.
 - Do not hard-code entity IDs for normal use.
 - Do not add dependencies or abstractions without a concrete need.
-- Primary target: **OnePlus Pad 2 landscape**. Fully Kiosk may be the kiosk shell, but JamesUI must not depend on Fully.
+- Primary target: **OnePlus Pad 2 / wall tablet in portrait orientation**. Portrait is the design authority for Start and future wall-tablet UX; landscape/browser remains supported as a secondary responsive layout.
+- Fully Kiosk may be the kiosk shell, but JamesUI must not depend on Fully.
 
 ## 2. Current release / repository state
 
@@ -33,9 +34,9 @@ Active primary navigation:
 
 Current Start-page direction: **Alpine Interface**.
 
-The Alpine Start implementation, eight local WebP atmosphere assets and the V2 visual refinement are merged into `main`. Pull-request validation passed before the V2 merge. Practical visual acceptance on laptop and OnePlus Pad 2/Fully is still required.
+The Alpine Start implementation, eight local WebP atmosphere assets, V2 flattening pass and V3 portrait-first pass are merged into `main`. `Validate JamesUI` run #102 for commit `c19810e` completed successfully. Practical visual acceptance on the real portrait wall tablet is still required.
 
-The remote branch `feature/startpage-alpine-interface` is a temporary development branch only. It must be kept synchronized with `main` after completed batches and is never an alternate source of truth.
+Temporary feature branches are development aids only. `main` is always the implementation source of truth; completed branches should be synchronized or retired rather than becoming alternate states.
 
 ## 3. Active runtime chain – do not casually change
 
@@ -64,10 +65,10 @@ Reason for this structure: a previous direct ES-module panel entry caused a blan
 | `frontend/jamesui-entry.js` | guarded classic entry loader | Active critical infrastructure |
 | `frontend/jamesui-home-entry.js` | ES-module bridge for Start enhancement | Active critical infrastructure |
 | `frontend/jamesui-panel.js` | stable application shell plus Haus, Klima, Medien, Tür, settings, overlays, base/fallback Start implementation and shared CSS | Active, but too large; refactor only module-by-module when justified |
-| `frontend/jamesui-home.js` | current Alpine Start page, home-status summary, atmosphere mapping and Alpine Start CSS | Active Start implementation |
+| `frontend/jamesui-home.js` | current Alpine Start page, home-status summary, atmosphere mapping and portrait/landscape Start CSS | Active Start implementation |
 | `frontend/assets/alpine/` | current realistic Alpine atmosphere WebP assets | Active Start assets |
 | `frontend/assets/weather/` | older 28 SVG weather backgrounds | **Intentional fallback**, not dead code yet |
-| `tests/jamesui-home.test.js` | Start status, atmosphere, navigation, structure and fallback tests | Active |
+| `tests/jamesui-home.test.js` | Start status, atmosphere, navigation, structure, portrait contract and fallback tests | Active |
 | `tests/test_frontend_entrypoint.py` | loader regression protection | Active critical test |
 | `.github/workflows/validate.yml` | syntax + JSON + loader + Start tests | Active; Markdown-only changes are intentionally ignored |
 | `PROJECT_STATUS.md` | project handover / architecture / cleanup map | Must be maintained continuously |
@@ -76,7 +77,7 @@ Reason for this structure: a previous direct ES-module panel entry caused a blan
 
 ## 5. Start page – Alpine Interface
 
-**Status: ⚠️ implemented and CI-verified; practical visual test still required.**
+**Status: ⚠️ implemented and CI-verified; practical portrait visual test still required.**
 
 Implemented in `jamesui-home.js`:
 
@@ -99,9 +100,26 @@ The V2 pass deliberately reused the existing Alpine assets and architecture inst
 - atmosphere image framing/background position tuned instead of generating another image family
 - weather facts changed from the more block-like `alpine-facts` grid into semantic `dl.alpine-weather-facts` with one hairline and free-standing facts
 - function strip made visually lighter: lower height, smaller icons, weaker background, subtler separators
-- warm accent is now expressed through a shared `--alpine-accent` variable with dusk/night variation rather than many unrelated hard-coded accents
-- root now exposes `data-atmosphere="..."` for a clear, inspectable visual state without changing weather logic
-- no Home Assistant entities, navigation targets, loader files or asset files were changed by this refinement
+- warm accent is expressed through shared `--alpine-accent` with dusk/night variation
+- root exposes `data-atmosphere="..."` for an inspectable visual state
+- no Home Assistant entities, navigation targets, loader files or asset files changed
+
+### V3 portrait-first refinement merged 2026-10-01
+
+V3 responds directly to the real portrait wall-tablet screenshot. It keeps the V2 architecture and assets but adds a dedicated `@media(orientation:portrait)` layout instead of letting a landscape/desktop layout merely collapse.
+
+Portrait behavior:
+
+- portrait is now the primary Start layout target
+- root carries `alpine-home-v3` while retaining `alpine-home-v2` compatibility marker
+- Start surface targets the visible wall-tablet viewport height so the page is intended to read as one composed screen rather than a long dashboard
+- Alpine weather image uses layered background sizing `100% 100%, 100% 100%, 100% auto`; the realistic 16:9 weather scene is therefore shown across the full portrait width at the top instead of being aggressively cropped by `cover`
+- lower portion transitions into a near-black stone/metal-like gradient rather than another card/container, preserving Alpine/Chalet character without a fictional room image
+- weather/time remains the dominant visual read in the upper portion
+- `Zuhause` becomes a compact horizontal status region with moon info secondary on the right
+- the same single `Haus | Klima | Medien | Tür` functional strip remains four-wide on the OnePlus-class portrait width; it does not become a duplicate direct-access card grid
+- a separate narrower-phone fallback below 760 px may use 2×2 controls, but this is not the wall-tablet target
+- no new image family, frontend module, entity logic or loader path was added
 
 Current local Alpine assets:
 
@@ -116,11 +134,12 @@ Current local Alpine assets:
 
 Design target:
 
-- 70–80% visual weight on function/information, 20–30% atmosphere
+- weather and day/night must be visually recognizable immediately from the image, not only from text
+- approximately 70–80% visual weight on function/information and 20–30% on atmosphere overall, while the upper weather zone may be visually stronger
 - realistic sky/horizon/mountains/trees/subtle terrace cues
 - no dominant fictional living room
-- dark/near-black, smoked glass/anthracite, restrained champagne/warm-metal accents
-- fine separators and typography hierarchy instead of generic rounded-card grids
+- Alpine-Chic/Chalet character through dark stone/anthracite, warm champagne/wood-like accent temperature, fine separators and calm typography rather than literal decorative chalet props
+- no generic rounded-card grid
 
 Approved design spec: `docs/superpowers/specs/2026-10-01-startpage-alpine-interface-design.md`
 
@@ -132,7 +151,7 @@ These are **not currently considered dead code**. They provide a stable fallback
 
 **Future removal rule:** only remove the old base Start markup, `_weatherBackground()` dependency and `assets/weather/` together after:
 
-1. the Alpine Start has been practically proven stable on laptop + OnePlus Pad 2/Fully,
+1. the Alpine Start has been practically proven stable on the portrait OnePlus/Fully target plus normal browser use,
 2. the desired long-term loader/module architecture is decided,
 3. a test proves JamesUI still has a safe render path when the enhancement cannot load.
 
@@ -275,7 +294,14 @@ These are known maintenance items, **not permission to refactor them opportunist
 - guarded panel entrypoint test
 - Start/home Node tests
 
-Start tests now also pin the V2 structure (`alpine-home-v2`, `data-atmosphere`, semantic `alpine-weather-facts`) in addition to the existing state/fallback/navigation tests.
+Start tests pin:
+
+- state/fallback/navigation behavior
+- local Alpine asset mapping
+- V2 structure (`alpine-home-v2`, `data-atmosphere`, semantic `alpine-weather-facts`)
+- V3 portrait contract (`alpine-home-v3`, dedicated portrait media query, full-width uncropped atmosphere sizing, compact portrait status and single four-wide functional strip)
+
+Latest functional validation: **Validate JamesUI #102 → success** for `feat: make Alpine Start portrait-first` (`c19810e`).
 
 **Noise-reduction rule:** Markdown-only changes are ignored by the workflow. This allows `PROJECT_STATUS.md`, README and design documentation to be maintained without running the whole software validation every time.
 
@@ -284,25 +310,25 @@ Development workflow:
 1. inspect existing implementation/assets before creating anything new,
 2. make related changes as one cohesive batch,
 3. run focused/local checks first where possible,
-4. keep intentionally failing TDD states off `main`,
+4. keep intentionally failing TDD states on a feature branch, not `main`,
 5. do not open a PR merely to trigger checks if direct feature-branch development is sufficient,
-6. for UI batches where local runtime execution is unavailable, use one cohesive PR validation rather than multiple CI-triggering intermediate commits,
-7. merge only the complete green state to `main`,
-8. update this status file directly afterwards if it is documentation-only.
+6. fast-forward/merge only the cohesive implementation batch to `main`, producing one meaningful main validation run,
+7. update this status file directly afterwards if it is documentation-only.
 
 The platform's own safety/review systems cannot be bypassed. To reduce long waits, avoid unnecessary image-generation/repeated binary operations and reuse existing generated/repository assets whenever possible.
 
 ## 16. Current priorities
 
-1. Practical visual verification of Alpine Start V2 on laptop and Fully/OnePlus Pad 2.
-2. From a real screenshot, tune only remaining spacing/contrast/typography issues rather than starting another redesign.
-3. Improve Haus toward room-first presentation without duplicating discovery/control logic.
-4. Replace Klima demo with real entity-driven implementation and remove demo code in the same change.
-5. Complete practical Media verification, then generalize receiver naming only if needed.
-6. Replace Tür placeholders when Siedle/camera backend data is reliable.
-7. Simplify Settings/mapping UX.
-8. Clean version/cache-busting duplication and settle HACS release workflow.
-9. Only after Alpine Start is proven: decide whether to retire base Start + `assets/weather/` fallback together.
+1. Update/reload JamesUI on the portrait wall tablet and capture a new screenshot of Alpine Start V3.
+2. Tune only remaining portrait spacing, text scale, weather-image height/position, contrast and bottom-strip proportions from that screenshot.
+3. Resolve Start data-source mapping where the live UI still shows `unknown`, `–` or `Noch nicht verknüpft`; do not mask missing backend data with fake values.
+4. Improve Haus toward room-first presentation without duplicating discovery/control logic.
+5. Replace Klima demo with real entity-driven implementation and remove demo code in the same change.
+6. Complete practical Media verification, then generalize receiver naming only if needed.
+7. Replace Tür placeholders when Siedle/camera backend data is reliable.
+8. Simplify Settings/mapping UX.
+9. Clean version/cache-busting duplication and settle HACS release workflow.
+10. Only after Alpine Start is proven: decide whether to retire base Start + `assets/weather/` fallback together.
 
 ## 17. Working style
 
@@ -322,6 +348,7 @@ Other working rules:
 - no duplicate implementation alongside a temporary/legacy path: migrate and remove deliberately
 - preserve working fallback code until its replacement is proven
 - reuse existing visuals/assets before generating new ones
+- portrait wall-tablet behavior is primary; landscape/browser adaptations must not drive the Start design backwards
 - keep `PROJECT_STATUS.md` current enough that a new chat can continue without reconstructing architectural intent
 
 ## 18. Next-chat instruction
