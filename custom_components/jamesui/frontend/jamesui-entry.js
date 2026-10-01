@@ -1,9 +1,9 @@
 (() => {
   const current = document.currentScript?.src || `${window.location.origin}/jamesui_static/jamesui-entry.js`;
   const root = new URL(".", current);
-  const panelUrl = new URL("jamesui-panel.js?v=0.5.0", root).href;
-  const homeModuleUrl = new URL("jamesui-home.js?v=0.5.0", root).href;
-  const homeEntryUrl = new URL("jamesui-home-entry.js?v=0.5.0", root).href;
+  const panelUrl = new URL("jamesui-panel.js?v=0.5.1", root).href;
+  const homeModuleUrl = new URL("jamesui-home.js?v=0.5.1", root).href;
+  const homeEntryUrl = new URL("jamesui-home-entry.js?v=0.5.1", root).href;
 
   const panelScript = document.createElement("script");
   panelScript.src = panelUrl;
