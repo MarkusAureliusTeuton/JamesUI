@@ -1,18 +1,38 @@
 (() => {
-  const current = document.currentScript?.src || `${window.location.origin}/jamesui_static/jamesui-entry.js`;
+  const currentSrc = document.currentScript?.src || `${window.location.origin}/jamesui_static/jamesui-entry.js`;
+  const current = new URL(currentSrc, window.location.origin);
   const root = new URL(".", current);
-  const panelUrl = new URL("jamesui-panel.js?v=0.5.1", root).href;
-  const homeModuleUrl = new URL("jamesui-home.js?v=0.5.1", root).href;
-  const homeEntryUrl = new URL("jamesui-home-entry.js?v=0.5.1", root).href;
+  const revision = current.searchParams.get("v") || "dev";
+
+  const assetUrl = (path) => {
+    const url = new URL(path, root);
+    url.searchParams.set("v", revision);
+    return url.href;
+  };
+
+  const upgradePredefinedProperty = (element, property) => {
+    if (!Object.prototype.hasOwnProperty.call(element, property)) return;
+    const value = element[property];
+    delete element[property];
+    element[property] = value;
+  };
+
+  const panelUrl = assetUrl("jamesui-panel.js");
+  const homeEntryUrl = assetUrl("jamesui-home-entry.js");
 
   const panelScript = document.createElement("script");
   panelScript.src = panelUrl;
   panelScript.async = false;
   panelScript.addEventListener("load", () => {
+    document.querySelectorAll("jamesui-panel").forEach((panel) => {
+      ["hass", "narrow", "route", "panel"].forEach((property) => {
+        upgradePredefinedProperty(panel, property);
+      });
+    });
+
     const enhancementScript = document.createElement("script");
     enhancementScript.type = "module";
     enhancementScript.src = homeEntryUrl;
-    enhancementScript.dataset.homeModule = homeModuleUrl;
     document.head.appendChild(enhancementScript);
   });
   panelScript.addEventListener("error", () => {
