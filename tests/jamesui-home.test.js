@@ -194,3 +194,11 @@ test("defines v4 as a portrait-first visible Alpine weather hero", () => {
   assert.match(homeSource, /grid-template-columns:minmax\(0,1fr\) auto/);
   assert.match(homeSource, /grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
 });
+
+test("keeps the Alpine atmosphere above the host background and below the UI surface", () => {
+  assert.match(homeSource, /\.alpine-atmosphere\{z-index:1;/);
+  assert.match(homeSource, /\.alpine-atmosphere-fallback\{z-index:0;/);
+  assert.match(homeSource, /\.alpine-ambient-shade\{z-index:2;/);
+  assert.match(homeSource, /\.alpine-surface\{position:relative;z-index:3;/);
+  assert.doesNotMatch(homeSource, /\.alpine-atmosphere\{z-index:-/);
+});
