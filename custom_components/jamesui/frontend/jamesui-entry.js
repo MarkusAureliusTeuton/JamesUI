@@ -10,6 +10,26 @@
     return url.href;
   };
 
+  const findJamesPanels = () => {
+    const panels = [];
+    const visitedRoots = new Set();
+
+    const visit = (searchRoot) => {
+      if (!searchRoot?.querySelectorAll || visitedRoots.has(searchRoot)) return;
+      visitedRoots.add(searchRoot);
+
+      searchRoot.querySelectorAll("jamesui-panel").forEach((panel) => panels.push(panel));
+      searchRoot.querySelectorAll("*").forEach((element) => {
+        if (element.shadowRoot) visit(element.shadowRoot);
+      });
+    };
+
+    visit(document);
+    return panels;
+  };
+
+  window.__jamesUIFindPanels = findJamesPanels;
+
   const upgradePredefinedProperty = (element, property) => {
     if (!Object.prototype.hasOwnProperty.call(element, property)) return;
     const value = element[property];
@@ -24,7 +44,7 @@
   panelScript.src = panelUrl;
   panelScript.async = false;
   panelScript.addEventListener("load", () => {
-    document.querySelectorAll("jamesui-panel").forEach((panel) => {
+    findJamesPanels().forEach((panel) => {
       ["hass", "narrow", "route", "panel"].forEach((property) => {
         upgradePredefinedProperty(panel, property);
       });
