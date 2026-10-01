@@ -2,343 +2,317 @@
 
 _Last updated: 2026-10-01_
 
-This is the persistent handover for continuing JamesUI work across chats. Read this file first, then inspect the relevant repository files before changing code. After substantive JamesUI decisions or implementation steps, update this file again.
+This file is the persistent **single source of truth for project intent, architecture, active implementation, temporary compatibility code, cleanup rules and next work**. In every new JamesUI chat: read this file first, then inspect only the repository files relevant to the requested work. After every substantive design, implementation, removal or architecture decision, update this file in the same work batch.
 
-## 1. Goal
+## 1. Product goal
 
-JamesUI is a tablet-first Home Assistant interface for the user's KNX/Home Assistant home. It should feel like a calm, premium native smart-home application rather than a collection of Lovelace cards.
+JamesUI is a tablet-first Home Assistant interface for the user's KNX/Home Assistant home. It should feel like a calm, premium, bespoke architectural control surface rather than a Lovelace/card dashboard.
 
-Core principles:
+Core rules:
 
-- Home Assistant remains backend/source of truth.
+- Home Assistant is backend/source of truth.
 - KNX remains the primary building-automation layer.
 - JamesUI owns presentation, navigation and interaction.
-- Local operation preferred; avoid unnecessary cloud dependence.
-- Automatic entity/device/area detection first; manual mapping only where required.
-- No hard-coded entity IDs in normal use.
-- Keep architecture maintainable and pragmatic; do not overengineer.
+- Local operation is preferred; avoid unnecessary cloud dependencies.
+- Automatic entity/device/area discovery first; manual mapping only where required.
+- Do not hard-code entity IDs for normal use.
+- Do not add dependencies or abstractions without a concrete need.
+- Primary target: **OnePlus Pad 2 landscape**. Fully Kiosk may be the kiosk shell, but JamesUI must not depend on Fully.
 
-Primary target device: **OnePlus Pad 2**, landscape. Fully Kiosk may provide kiosk/display-shell behavior, but JamesUI must not depend on Fully.
-
-## 2. Repository / architecture
+## 2. Current release / repository state
 
 Repository: `MarkusAureliusTeuton/JamesUI`
 
-Branch: `main`
+Default branch: `main`
 
-Current integration version: **v0.5.0**
+Integration / manifest version: **0.5.0**
 
-JamesUI is a Home Assistant custom integration with an integrated custom frontend panel.
+Active primary navigation:
 
-Important files:
+`Start | Haus | Klima | Medien | Tür`
 
-```text
-custom_components/jamesui/
-├── __init__.py
-├── api.py
-├── config_flow.py
-├── const.py
-├── manifest.json
-└── frontend/
-    ├── jamesui-entry.js
-    ├── jamesui-panel.js
-    ├── jamesui-home-entry.js
-    ├── jamesui-home.js
-    └── assets/
-        ├── weather/
-        └── alpine/
+Current Start-page direction: **Alpine Interface**.
 
-tests/
-├── jamesui-home.test.js
-└── test_frontend_entrypoint.py
+The Alpine Start implementation and eight local WebP atmosphere assets are merged into `main`. GitHub Actions validation passed after the merge and after the subsequent status update. Practical visual acceptance on laptop and OnePlus Pad 2/Fully is still required.
 
-.github/workflows/validate.yml
-```
+A merged development branch `feature/startpage-alpine-interface` may still exist remotely. `main` is ahead of it; it is not an alternate source of truth and must not be used as the basis for new work.
 
-**Current loader architecture:** Home Assistant registers one classic `_panel_custom.js_url`. `FRONTEND_FILE` points to `jamesui-entry.js`, which remains a classic script with no top-level `import`/`export`. It loads the stable `jamesui-panel.js`, then injects `jamesui-home-entry.js` as `type="module"`. That module imports `jamesui-home.js` and installs the Start-page enhancement only after `jamesui-panel` is defined.
+## 3. Active runtime chain – do not casually change
 
-This replaces the failed 2026-10-01 direct ES-module entry approach that caused a blank/black panel. Loader structure is protected by CI regression tests and must remain unchanged unless Home Assistant panel loading is deliberately redesigned.
+Home Assistant loads JamesUI through this chain:
 
-## 3. Navigation
+1. `custom_components/jamesui/__init__.py` registers `/jamesui_static` and the custom panel.
+2. `custom_components/jamesui/const.py` sets `FRONTEND_FILE = "jamesui-entry.js"`.
+3. `frontend/jamesui-entry.js` is a **classic script**. It loads `jamesui-panel.js` first.
+4. After the stable panel loads, `jamesui-entry.js` injects `jamesui-home-entry.js` as `type="module"`.
+5. `jamesui-home-entry.js` imports `jamesui-home.js`, waits for `jamesui-panel`, installs the Start enhancement and rerenders the panel.
+6. `jamesui-home.js` overrides only the Start-page rendering/styles; the remaining modules stay in `jamesui-panel.js`.
 
-Approved primary navigation remains:
+Reason for this structure: a previous direct ES-module panel entry caused a blank/black JamesUI screen. `tests/test_frontend_entrypoint.py` protects the working loader structure.
 
-```text
-Start | Haus | Klima | Medien | Tür
-```
+**Removal rule:** never delete or bypass `jamesui-entry.js` / `jamesui-home-entry.js` independently. If the loader is redesigned, change the whole chain together and keep the regression test green.
 
-Do not replace this with a generic sidebar.
+## 4. Repository map / ownership
 
-## 4. Visual direction
+| Path | Responsibility | Status / rule |
+| --- | --- | --- |
+| `custom_components/jamesui/__init__.py` | HA integration setup, static frontend path, custom panel registration | Stable infrastructure |
+| `custom_components/jamesui/const.py` | domain, panel constants, frontend entry, integration version | Stable; version is duplicated elsewhere, see cleanup backlog |
+| `custom_components/jamesui/api.py` | WebSocket config read/update for Start + Media mappings | Active |
+| `custom_components/jamesui/config_flow.py` | single-instance integration setup | Active |
+| `custom_components/jamesui/manifest.json` | HA integration metadata/version | Active |
+| `frontend/jamesui-entry.js` | guarded classic entry loader | Active critical infrastructure |
+| `frontend/jamesui-home-entry.js` | ES-module bridge for Start enhancement | Active critical infrastructure |
+| `frontend/jamesui-panel.js` | stable application shell plus Haus, Klima, Medien, Tür, settings, overlays, base/fallback Start implementation and shared CSS | Active, but too large; refactor only module-by-module when justified |
+| `frontend/jamesui-home.js` | current Alpine Start page, home-status summary, atmosphere mapping and Alpine Start CSS | Active Start implementation |
+| `frontend/assets/alpine/` | current realistic Alpine atmosphere WebP assets | Active Start assets |
+| `frontend/assets/weather/` | older 28 SVG weather backgrounds | **Intentional fallback**, not dead code yet |
+| `tests/jamesui-home.test.js` | Start status, atmosphere, navigation, structure and fallback tests | Active |
+| `tests/test_frontend_entrypoint.py` | loader regression protection | Active critical test |
+| `.github/workflows/validate.yml` | syntax + JSON + loader + Start tests | Active; Markdown-only changes are intentionally ignored |
+| `PROJECT_STATUS.md` | project handover / architecture / cleanup map | Must be maintained continuously |
+| `docs/superpowers/specs/...startpage...md` | approved Alpine Start design record | Historical design authority for this feature |
+| `docs/superpowers/plans/...startpage...md` | implementation plan for Alpine Start | Completed plan; retain as development record |
 
-Approved direction: **Alpine Interface**.
+## 5. Start page – Alpine Interface
 
-JamesUI should feel like a bespoke architectural / premium vehicle HMI rather than a standard smart-home dashboard.
+**Status: ⚠️ implemented and CI-verified; practical visual test still required.**
 
-Design principles:
+Implemented in `jamesui-home.js`:
 
-- dark / near-black base
-- smoked-glass / anthracite surfaces
-- restrained champagne / warm-metal accent
-- subtle natural-stone / warm-wood cues, not literal decorative chalet imagery
-- strong hierarchy and large readable information
-- fine separators and integrated information regions instead of rounded-card grids
-- approximately 70–80% visual weight on information/UI and 20–30% on atmosphere/background
-- realistic outside atmosphere should communicate weather/day-night quickly but remain subordinate to readability
-
-Avoid a dominant fictional living room/chalet render. Background imagery should focus on sky, horizon, mountains, trees and subtle terrace/architecture silhouettes.
-
-Approved design spec:
-`docs/superpowers/specs/2026-10-01-startpage-alpine-interface-design.md`
-
-Implementation plan:
-`docs/superpowers/plans/2026-10-01-startpage-alpine-interface.md`
-
-## 5. Start page – current state
-
-**Status: ⚠️ Alpine Interface implementation is merged into `main` and CI-verified; practical laptop + OnePlus Pad 2/Fully verification is still required before final visual acceptance.**
-
-Implemented on `main`:
-
-- one composed Alpine Start surface instead of a generic tile/card grid
-- large time/date + current weather hierarchy
-- current temperature, condition, high/low, precipitation, humidity, wind, illuminance and sunrise/sunset remain available
-- compact `Zuhause` status region using live Home Assistant state summaries
-- integrated low-profile functional strip for `Haus`, `Klima`, `Medien`, `Tür`
-- four function items reuse existing `data-nav` routing and stay live-state-driven
-- moon information reduced to a compact secondary note
-- local realistic alpine atmosphere assets under `assets/alpine/`
-- atmosphere selection mapped from Home Assistant weather condition + sun period
-- graceful fallback for unknown/missing weather data
+- one composed Start surface instead of a card/tile grid
+- time/date and weather as primary hierarchy
+- current temperature, condition, high/low, precipitation, humidity, wind, illuminance, sunrise/sunset
+- compact `Zuhause` status using live HA state summaries
+- low-profile live functional strip for `Haus`, `Klima`, `Medien`, `Tür`
+- compact secondary moon information
+- atmosphere mapping from HA weather condition + sun period
+- graceful missing-data fallback
 - no runtime cloud-image dependency
-- generic `home-nav-card` / `home-nav-grid` / repeated direct-access tile presentation removed from the redesigned Start page
 
-Initial local atmosphere set:
+Current local Alpine assets:
 
-- clear day
-- cloudy day
-- rain day
-- snow day
-- dusk/twilight
-- clear night
-- cloudy night
-- fog
+- `clear-day.webp`
+- `cloudy-day.webp`
+- `rain-day.webp`
+- `snow-day.webp`
+- `dusk.webp`
+- `clear-night.webp`
+- `cloudy-night.webp`
+- `fog.webp`
 
-The implementation is intentionally contained in `jamesui-home.js`; the stable base `jamesui-panel.js` and guarded loader were not redesigned for this work.
+Design target:
 
-Home status continues to summarize:
+- 70–80% visual weight on function/information, 20–30% atmosphere
+- realistic sky/horizon/mountains/trees/subtle terrace cues
+- no dominant fictional living room
+- dark/near-black, smoked glass/anthracite, restrained champagne/warm-metal accents
+- fine separators and typography hierarchy instead of generic rounded-card grids
 
-- lights on
-- monitored devices offline
-- low battery states
-- average current climate temperature where available
-- active media playback
-- open door/garage/opening binary sensors with door/gate/garage naming
+Approved design spec: `docs/superpowers/specs/2026-10-01-startpage-alpine-interface-design.md`
 
-Normal state: `Alles ruhig`.
-Relevant deviations: `Aufmerksamkeit nötig`.
+## 6. Why the old Start implementation/assets still exist
 
-Automated home tests cover atmosphere mapping, local asset contract, navigation model, Alpine structure, calm/alert states and missing optional data. Pull-request CI and the post-merge `main` validation both passed before this status update.
+`jamesui-panel.js` still contains the older base `_homePage()` and `_weatherBackground()` logic, and `assets/weather/` still contains 28 SVG states.
 
-## 6. Haus module
+These are **not currently considered dead code**. They provide a stable fallback if the Start enhancement/module fails to load. Deleting only the SVGs or only the base `_homePage()` would make that fallback incomplete.
 
-**Status: ⚠️ functional, not final**
+**Future removal rule:** only remove the old base Start markup, `_weatherBackground()` dependency and `assets/weather/` together after:
 
-Implemented:
+1. the Alpine Start has been practically proven stable on laptop + OnePlus Pad 2/Fully,
+2. the desired long-term loader/module architecture is decided,
+3. a test proves JamesUI still has a safe render path when the enhancement cannot load.
 
-- HA Area Registry
-- Device Registry
-- Entity Registry
-- category detection
-- room/area grouping
-- summaries
-- detail views
-- toggles/service calls
+Until then, retain the fallback intentionally and label it as compatibility code rather than repeatedly rediscovering it as a possible “old corpse.”
 
-Current categories include lights, sockets, ventilation and device-health/status entities.
+## 7. Haus module
 
-Open improvements:
+**Status: ⚠️ functional, not final.**
 
-- classification edge cases
-- KNX-specific naming/mapping
-- entities without proper HA area assignment
-- multiple entities belonging to one physical device
-- presentation should move further toward room summaries rather than raw entity lists
+Implemented in `jamesui-panel.js`:
 
-## 7. Lighting / blinds
+- HA Area / Device / Entity Registry loading
+- lights, sockets, fans/ventilation and device-health classification
+- house summary and availability/update/low-battery counts
+- room/area grouping in category detail views
+- light/switch/fan toggles
 
-Lighting target:
+Next intended change: presentation should become more room-oriented and less raw-entity/category-oriented while preserving working toggles and automatic HA area assignment.
 
-- room state / count active
-- room/group control
-- on/off, dimming, optional color temperature/color
-- scenes/quick actions
+Do not duplicate these discovery helpers in a new module unless that module becomes the deliberate owner and callers are migrated together.
 
-Blinds/covers target:
+## 8. Klima module – temporary implementation map
 
-- room overview
-- open/closed/intermediate position
-- up/down/stop
-- optional slat position
-- group control and house overview
+**Status: 🚧 not functionally implemented.**
 
-KNX remains responsible for underlying control.
+Current temporary/demo code is in `jamesui-panel.js`:
 
-**Status: 🚧 further refinement required**
+- `_climatePage()`
+- `_climateRoom()`
+- hard-coded room list: Wohnzimmer, Küche, Schlafzimmer, Kinderzimmer, Bad, Flur
+- demo temperatures and disabled setpoint controls
 
-## 8. Climate
+**Removal/replacement rule:** when real climate integration is implemented, replace `_climatePage()` / `_climateRoom()` and their demo data in the same change. Do not leave a second parallel climate renderer behind.
 
-Target:
+Target data:
 
-- detect `climate.*`
-- actual/target temperature
+- `climate.*` discovery
+- actual / target temperature
 - heating state
 - optional humidity/outside temperature
-- heating-circuit state
-- programs/modes/helpers
+- room mapping for KNX entities where HA climate entities alone are insufficient
+- programs/modes/helpers only where there is a real backend entity/helper to control
 
-JamesUI is not the heating controller. Regulation remains in KNX, Home Assistant or dedicated heating logic.
+JamesUI is not the heating controller.
 
-Separate KNX entities may require mapping for actual temperature, target value and status.
+## 9. Medien module
 
-**Status: 🚧 not finished**
+**Status: ⚠️ substantial implementation exists; practical end-to-end verification still needed.**
 
-## 9. Media
+Current implementation is in `jamesui-panel.js` plus media config keys in `api.py`.
 
-**Status: ⚠️ substantial frontend/logic exists; end-to-end practical verification still required**
+Existing paths:
 
-Current direction:
+- Home Assistant media players
+- Spotify
+- Music Assistant
+- receiver preparation
+- transport / volume / source / now-playing
+- playlist URI normalization
 
-```text
-JamesUI Media
-    ↓
-Home Assistant / Music Assistant
-    ↓
-Receiver / TV / player
-```
+Current vendor-specific implementation that must be generalized if receiver support expands:
 
-Existing work includes:
+- `_onkyoEntityId()`
+- `_onkyoNetworkSource()`
+- `_prepareOnkyo()`
+- `media_onkyo_entity`
+- `media_onkyo_source`
 
-- media page
-- player presentation
-- transport controls
-- volume
-- source selection
-- Spotify playlist start logic
-- Home Assistant media-player support
-- Music Assistant path
-- automatic Onkyo network-input preparation for Spotify playback
-- live media state updates
-- Spotify URI normalization work
+**Removal/replacement rule:** do not simply add a second generic receiver path beside these. Introduce the generic abstraction, migrate the existing Onkyo path to it, update config compatibility, then remove/alias the old names deliberately.
 
-Legacy method names such as `_prepareOnkyo()` should later be generalized.
+## 10. Tür / camera – temporary implementation map
 
-## 10. Tür / camera
+**Status: 🚧 UI groundwork only; backend trigger/history unresolved.**
 
-Dedicated navigation section: **Tür**.
+Current placeholder/demo code is in `jamesui-panel.js`:
 
-Planned/present groundwork:
+- `_doorPage()`
+- camera placeholder
+- disabled open/light actions
+- `data-demo-doorbell` / `_doorbellDemo` test path and overlay
 
-- door state
-- doorbell event
-- live/snapshot image
-- event/history view
-- optional door-open action where technically supported
-- prominent doorbell overlay
+The real Siedle SG150 event path remains a Home Assistant/backend issue.
 
-The home uses a Siedle SG150. Reliable HA doorbell triggering remains an external backend issue.
+**Removal/replacement rule:** when reliable camera/doorbell entities exist, replace the placeholders and demo action in the existing Tür flow. Do not create a second door page alongside `_doorPage()`.
 
-**Status: 🚧 UI groundwork exists; backend trigger/history unresolved**
+## 11. Scenes / house mode
 
-## 11. Settings
+`_scene` and `_setScene()` currently represent UI selection only; the Start redesign does not bind them to a Home Assistant scene/helper. If house modes are implemented later, bind this existing concept to a persistent HA/KNX source or remove it if no longer exposed. Do not treat UI-only scene state as automation truth.
 
-JamesUI needs its own settings/mapping UX for:
+## 12. Settings / configuration
 
-- entity mapping
-- room/device assignment
-- media player selection
+Working central configuration exists for Start data sources and Media via `api.py` and the HA config entry.
+
+Still needed over time:
+
+- room/device mapping UX where automatic discovery is insufficient
+- climate mapping
 - door/camera mapping
-- weather source
-- optional features
+- optional-feature controls
 
-**Status: ⚠️ infrastructure exists; UX needs refinement**
+Normal operation should not require source-code edits or raw entity IDs.
 
-## 12. Responsive / display behavior
+## 13. Assets and lifecycle
 
-Primary target remains OnePlus Pad 2 landscape, but layout uses viewport-responsive CSS rather than fixed physical pixels.
+### Active
 
-Normal browser use remains supported. Existing display calibration/view metrics should remain available.
+`frontend/assets/alpine/` – 8 WebP atmosphere files used by `jamesui-home.js`.
 
-## 13. HACS / release workflow
+### Compatibility / fallback
 
-- `hacs.json` exists
-- repository is public and HACS-compatible in structure
-- current manifest version remains `0.5.0`
-- HACS tag/release/update strategy still needs to be finalized
+`frontend/assets/weather/` – 28 SVG weather states used by the base Start implementation in `jamesui-panel.js`.
 
-## 14. Validation / tests
+### Rule for future visual work
 
-CI validates:
+Before generating or adding new images:
+
+1. inspect existing assets first,
+2. reuse/adjust existing assets when they already cover the state,
+3. do not create a second competing asset family without a migration plan,
+4. keep runtime assets local to JamesUI,
+5. when an asset family is retired, remove its code references and files together.
+
+## 14. Known architecture cleanup backlog
+
+These are known maintenance items, **not permission to refactor them opportunistically**:
+
+1. Version/cache-busting `0.5.0` is duplicated in `const.py`, `manifest.json`, `jamesui-panel.js`, `jamesui-entry.js` and `jamesui-home-entry.js`.
+2. `jamesui-entry.js` computes/stores a `homeModuleUrl` data attribute, while `jamesui-home-entry.js` currently imports its own hard-coded versioned URL. This should be simplified when version handling is cleaned up.
+3. `jamesui-panel.js` is large (~130 KB) and contains multiple modules. Split only when a module is actively being reworked; avoid a large rewrite just for file size.
+4. Base Start + enhanced Start currently coexist intentionally for fallback. Consolidate only after practical Alpine stability is proven.
+5. README/release tagging and HACS release/update strategy need to stay aligned with the actual version.
+
+## 15. Validation and GitHub workflow
+
+`.github/workflows/validate.yml` validates functional changes on `main` and pull requests:
 
 - Python syntax
-- JSON files
-- JavaScript syntax for all frontend `.js` files
-- Home-page tests with Node built-in test runner
-- Home Assistant panel entrypoint compatibility / guarded loader structure
+- JSON parsing
+- frontend JavaScript syntax
+- guarded panel entrypoint test
+- Start/home Node tests
 
-Start-page tests additionally cover:
+**Noise-reduction rule:** Markdown-only changes are ignored by the workflow. This allows `PROJECT_STATUS.md`, README and design documentation to be maintained without running the whole software validation every time.
 
-- calm home status
-- alert/activity status
-- weather + sun-period atmosphere mapping
-- approved local Alpine asset paths
-- ordered live functional navigation
-- single Alpine composition with four `data-nav` targets
-- absence of old generic Start-page card-grid markup
-- graceful rendering with missing optional weather data
+Development workflow:
 
-Development workflow decision: intentionally failing TDD intermediate states should stay local/feature-only; `main` should receive only cohesive green changes to avoid noisy GitHub Actions failure emails.
+1. inspect existing implementation/assets before creating anything new,
+2. make related changes as one cohesive batch,
+3. run focused/local checks first where possible,
+4. keep intentionally failing TDD states off `main`,
+5. do not open a PR merely to trigger checks if direct feature-branch development is sufficient,
+6. merge/push a complete green state to `main`, producing one meaningful CI run,
+7. update this status file in the same batch or directly afterwards if it is documentation-only.
 
-## 15. Current priorities
+The platform's own safety/review systems cannot be bypassed. To reduce long waits, avoid unnecessary image-generation/repeated binary operations and reuse existing generated/repository assets whenever possible.
 
-Recommended next order:
+## 16. Current priorities
 
-1. practical verification of Alpine Start page on laptop and Fully/OnePlus Pad 2
-2. adjust Start-page spacing, contrast, atmosphere intensity and typography from a real screenshot
-3. improve Haus/room presentation and classification
-4. implement/refine Klima
-5. complete and robustly test Medien
-6. expand Tür/Kamera
-7. simplify Settings/mapping UX
-8. settle HACS release/update process
-9. full tablet/Fully practical test
+1. Practical visual verification of Alpine Start on laptop and Fully/OnePlus Pad 2.
+2. Tune Start spacing, contrast, atmosphere intensity and typography from a real screenshot.
+3. Improve Haus toward room-first presentation without duplicating discovery/control logic.
+4. Replace Klima demo with real entity-driven implementation and remove demo code in the same change.
+5. Complete practical Media verification, then generalize receiver naming only if needed.
+6. Replace Tür placeholders when Siedle/camera backend data is reliable.
+7. Simplify Settings/mapping UX.
+8. Clean version/cache-busting duplication and settle HACS release workflow.
+9. Only after Alpine Start is proven: decide whether to retire base Start + `assets/weather/` fallback together.
 
-## 16. Working style
+## 17. Working style
 
-Start JamesUI answers with one of:
+JamesUI replies should start with:
 
-- **✅ Fertig:** fully implemented / verified
-- **⚠️ Test nötig:** implementation exists but needs practical verification
-- **🚧 Nicht fertig:** more development required
+- `✅ Fertig:` fully implemented / verified
+- `⚠️ Test nötig:` implementation exists but needs practical verification
+- `🚧 Nicht fertig:` more work required
 
-Troubleshooting: give one useful next action at a time and wait for the result.
+Other working rules:
 
-Development:
+- fewer confirmation questions when intent/scope is already clear; make progress
+- direct repository edits when available
+- one useful troubleshooting step at a time
+- no unnecessary user copy/paste
+- no intentionally red `main`
+- no duplicate implementation alongside a temporary/legacy path: migrate and remove deliberately
+- preserve working fallback code until its replacement is proven
 
-- prefer editing the repository directly when write access is available
-- prefer Git/HACS workflow
-- avoid user copy/paste where unnecessary
-- avoid hard-coded entity IDs unless unavoidable
-- avoid unnecessary dependencies and premature modularization
-- minimize confirmation questions when scope/design is already approved; make progress and report results
-- keep deliberately failing TDD intermediates off `main`
-
-## 17. Next-chat instruction
+## 18. Next-chat instruction
 
 When continuing in a new chat:
 
-1. Read this file first.
-2. Inspect repository files relevant to the requested area.
-3. Repository code is implementation truth; this file is design/progress context.
-4. Continue directly without asking the user to repeat history.
-5. Update this file again after substantive JamesUI changes or decisions.
+1. Read `PROJECT_STATUS.md` first.
+2. Treat repository code on `main` as implementation truth and this file as architecture/progress/removal context.
+3. Check the relevant existing files/assets before designing replacements.
+4. Continue directly; do not ask the user to repeat already documented decisions.
+5. When adding, replacing or removing a feature, update the corresponding ownership/removal notes in this file.
+6. After substantive work, update status, current priority and practical-test state here.

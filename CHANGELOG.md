@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- Reworked the Start page into the approved **Alpine Interface**: one composed weather/home surface instead of a generic direct-access card grid.
+- Added eight local realistic Alpine WebP atmosphere assets for clear/cloudy/rain/snow day, dusk, clear/cloudy night and fog.
+- Added tested weather/sun-period atmosphere mapping, live functional navigation and graceful missing-data fallbacks.
+- Kept the previous SVG weather artwork and base Start renderer intentionally as a compatibility fallback until the Alpine Start is practically proven on the target tablet.
+- Hardened the Home Assistant frontend loading path with a guarded classic `jamesui-entry.js` plus module bridge after a direct ES-module panel entry caused a blank screen.
+- Added loader and Start-page regression tests.
+- Documented repository ownership, temporary/demo code and explicit removal rules in `PROJECT_STATUS.md`.
+- Reduced CI noise: Markdown-only documentation changes no longer run the full validation workflow.
+
 ## 0.5.0 — Media playback
 
 - Replaced the Media placeholder with a functional Spotify-to-receiver workflow.
@@ -12,7 +23,6 @@
 - Added media routing diagnostics directly on the Media page.
 - Added a dedicated Media settings page; configuration is stored centrally in the JamesUI Home Assistant config entry.
 
-
 ## 0.3.1 — Start visual refresh
 
 - Added 28 local weather background artworks: clear, partly cloudy, cloudy, rain, storm, snow and fog across day, golden hour, twilight and night.
@@ -23,7 +33,6 @@
 - Added a dedicated moon-phase card with phase rendering, approximate illumination, lunar age, cycle progress and next major phase.
 - Added sunrise/sunset and illuminance information to the weather scene.
 - Kept all weather artwork local to JamesUI for offline/kiosk operation.
-
 
 ## 0.3.0 — House
 
@@ -36,7 +45,6 @@
 - Added automatic socket detection from outlet device class and common socket/plug names.
 - Added device-health discovery for update, battery and vacuum entities.
 - Kept the fixed JamesUI bottom navigation while House detail content scrolls independently.
-
 
 ## 0.2.0 — Home & Weather
 
@@ -54,7 +62,6 @@
 - Added live Quickinfo basics for lights, climate and persons.
 - Kept house-mode/scene activation unbound until the House module defines the persistent mode helper.
 
-
 ## 0.1.2 — Viewport & navigation fix
 
 - Fixed touch sliders losing pointer capture after each value change.
@@ -67,7 +74,6 @@
 - Only the page content scrolls between the fixed header and fixed bottom navigation.
 - Added live viewport updates when browser or kiosk dimensions change.
 
-
 ## 0.1.1 — Display setup
 
 - Added automatic viewport, panel size, orientation, touch and pixel-density detection.
@@ -75,7 +81,6 @@
 - Added draggable corner markers plus pixel-precise edge controls.
 - Added optional UI scale control and one-click reset to automatic sizing.
 - Added Display & Kalibrierung to the JamesUI application menu.
-
 
 ## 0.1.0 — Foundation
 
