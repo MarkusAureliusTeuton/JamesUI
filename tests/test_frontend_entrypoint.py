@@ -38,15 +38,16 @@ class FrontendEntrypointTest(unittest.TestCase):
         manifest = json.loads(Path("custom_components/jamesui/manifest.json").read_text(encoding="utf-8"))
         self.assertEqual(manifest["version"], version)
 
+        setup_source = Path("custom_components/jamesui/__init__.py").read_text(encoding="utf-8")
+        self.assertIn('f"{STATIC_URL}/{FRONTEND_FILE}?v={VERSION}"', setup_source)
+
         entry = Path("custom_components/jamesui/frontend/jamesui-entry.js").read_text(encoding="utf-8")
         home_entry = Path("custom_components/jamesui/frontend/jamesui-home-entry.js").read_text(encoding="utf-8")
-        panel = Path("custom_components/jamesui/frontend/jamesui-panel.js").read_text(encoding="utf-8")
 
         self.assertIn(f"jamesui-panel.js?v={version}", entry)
         self.assertIn(f"jamesui-home.js?v={version}", entry)
         self.assertIn(f"jamesui-home-entry.js?v={version}", entry)
         self.assertIn(f'./jamesui-home.js?v={version}', home_entry)
-        self.assertRegex(panel, rf'^const VERSION = "{re.escape(version)}";', "Panel version must match integration version")
 
 
 if __name__ == "__main__":
