@@ -42,6 +42,7 @@ custom_components/jamesui/
 └── frontend/
     ├── jamesui-entry.js
     ├── jamesui-panel.js
+    ├── jamesui-home-entry.js
     └── jamesui-home.js
 
 tests/
@@ -51,9 +52,9 @@ tests/
 .github/workflows/validate.yml
 ```
 
-**Important loader decision after regression on 2026-10-01:** Home Assistant currently loads JamesUI through the integration's `_panel_custom.js_url`, so the active frontend entry must remain a classic script. `FRONTEND_FILE` is therefore restored to `jamesui-panel.js`. Do not point `FRONTEND_FILE` directly at an ES-module file containing top-level `import`/`export` unless the Home Assistant panel registration is first changed to an explicitly supported module-loading mechanism.
+**Current loader architecture:** Home Assistant still registers one classic `_panel_custom.js_url`. `FRONTEND_FILE` points to `jamesui-entry.js`, but this file itself is a classic script with no top-level `import`/`export`. It first loads the stable `jamesui-panel.js`, then injects `jamesui-home-entry.js` explicitly as `type="module"`. That module imports `jamesui-home.js` and installs the Start-page refinement only after `jamesui-panel` is defined.
 
-`jamesui-entry.js` and `jamesui-home.js` remain in the repository as inactive experimental/refinement code for the Start page. They are **not currently loaded in production** because routing the panel directly through `jamesui-entry.js` caused a blank/black JamesUI panel on laptop and tablet.
+This replaces the failed 2026-10-01 approach where `FRONTEND_FILE` directly pointed at an ES-module file. That direct module entry caused a blank/black panel on laptop and tablet. The guarded classic loader now has a regression test in CI.
 
 ## 3. Navigation
 
@@ -81,21 +82,19 @@ Generic AI room imagery tested previously was not good enough. Realistic room vi
 
 ## 5. Start page – current state
 
-**Status: 🚧 refinement code exists but is temporarily rolled back from the active frontend**
+**Status: ⚠️ refinement is active again through the guarded loader; practical tablet/laptop verification required**
 
-The planned refined Start page goes beyond the earlier weather + large moon-card concept.
-
-Target/refinement design:
+Current refinement design:
 
 - large weather/time hero remains the visual anchor
 - date, time, current temperature, condition, high/low, precipitation, humidity, wind, illuminance and sunrise/sunset remain available
 - weather/time-of-day visual background logic remains in use
-- prominent former moon card should be removed from the primary hierarchy
+- prominent former moon card removed from the primary hierarchy
 - moon phase retained only as a compact secondary note
 - right-side `Zuhause` status panel summarizes important deviations
 - below the hero is a direct-access area for `Haus`, `Klima`, `Medien`, `Tür`
-- those cards should be clickable and use the existing bottom-navigation routing
-- scenes visually reduced to a compact house-mode row; actual scene/service mapping still pending
+- those cards are clickable and reuse existing `data-nav` routing
+- scenes are visually reduced to a compact house-mode row; actual scene/service mapping still pending
 
 The home status model in `jamesui-home.js` detects/summarizes:
 
@@ -110,7 +109,7 @@ Normal state: `Alles ruhig`.
 
 Relevant deviations switch the summary to `Aufmerksamkeit nötig`.
 
-Automated tests cover a calm state and an alert/activity state. The visual refinement itself must be integrated again using a loading approach compatible with Home Assistant before practical tablet testing continues.
+Automated tests cover a calm state and an alert/activity state. The practical next step is to verify that the guarded loader displays the refined Start page correctly on laptop and OnePlus Pad 2/Fully.
 
 ## 6. Haus module
 
@@ -265,9 +264,10 @@ GitHub Actions currently validates:
 - JSON files
 - JavaScript syntax for all frontend `.js` files
 - Home-page state-summary tests using Node's built-in test runner
-- Home Assistant panel entrypoint compatibility: the active `FRONTEND_FILE` may not be an ES-module script with top-level `import`/`export`
+- Home Assistant panel entrypoint compatibility
+- guarded loader structure: active `FRONTEND_FILE` must be `jamesui-entry.js`, remain a classic script, load `jamesui-panel.js` first and reference the Start-page enhancement afterwards
 
-The loader regression was reproduced test-first: the new entrypoint test failed with `jamesui-entry.js` active and passed after restoring `jamesui-panel.js`.
+The loader regression was reproduced test-first. The new stricter entrypoint test failed while the stable panel was still active, then passed after the guarded classic loader and module bridge were implemented. Latest CI run on commit `da11d651da992574d977151989ff15c8d9a261da` passed all checks.
 
 For future behavior changes, add focused tests where practical rather than relying only on visual/manual testing.
 
@@ -275,18 +275,16 @@ For future behavior changes, add focused tests where practical rather than relyi
 
 Recommended next order:
 
-1. confirm the restored classic panel loads again on laptop and Fully/tablet
-2. reintegrate the refined Start-page code without changing the active HA panel entry to an unsupported ES-module loader
-3. practical visual test of that refined Start page on the actual HA/tablet viewport
-4. adjust spacing/proportions based on the real screenshot
-5. improve Haus/room presentation and classification
-6. realistic room visual direction
-7. implement/refine Klima
-8. complete and robustly test Medien
-9. expand Tür/Kamera
-10. simplify Settings/mapping UX
-11. settle HACS release/update process
-12. full tablet/Fully practical test
+1. practical verification of the guarded loader and refined Start page on laptop and Fully/OnePlus Pad 2
+2. adjust Start-page spacing/proportions based on the real screenshot
+3. improve Haus/room presentation and classification
+4. realistic room visual direction
+5. implement/refine Klima
+6. complete and robustly test Medien
+7. expand Tür/Kamera
+8. simplify Settings/mapping UX
+9. settle HACS release/update process
+10. full tablet/Fully practical test
 
 ## 16. Working style
 
