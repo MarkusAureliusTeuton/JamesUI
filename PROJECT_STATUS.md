@@ -50,6 +50,9 @@ tests/
 └── test_frontend_entrypoint.py
 
 .github/workflows/validate.yml
+
+docs/superpowers/specs/
+└── 2026-10-01-startpage-alpine-interface-design.md
 ```
 
 **Current loader architecture:** Home Assistant still registers one classic `_panel_custom.js_url`. `FRONTEND_FILE` points to `jamesui-entry.js`, but this file itself is a classic script with no top-level `import`/`export`. It first loads the stable `jamesui-panel.js`, then injects `jamesui-home-entry.js` explicitly as `type="module"`. That module imports `jamesui-home.js` and installs the Start-page refinement only after `jamesui-panel` is defined.
@@ -68,35 +71,50 @@ Do not replace this with a generic sidebar because of later visual experiments.
 
 ## 4. Visual direction
 
-Desired feel:
+Approved direction: **Alpine Interface**.
+
+The interface should not look like a generic smart-home app or a collection of rounded cards. It should feel like a bespoke wall-tablet HMI with a calm premium character inspired by the home's chalet / alpine-chic style.
+
+Core visual decisions:
 
 - dark / near-black base
-- warm restrained accents
-- calm and premium
-- strong hierarchy and large readable information
-- minimal clutter
-- closer to a premium native smart-home / automotive interface than standard Home Assistant
-- room imagery should eventually look realistic and close to the actual rooms
+- warm restrained champagne / warm-metal accents instead of bright orange
+- smoked-glass / anthracite surfaces
+- subtle stone / wood material cues rather than literal chalet decoration
+- strong typography hierarchy and generous spacing
+- fine separators instead of repeated card borders
+- weather / time / home status should read as one composed surface
+- visual direction closer to premium vehicle / architectural-control HMIs than standard mobile dashboards
 
-Generic AI room imagery tested previously was not good enough. Realistic room visual direction remains open.
+The background is supportive, not dominant. Target weighting is roughly **70–80% interface / 20–30% atmosphere**.
+
+Background imagery should communicate outside conditions using realistic sky, horizon, mountains, trees or restrained architecture/terrace silhouettes. Do **not** use a prominent fictional living room, sofa, fireplace or other invented interior as the primary background.
+
+Realistic room imagery may still be useful later in room-specific views, but should not dominate the Start page.
+
+The detailed approved Start-page design is documented in:
+
+`docs/superpowers/specs/2026-10-01-startpage-alpine-interface-design.md`
 
 ## 5. Start page – current state
 
-**Status: ⚠️ refinement is active again through the guarded loader; practical tablet/laptop verification required**
+**Status: 🚧 current refinement works, but approved Alpine Interface redesign is not implemented yet**
 
-Current refinement design:
+The guarded loader and current Start-page enhancement are practically confirmed to load again on the real installation.
 
-- large weather/time hero remains the visual anchor
+The next Start-page version should replace the current card-heavy refinement with the approved Alpine Interface direction:
+
+- weather/time remains the primary visual anchor
+- realistic outside-weather atmosphere rather than a fake apartment backdrop
 - date, time, current temperature, condition, high/low, precipitation, humidity, wind, illuminance and sunrise/sunset remain available
-- weather/time-of-day visual background logic remains in use
-- prominent former moon card removed from the primary hierarchy
-- moon phase retained only as a compact secondary note
-- right-side `Zuhause` status panel summarizes important deviations
-- below the hero is a direct-access area for `Haus`, `Klima`, `Medien`, `Tür`
-- those cards are clickable and reuse existing `data-nav` routing
-- scenes are visually reduced to a compact house-mode row; actual scene/service mapping still pending
+- dynamic visual states should reflect day / twilight / night and weather conditions
+- moon remains secondary; it may appear in the night atmosphere and as a compact information note
+- `Zuhause` status remains concise and highlights only relevant deviations
+- Haus / Klima / Medien / Tür should be represented as a low-profile integrated functional/status strip rather than four standalone tiles
+- bottom navigation remains `Start | Haus | Klima | Medien | Tür`
+- generic card-grid / Lovelace aesthetics should be actively avoided
 
-The home status model in `jamesui-home.js` detects/summarizes:
+The home status model in `jamesui-home.js` already detects/summarizes:
 
 - lights on
 - monitored devices offline
@@ -109,7 +127,7 @@ Normal state: `Alles ruhig`.
 
 Relevant deviations switch the summary to `Aufmerksamkeit nötig`.
 
-Automated tests cover a calm state and an alert/activity state. The practical next step is to verify that the guarded loader displays the refined Start page correctly on laptop and OnePlus Pad 2/Fully.
+Automated tests cover a calm state and an alert/activity state. The redesign should preserve this logic while changing composition and styling.
 
 ## 6. Haus module
 
@@ -267,7 +285,9 @@ GitHub Actions currently validates:
 - Home Assistant panel entrypoint compatibility
 - guarded loader structure: active `FRONTEND_FILE` must be `jamesui-entry.js`, remain a classic script, load `jamesui-panel.js` first and reference the Start-page enhancement afterwards
 
-The loader regression was reproduced test-first. The new stricter entrypoint test failed while the stable panel was still active, then passed after the guarded classic loader and module bridge were implemented. Latest CI run on commit `da11d651da992574d977151989ff15c8d9a261da` passed all checks.
+The loader regression was reproduced test-first. The new stricter entrypoint test failed while the stable panel was still active, then passed after the guarded classic loader and module bridge were implemented.
+
+Working rule after user feedback: do not intentionally push red test-first intermediate commits to `main`. Keep `main` in a state expected to pass CI and use locally reasoned/tested changes before committing there.
 
 For future behavior changes, add focused tests where practical rather than relying only on visual/manual testing.
 
@@ -275,10 +295,10 @@ For future behavior changes, add focused tests where practical rather than relyi
 
 Recommended next order:
 
-1. practical verification of the guarded loader and refined Start page on laptop and Fully/OnePlus Pad 2
-2. adjust Start-page spacing/proportions based on the real screenshot
-3. improve Haus/room presentation and classification
-4. realistic room visual direction
+1. implement the approved Alpine Interface Start-page redesign
+2. practical visual test on laptop and Fully/OnePlus Pad 2
+3. tune spacing, contrast and background weighting from real screenshots
+4. improve Haus/room presentation and classification
 5. implement/refine Klima
 6. complete and robustly test Medien
 7. expand Tür/Kamera
@@ -303,6 +323,7 @@ Development:
 - avoid user copy/paste where unnecessary
 - avoid hard-coded entity IDs unless unavoidable
 - avoid unnecessary dependencies and premature modularization
+- avoid deliberately failing intermediate CI commits on `main`
 
 ## 17. Next-chat instruction
 
