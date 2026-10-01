@@ -25,4 +25,10 @@ jobs:
           PY
 
       - name: Validate frontend JavaScript syntax
-        run: node --check custom_components/jamesui/frontend/jamesui-panel.js
+        run: |
+          for file in custom_components/jamesui/frontend/*.js; do
+            node --check "$file"
+          done
+
+      - name: Test home status model
+        run: node --experimental-default-type=module --test tests/jamesui-home.test.js
