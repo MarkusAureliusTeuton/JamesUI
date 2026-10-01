@@ -19,7 +19,20 @@ ENTITY_CONFIG_KEYS = {
     "media_ma_player_entity",
 }
 
+BACKGROUND_SCENES = [
+    "clear-day",
+    "cloudy-day",
+    "rain-day",
+    "snow-day",
+    "fog",
+    "dusk",
+    "clear-night",
+    "cloudy-night",
+]
+
 VALUE_CONFIG_KEYS = {
+    "background_mode",
+    "background_scene",
     "media_route",
     "media_spotify_source",
     "media_onkyo_source",
@@ -58,6 +71,8 @@ def websocket_get_config(
         vol.Optional("outdoor_temperature_entity"): vol.Any(str, None),
         vol.Optional("moon_entity"): vol.Any(str, None),
         vol.Optional("illuminance_entity"): vol.Any(str, None),
+        vol.Optional("background_mode"): vol.Any(vol.In(["auto", "manual"]), None),
+        vol.Optional("background_scene"): vol.Any(vol.In(BACKGROUND_SCENES), None),
         vol.Optional("media_spotify_entity"): vol.Any(str, None),
         vol.Optional("media_onkyo_entity"): vol.Any(str, None),
         vol.Optional("media_ma_player_entity"): vol.Any(str, None),
