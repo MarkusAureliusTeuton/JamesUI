@@ -43,21 +43,21 @@ custom_components/jamesui/
     ├── jamesui-entry.js
     ├── jamesui-panel.js
     ├── jamesui-home-entry.js
-    └── jamesui-home.js
+    ├── jamesui-home.js
+    └── assets/
+        ├── weather/
+        └── alpine/
 
 tests/
 ├── jamesui-home.test.js
 └── test_frontend_entrypoint.py
 
 .github/workflows/validate.yml
-
-docs/superpowers/specs/
-└── 2026-10-01-startpage-alpine-interface-design.md
 ```
 
-**Current loader architecture:** Home Assistant still registers one classic `_panel_custom.js_url`. `FRONTEND_FILE` points to `jamesui-entry.js`, but this file itself is a classic script with no top-level `import`/`export`. It first loads the stable `jamesui-panel.js`, then injects `jamesui-home-entry.js` explicitly as `type="module"`. That module imports `jamesui-home.js` and installs the Start-page refinement only after `jamesui-panel` is defined.
+**Current loader architecture:** Home Assistant registers one classic `_panel_custom.js_url`. `FRONTEND_FILE` points to `jamesui-entry.js`, which remains a classic script with no top-level `import`/`export`. It loads the stable `jamesui-panel.js`, then injects `jamesui-home-entry.js` as `type="module"`. That module imports `jamesui-home.js` and installs the Start-page enhancement only after `jamesui-panel` is defined.
 
-This replaces the failed 2026-10-01 approach where `FRONTEND_FILE` directly pointed at an ES-module file. That direct module entry caused a blank/black panel on laptop and tablet. The guarded classic loader now has a regression test in CI.
+This replaces the failed 2026-10-01 direct ES-module entry approach that caused a blank/black panel. Loader structure is protected by CI regression tests and must remain unchanged unless Home Assistant panel loading is deliberately redesigned.
 
 ## 3. Navigation
 
@@ -67,67 +67,78 @@ Approved primary navigation remains:
 Start | Haus | Klima | Medien | Tür
 ```
 
-Do not replace this with a generic sidebar because of later visual experiments.
+Do not replace this with a generic sidebar.
 
 ## 4. Visual direction
 
 Approved direction: **Alpine Interface**.
 
-The interface should not look like a generic smart-home app or a collection of rounded cards. It should feel like a bespoke wall-tablet HMI with a calm premium character inspired by the home's chalet / alpine-chic style.
+JamesUI should feel like a bespoke architectural / premium vehicle HMI rather than a standard smart-home dashboard.
 
-Core visual decisions:
+Design principles:
 
 - dark / near-black base
-- warm restrained champagne / warm-metal accents instead of bright orange
 - smoked-glass / anthracite surfaces
-- subtle stone / wood material cues rather than literal chalet decoration
-- strong typography hierarchy and generous spacing
-- fine separators instead of repeated card borders
-- weather / time / home status should read as one composed surface
-- visual direction closer to premium vehicle / architectural-control HMIs than standard mobile dashboards
+- restrained champagne / warm-metal accent
+- subtle natural-stone / warm-wood cues, not literal decorative chalet imagery
+- strong hierarchy and large readable information
+- fine separators and integrated information regions instead of rounded-card grids
+- approximately 70–80% visual weight on information/UI and 20–30% on atmosphere/background
+- realistic outside atmosphere should communicate weather/day-night quickly but remain subordinate to readability
 
-The background is supportive, not dominant. Target weighting is roughly **70–80% interface / 20–30% atmosphere**.
+Avoid a dominant fictional living room/chalet render. Background imagery should focus on sky, horizon, mountains, trees and subtle terrace/architecture silhouettes.
 
-Background imagery should communicate outside conditions using realistic sky, horizon, mountains, trees or restrained architecture/terrace silhouettes. Do **not** use a prominent fictional living room, sofa, fireplace or other invented interior as the primary background.
-
-Realistic room imagery may still be useful later in room-specific views, but should not dominate the Start page.
-
-The detailed approved Start-page design is documented in:
-
+Approved design spec:
 `docs/superpowers/specs/2026-10-01-startpage-alpine-interface-design.md`
+
+Implementation plan:
+`docs/superpowers/plans/2026-10-01-startpage-alpine-interface.md`
 
 ## 5. Start page – current state
 
-**Status: 🚧 current refinement works, but approved Alpine Interface redesign is not implemented yet**
+**Status: ⚠️ Alpine Interface implementation is complete on `feature/startpage-alpine-interface`; practical laptop + OnePlus Pad 2/Fully verification is still required before final visual acceptance.**
 
-The guarded loader and current Start-page enhancement are practically confirmed to load again on the real installation.
+Implemented on the feature branch:
 
-The next Start-page version should replace the current card-heavy refinement with the approved Alpine Interface direction:
+- one composed Alpine Start surface instead of a generic tile/card grid
+- large time/date + current weather hierarchy
+- current temperature, condition, high/low, precipitation, humidity, wind, illuminance and sunrise/sunset remain available
+- compact `Zuhause` status region using live Home Assistant state summaries
+- integrated low-profile functional strip for `Haus`, `Klima`, `Medien`, `Tür`
+- four function items reuse existing `data-nav` routing and stay live-state-driven
+- moon information reduced to a compact secondary note
+- local realistic alpine atmosphere assets under `assets/alpine/`
+- atmosphere selection mapped from Home Assistant weather condition + sun period
+- graceful fallback for unknown/missing weather data
+- no runtime cloud-image dependency
+- generic `home-nav-card` / `home-nav-grid` / repeated direct-access tile presentation removed from the redesigned Start page
 
-- weather/time remains the primary visual anchor
-- realistic outside-weather atmosphere rather than a fake apartment backdrop
-- date, time, current temperature, condition, high/low, precipitation, humidity, wind, illuminance and sunrise/sunset remain available
-- dynamic visual states should reflect day / twilight / night and weather conditions
-- moon remains secondary; it may appear in the night atmosphere and as a compact information note
-- `Zuhause` status remains concise and highlights only relevant deviations
-- Haus / Klima / Medien / Tür should be represented as a low-profile integrated functional/status strip rather than four standalone tiles
-- bottom navigation remains `Start | Haus | Klima | Medien | Tür`
-- generic card-grid / Lovelace aesthetics should be actively avoided
+Initial local atmosphere set:
 
-The home status model in `jamesui-home.js` already detects/summarizes:
+- clear day
+- cloudy day
+- rain day
+- snow day
+- dusk/twilight
+- clear night
+- cloudy night
+- fog
+
+The implementation is intentionally contained in `jamesui-home.js`; the stable base `jamesui-panel.js` and guarded loader were not redesigned for this work.
+
+Home status continues to summarize:
 
 - lights on
 - monitored devices offline
-- low battery states already known through the Haus model
-- average current climate temperature when available
+- low battery states
+- average current climate temperature where available
 - active media playback
-- open door/garage/opening binary sensors whose names look like door/gate/garage entities
+- open door/garage/opening binary sensors with door/gate/garage naming
 
 Normal state: `Alles ruhig`.
+Relevant deviations: `Aufmerksamkeit nötig`.
 
-Relevant deviations switch the summary to `Aufmerksamkeit nötig`.
-
-Automated tests cover a calm state and an alert/activity state. The redesign should preserve this logic while changing composition and styling.
+Automated home tests now cover atmosphere mapping, local asset contract, navigation model, Alpine structure, calm/alert states and missing optional data.
 
 ## 6. Haus module
 
@@ -220,9 +231,7 @@ Existing work includes:
 - live media state updates
 - Spotify URI normalization work
 
-Legacy method names such as `_prepareOnkyo()` are implementation details and should later be generalized so the architecture is not manufacturer-specific.
-
-Music Assistant still needs robust testing of service schema, player detection, URL/media-ID handling and error/status feedback.
+Legacy method names such as `_prepareOnkyo()` should later be generalized.
 
 ## 10. Tür / camera
 
@@ -237,9 +246,7 @@ Planned/present groundwork:
 - optional door-open action where technically supported
 - prominent doorbell overlay
 
-The home uses a Siedle SG150. Reliable HA doorbell triggering remains an external backend issue; JamesUI should present the event once Home Assistant supplies it reliably.
-
-Persistent camera/snapshot history remains open.
+The home uses a Siedle SG150. Reliable HA doorbell triggering remains an external backend issue.
 
 **Status: 🚧 UI groundwork exists; backend trigger/history unresolved**
 
@@ -254,50 +261,51 @@ JamesUI needs its own settings/mapping UX for:
 - weather source
 - optional features
 
-Basic config infrastructure exists, but the normal user should not need to edit source code/entity IDs manually.
-
 **Status: ⚠️ infrastructure exists; UX needs refinement**
 
 ## 12. Responsive / display behavior
 
 Primary target remains OnePlus Pad 2 landscape, but layout uses viewport-responsive CSS rather than fixed physical pixels.
 
-Normal browser use is supported conceptually; phone support may follow later.
-
-Existing display calibration/view metrics should remain available.
+Normal browser use remains supported. Existing display calibration/view metrics should remain available.
 
 ## 13. HACS / release workflow
 
 - `hacs.json` exists
 - repository is public and HACS-compatible in structure
 - current manifest version remains `0.5.0`
-- current work is on `main` without a new version bump yet
-- HACS tag/release/update strategy is still to be finalized and should be verified against current HACS behavior before changing it
+- HACS tag/release/update strategy still needs to be finalized
 
 ## 14. Validation / tests
 
-GitHub Actions currently validates:
+CI validates:
 
 - Python syntax
 - JSON files
 - JavaScript syntax for all frontend `.js` files
-- Home-page state-summary tests using Node's built-in test runner
-- Home Assistant panel entrypoint compatibility
-- guarded loader structure: active `FRONTEND_FILE` must be `jamesui-entry.js`, remain a classic script, load `jamesui-panel.js` first and reference the Start-page enhancement afterwards
+- Home-page tests with Node built-in test runner
+- Home Assistant panel entrypoint compatibility / guarded loader structure
 
-The loader regression was reproduced test-first. The new stricter entrypoint test failed while the stable panel was still active, then passed after the guarded classic loader and module bridge were implemented.
+Start-page tests additionally cover:
 
-Working rule after user feedback: do not intentionally push red test-first intermediate commits to `main`. Keep `main` in a state expected to pass CI and use locally reasoned/tested changes before committing there.
+- calm home status
+- alert/activity status
+- weather + sun-period atmosphere mapping
+- approved local Alpine asset paths
+- ordered live functional navigation
+- single Alpine composition with four `data-nav` targets
+- absence of old generic Start-page card-grid markup
+- graceful rendering with missing optional weather data
 
-For future behavior changes, add focused tests where practical rather than relying only on visual/manual testing.
+Development workflow decision: intentionally failing TDD intermediate states should stay local/feature-only; `main` should receive only cohesive green changes to avoid noisy GitHub Actions failure emails.
 
 ## 15. Current priorities
 
 Recommended next order:
 
-1. implement the approved Alpine Interface Start-page redesign
-2. practical visual test on laptop and Fully/OnePlus Pad 2
-3. tune spacing, contrast and background weighting from real screenshots
+1. CI/review `feature/startpage-alpine-interface` and merge only if green
+2. practical verification of Alpine Start page on laptop and Fully/OnePlus Pad 2
+3. adjust Start-page spacing, contrast, atmosphere intensity and typography from a real screenshot
 4. improve Haus/room presentation and classification
 5. implement/refine Klima
 6. complete and robustly test Medien
@@ -323,7 +331,8 @@ Development:
 - avoid user copy/paste where unnecessary
 - avoid hard-coded entity IDs unless unavoidable
 - avoid unnecessary dependencies and premature modularization
-- avoid deliberately failing intermediate CI commits on `main`
+- minimize confirmation questions when scope/design is already approved; make progress and report results
+- keep deliberately failing TDD intermediates off `main`
 
 ## 17. Next-chat instruction
 
