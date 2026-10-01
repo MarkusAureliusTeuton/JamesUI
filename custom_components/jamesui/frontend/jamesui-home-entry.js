@@ -7,7 +7,8 @@ import(homeModuleUrl.href)
   .then(({ installHomeExperience }) => customElements.whenDefined("jamesui-panel").then(() => {
     installHomeExperience();
     requestAnimationFrame(() => {
-      document.querySelectorAll("jamesui-panel").forEach((panel) => panel.render?.());
+      const panels = window.__jamesUIFindPanels?.() || [];
+      panels.forEach((panel) => panel.render?.());
     });
   }))
   .catch((error) => {
