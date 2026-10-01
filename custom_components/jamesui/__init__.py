@@ -16,6 +16,7 @@ from .api import async_register_websocket_commands
 from .const import (
     DOMAIN,
     FRONTEND_FILE,
+    FRONTEND_REVISION,
     PANEL_ELEMENT,
     PANEL_ICON,
     PANEL_TITLE,
@@ -58,7 +59,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     "name": PANEL_ELEMENT,
                     "embed_iframe": False,
                     "trust_external": False,
-                    "js_url": f"{STATIC_URL}/{FRONTEND_FILE}?v={VERSION}",
+                    "js_url": f"{STATIC_URL}/{FRONTEND_FILE}?v={FRONTEND_REVISION}",
                 }
             },
             require_admin=False,
