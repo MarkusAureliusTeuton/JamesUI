@@ -166,3 +166,12 @@ test("renders graceful fallback values when optional weather data is missing", (
   assert.match(html, /cloudy-night\.webp/);
   assert.match(html, /data-nav="house"/);
 });
+
+test("renders v2 as a flatter architectural surface with semantic weather facts", () => {
+  const html = renderAlpineHome(alpinePanel());
+  assert.match(html, /class="alpine-home[^\"]*alpine-home-v2/);
+  assert.match(html, /data-atmosphere="dusk"/);
+  assert.match(html, /<dl class="alpine-weather-facts">/);
+  assert.match(html, /<dt>Feuchte<\/dt><dd>74%<\/dd>/);
+  assert.doesNotMatch(html, /class="alpine-facts"/);
+});
