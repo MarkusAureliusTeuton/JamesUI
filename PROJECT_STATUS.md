@@ -33,15 +33,15 @@ Default branch: `main`
 
 Integration / manifest version: **0.5.1**
 
-Frontend asset revision: **0.5.1-r4**
+Frontend asset revision: **0.5.1-r5**
 
 `main` is always the implementation source of truth. Feature branches are temporary development aids only; completed branches must not become alternate product states.
 
 Latest functional validation:
 
-- **Validate JamesUI #108 → success**
-- commit: `cab60a496adaee95591429f2d18502165e12e479`
-- scope: Alpine Start V4 portrait weather hero + r4 cache revision
+- **Validate JamesUI #110 → success**
+- commit: `a208410c2d988b970a8314986e57a09a79721d33`
+- scope: Alpine atmosphere z-index/layer-order fix + r5 cache revision
 
 ## 3. Active runtime chain – critical
 
@@ -86,14 +86,14 @@ Protection:
 | `frontend/jamesui-home.js` | current Alpine Start, home summary, atmosphere mapping, portrait/landscape Start CSS | Active Start owner |
 | `frontend/assets/alpine/` | realistic Alpine atmosphere WebP assets | Active Start assets |
 | `frontend/assets/weather/` | older SVG weather backgrounds | Intentional fallback, not dead code yet |
-| `tests/jamesui-home.test.js` | Start summary/atmosphere/navigation/portrait/fallback/V4 weather-hero tests | Active |
+| `tests/jamesui-home.test.js` | Start summary/atmosphere/navigation/portrait/fallback/V4 weather-hero/layer-order tests | Active |
 | `tests/test_frontend_entrypoint.py` | loader/revision/Shadow-DOM/HA-property/initial-rerender regression protection | Critical active test |
 | `.github/workflows/validate.yml` | syntax/JSON/loader/Start validation | Active; Markdown-only changes ignored |
 | `PROJECT_STATUS.md` | persistent handover + ownership/removal map | Must stay current |
 
 ## 5. Start page – Alpine Interface
 
-**Status: ⚠️ V4 implemented and CI-verified; practical V4 visual verification on the OnePlus is still required.**
+**Status: ⚠️ V5 layering fix implemented and CI-verified; practical r5 screenshot verification on the OnePlus is required.**
 
 Current design authority:
 
@@ -136,22 +136,36 @@ Current implementation in `jamesui-home.js`:
 - single four-wide function strip on OnePlus-class portrait width
 - narrower-phone fallback may use 2×2 controls, but that is not the wall-tablet target
 
-### V4 – visible weather hero
+### V4 – visible weather hero attempt
 
 Implemented after the first fully live-data portrait screenshot showed the technical flow working but the atmosphere almost disappearing into a black upper surface.
 
 Changes:
 
-- portrait atmosphere image now uses `cover` instead of width-only `100% auto`
-- image focus is shifted vertically to make sky / horizon / Alpine scenery useful in portrait
+- portrait atmosphere image uses `cover` instead of width-only `100% auto`
+- image focus shifted vertically to make sky / horizon / Alpine scenery useful in portrait
 - weather hero gets a stronger portrait allocation (`minmax(430px,58vh)`)
 - night atmosphere brightness increased so clouds / terrain / moonlight remain readable while still looking like night
-- rain / snow / fog portrait filters were rebalanced rather than globally over-darkened
-- the dark lower surface now fades in more gradually instead of covering the weather scene too early
+- rain / snow / fog portrait filters rebalanced rather than globally over-darkened
+- dark lower surface fades in more gradually instead of covering the weather scene too early
 - time / temperature / weather text gets localized shadow contrast rather than relying on a dark full-image veil
-- frontend revision bumped to `0.5.1-r4`
-- `tests/jamesui-home.test.js` protects the V4 portrait image sizing, focus, hero proportion and night brightness contract
-- PR validation #107 and `main` validation #108 both passed
+- frontend revision `0.5.1-r4`
+- PR validation #107 and `main` validation #108 passed
+
+### V5 – atmosphere layer-order fix
+
+The 20:30 r4 screenshot proved that V4 sizing/brightness changes still did not make the image visible. Code inspection then found the actual root cause: the atmosphere layers used negative z-index values inside `.alpine-home`, while the host itself has an opaque dark background and creates an isolated stacking context.
+
+Fix:
+
+- `.alpine-atmosphere-fallback` → `z-index:0`
+- `.alpine-atmosphere` → `z-index:1`
+- `.alpine-ambient-shade` → `z-index:2`
+- `.alpine-surface` → `position:relative; z-index:3`
+- no weather assets, mappings, page architecture or V4 portrait proportions were replaced
+- frontend revision bumped to `0.5.1-r5`
+- regression test now explicitly prevents the atmosphere from being put back behind the host background
+- PR validation #109 and `main` validation #110 passed
 
 ### Real tablet observations
 
@@ -180,28 +194,30 @@ Root cause confirmed from code:
 Fix merged as **frontend revision `0.5.1-r3`**:
 
 - one recursive `findJamesPanels()` walks document + open Shadow DOM roots
-- the same finder is exposed by the classic loader and reused by the home-entry bridge
-- pre-upgrade `hass/narrow/route/panel` properties are now applied to the real nested panel
+- same finder exposed by classic loader and reused by home-entry bridge
+- pre-upgrade `hass/narrow/route/panel` properties applied to the real nested panel
 - after `installHomeExperience()`, the real nested panel is rerendered immediately
-- no Alpine layout, styles, images or Home Assistant entity logic were changed in this bugfix
-- Validate JamesUI #106 is green
+- Validate JamesUI #106 green
 
 **20:05 screenshot:** first practical success of the loader/data path.
 
-Confirmed on the actual portrait tablet:
+Confirmed:
 
 - current Alpine Start appears directly
-- `Zuhause verbunden` is shown
-- real weather data populates (`20.9°C`, partially cloudy, humidity, wind, sunrise/sunset)
+- `Zuhause verbunden` shown
+- real weather data populates
 - Start no longer needs `Haus → Start` to obtain the new layout
 
-Visual issue observed:
+Visual issue:
 
-- the atmosphere was still almost invisible / black despite live weather data
-- V3 used a 16:9 image at `100% auto` inside a tall portrait area, leaving much of the hero without useful imagery
-- night filtering plus the large dark surface gradients suppressed the remaining image too strongly
+- atmosphere still almost invisible / black
+- prompted V4 sizing/filter changes
 
-This observation directly produced V4. **The next screenshot must be with frontend revision r4 before making further atmosphere judgments.**
+**20:30 screenshot with r4:** still no recognizable weather image despite correct live weather and the V4 hero sizing/filter changes.
+
+This ruled out simple image height/brightness as the main cause. Inspection found the atmosphere was structurally below the opaque host background because of negative z-index values. This directly produced the r5/V5 layer-order fix.
+
+**Next visual decision must be based on a fresh screenshot after r5 is actually served.** If the image is visible then, tune contrast/focus from that real result rather than making more blind brightness changes.
 
 Current Alpine assets:
 
@@ -347,7 +363,7 @@ These are maintenance items, not permission for opportunistic rewrites:
 - Shadow-DOM-aware panel discovery
 - pre-upgrade HA property bridge contract
 - post-enhancement initial rerender contract
-- Start/home Node tests, including the V4 portrait weather-hero contract
+- Start/home Node tests, including V4 portrait weather-hero and V5 atmosphere layer-order protection
 
 Development workflow:
 
@@ -362,17 +378,16 @@ The platform's own review/safety checks cannot be bypassed. Reduce delays by avo
 
 ## 15. Current priorities
 
-1. Reload/update JamesUI/Home Assistant so `jamesui-entry.js?v=0.5.1-r4` is served.
-2. Capture a fresh portrait screenshot and confirm the V4 weather image is visibly present across the upper hero area.
-3. Check that night still reads as night while clouds / horizon / terrain remain recognizable.
+1. Reload/update JamesUI/Home Assistant so `jamesui-entry.js?v=0.5.1-r5` is served.
+2. Capture a fresh portrait screenshot and confirm the real Alpine weather image is now visible behind the UI.
+3. If visible, tune night contrast / image focus / hero height only from that real screenshot.
 4. Verify `… → Oberfläche neu laden` returns directly to the current Alpine Start; initial page load/navigation is already practically verified.
-5. Fine-tune image focus / hero height / contrast only from the r4 screenshot.
-6. Resolve the real `Klima – Noch nicht verknüpft` mapping without fake values.
-7. Identify the current `1 Gerät offline` source and decide whether it is a real alert or classification noise.
-8. Continue Haus toward room-first presentation.
-9. Replace Klima demo with real entity-driven implementation and remove demo code in the same change.
-10. Complete Media verification.
-11. Replace Tür placeholders when Siedle/camera backend is reliable.
+5. Resolve the real `Klima – Noch nicht verknüpft` mapping without fake values.
+6. Identify the current `1 Gerät offline` source and decide whether it is a real alert or classification noise.
+7. Continue Haus toward room-first presentation.
+8. Replace Klima demo with real entity-driven implementation and remove demo code in the same change.
+9. Complete Media verification.
+10. Replace Tür placeholders when Siedle/camera backend is reliable.
 
 ## 16. Working style
 
@@ -385,7 +400,7 @@ JamesUI replies should start with:
 Other rules:
 
 - fewer confirmation questions; make progress when intent is clear
-- direct repository edits when available
+- direct repository edits when available, independent of whether the user is currently chatting from tablet or laptop
 - one useful troubleshooting step at a time
 - no unnecessary user copy/paste
 - no intentionally red `main`
