@@ -17,17 +17,26 @@ The repository is the source of truth. Do not reconstruct architecture from memo
 1. `PROJECT_STATUS.md`
 2. `docs/superpowers/specs/2026-10-02-jamesui-1.0-foundation-design.md`
 3. `docs/JAMESUI_1_0_EXECUTION_ROADMAP.md`
-4. inspect current production files only when a specific block needs them
+4. `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-0-baseline.md`
+5. inspect current production files only when Block 0 execution needs them
 
 The r11 implementation is a design/reference runtime only. The approved strategic direction is **Variant B: clean JamesUI 1.0 foundation in parallel, controlled cutover, then delete the old implementation**.
 
 ## Current process state
 
-Architecture direction has been approved conversationally and written into the repository.
+The written architecture specification has been reviewed, clarified and **approved**.
 
-The next formal gate is **review/approval of the written architecture specification**. After that approval, create the detailed implementation plan for **Block 0 – Baseline and preservation tests** from the execution roadmap.
+Approved clarifications now included in the canonical spec/roadmap:
 
-Do not start product-code implementation before that detailed block plan has been reviewed according to the project workflow.
+- manifest module dependencies are separate from required/provided capabilities,
+- Block 3 defines the Action Registry and HA-backed action contracts with fakes; real HA-backed actions are implemented only in Block 4 through the HA Adapter,
+- Event Bus is restricted to transient technical/UI/lifecycle events and cannot bypass Capabilities or Actions.
+
+The detailed implementation plan for **Block 0 – Baseline and preservation tests** exists at:
+
+`docs/superpowers/plans/2026-10-02-jamesui-1.0-block-0-baseline.md`
+
+The next formal gate is **review/approval of that Block 0 plan**. Block 0 implementation has not started. Do not start Block 1 or normal JamesUI 1.0 product-code implementation before Block 0 is completed and merged green.
 
 ## Working preferences
 
@@ -104,25 +113,18 @@ Expected old files to be removed/superseded at cutover include the monolithic ol
 ```text
 Wir setzen mein Projekt JamesUI aus dem Repository MarkusAureliusTeuton/JamesUI fort.
 
-Bitte arbeite NICHT aus Erinnerung oder aus alten Chat-Zusammenfassungen, sondern lies zuerst im Repository in dieser Reihenfolge:
+Bitte arbeite NICHT aus Erinnerung oder alten Chat-Zusammenfassungen, sondern lies zuerst im Repository:
 1. PROJECT_STATUS.md
 2. docs/superpowers/specs/2026-10-02-jamesui-1.0-foundation-design.md
 3. docs/JAMESUI_1_0_EXECUTION_ROADMAP.md
 4. docs/JAMESUI_1_0_NEXT_CHAT.md
+5. docs/superpowers/plans/2026-10-02-jamesui-1.0-block-0-baseline.md
 
-Wir haben uns für Variante B entschieden: eine neue saubere modulare JamesUI-1.0-Basis parallel aufbauen, danach kontrolliert umschalten und die alte r11-Architektur vollständig löschen. Der bestehende r11-Stand ist bis dahin nur Design-/Verhaltensreferenz und soll nicht weiter mit normalen Features bepflastert werden.
+Wir haben Variante B verbindlich freigegeben. Die schriftliche Architektur-Spec ist geprüft und freigegeben; die drei Architekturpräzisierungen zu Manifestfeldern, Block 3/4 und Event Bus sind bereits eingearbeitet.
 
-Wichtig für die Zusammenarbeit:
-- Deutsch, kurz und technisch sauber.
-- Repository direkt bearbeiten, wenn GitHub-Zugriff vorhanden ist.
-- Keine manuellen Copy/Paste-Anweisungen an mich, wenn du selbst committen kannst.
-- Einen Programmierblock nach dem anderen bearbeiten.
-- TDD; absichtlich rote Tests niemals nach main.
-- Fertige grüne freigegebene Arbeit nach main integrieren und PROJECT_STATUS.md sowie die Roadmap aktualisieren.
-- Keine neuen Monkey-Patches, Prototype-Overrides, Versions-Polish-Dateien, parallelen Implementierungen oder dauerhaften Legacy-Krücken.
-- OnePlus Pad 2 Hochformat ist das primäre Ziel; Fully ist nur die Kiosk-Hülle.
+Nächster Gate: Prüfe den detaillierten Implementierungsplan für Block 0 auf Vollständigkeit und Widersprüche. Wenn er passt und ich ihn freigebe, setze ausschließlich Block 0 auf einem isolierten Branch um. Kein Block 1 vor Abschluss und grünem Merge von Block 0.
 
-Prozessstand: Die Architekturrichtung ist freigegeben und die schriftliche Spezifikation liegt jetzt im Repository. Lies sie vollständig, prüfe sie auf Widersprüche/Unklarheiten und gib mir zuerst eine kurze Zusammenfassung der verbindlichen Zielarchitektur sowie eventuelle konkrete Punkte, die vor der endgültigen Spec-Freigabe noch geklärt werden müssen. Wenn nichts Wesentliches offen ist, sag mir klar, dass als nächster Schritt die Freigabe der schriftlichen Spec und danach der detaillierte Implementierungsplan für Block 0 ansteht. Noch keinen Produktcode ändern.
+Wichtig: Deutsch, kurz und technisch sauber. Repository direkt bearbeiten, wenn GitHub-Zugriff vorhanden ist. Keine manuellen Copy/Paste-Anweisungen an mich, wenn du selbst committen kannst. TDD für Verhaltensänderungen; absichtlich rote Tests niemals nach main. Keine neuen Monkey-Patches, Prototype-Overrides, Versions-Polish-Dateien, parallelen Implementierungen oder dauerhaften Legacy-Krücken. OnePlus Pad 2 Hochformat ist das primäre Ziel; Fully ist nur die Kiosk-Hülle.
 ```
 
 ## Recommended dedicated ChatGPT Project name
@@ -132,5 +134,5 @@ Prozessstand: Die Architekturrichtung ist freigegeben und die schriftliche Spezi
 Optional Project instruction text:
 
 ```text
-Dieses Projekt dient ausschließlich der Entwicklung von JamesUI im Repository MarkusAureliusTeuton/JamesUI. Das Repository ist die Quelle der Wahrheit. Zu Beginn eines Chats zuerst PROJECT_STATUS.md und die dort referenzierten aktuellen Architektur-/Roadmap-Dateien lesen. Änderungen direkt im Repository durchführen, TDD verwenden, immer nur einen Roadmap-Block gleichzeitig umsetzen und nach erfolgreicher Validierung PROJECT_STATUS.md/Roadmap aktualisieren. Keine parallelen Legacy-Implementierungen oder Monkey-Patches einführen. Primäres Zielgerät ist das OnePlus Pad 2 im Hochformat; Home Assistant ist Backend, KNX die primäre Gebäudeautomation, Fully nur die Kiosk-Hülle.
+Dieses Projekt dient ausschließlich der Entwicklung von JamesUI im Repository MarkusAureliusTeuton/JamesUI. Das Repository ist die Quelle der Wahrheit. Zu Beginn eines Chats zuerst PROJECT_STATUS.md und die dort referenzierten aktuellen Architektur-/Roadmap-/Plan-Dateien lesen. Änderungen direkt im Repository durchführen, TDD verwenden, immer nur einen Roadmap-Block gleichzeitig umsetzen und nach erfolgreicher Validierung PROJECT_STATUS.md/Roadmap aktualisieren. Keine parallelen Legacy-Implementierungen oder Monkey-Patches einführen. Primäres Zielgerät ist das OnePlus Pad 2 im Hochformat; Home Assistant ist Backend, KNX die primäre Gebäudeautomation, Fully nur die Kiosk-Hülle.
 ```
