@@ -27,7 +27,7 @@ class FrontendEntrypointTest(unittest.TestCase):
         version = version_match.group(1)
         revision = revision_match.group(1)
         self.assertNotEqual(version, "")
-        self.assertEqual(revision, "0.5.1-r9")
+        self.assertEqual(revision, "0.5.1-r10")
 
         manifest = json.loads(Path("custom_components/jamesui/manifest.json").read_text(encoding="utf-8"))
         self.assertEqual(manifest["version"], version)
