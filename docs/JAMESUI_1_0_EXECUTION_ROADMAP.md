@@ -1,6 +1,6 @@
 # JamesUI 1.0 – Execution Roadmap
 
-_Status: written architecture spec approved; Blocks 0–2 complete and validated; Block 3 plan created and awaiting approval_
+_Status: written architecture spec approved; Blocks 0–3 complete and validated; next gate Block 4 detailed plan_
 _Date: 2026-10-02_
 
 This document defines the implementation order for the JamesUI 1.0 rebuild using the approved **Variant B: clean foundation + controlled cutover** strategy.
@@ -176,6 +176,8 @@ Block 3 must not introduce raw Home Assistant service access merely to complete 
 - provider removal updates consumers safely
 - HA-backed action contracts are covered by test doubles but do not bypass the future adapter
 - CI green
+
+**Completion evidence:** PR #15 merged green. Branch validation #212 and main validation #214 succeeded. Capability/Action runtime remains parallel and unwired from the production r11 panel entry. Only `navigate` and `url.open` are real actions; HA-backed action providers remain Block 4.
 
 ---
 
@@ -676,7 +678,7 @@ Current state:
 | 0 Baseline | ✅ |
 | 1 Core shell | ✅ |
 | 2 Module registry/loader | ✅ |
-| 3 Capability/Action registries | ⬜ |
+| 3 Capability/Action registries | ✅ |
 | 4 HA adapter | ⬜ |
 | 5 Config store/migrations | ⬜ |
 | 6 Design system | ⬜ |
@@ -696,4 +698,4 @@ Current state:
 | 20 Cutover | ⬜ |
 | 21 Legacy deletion/gate | ⬜ |
 
-Blocks 0–2 are complete and validated. The detailed implementation plan for **Block 3 – Capability Registry and Action Registry** is now created and awaiting review/approval. Block 3 product-code implementation has **not** started.
+Blocks 0–3 are complete and validated. The next formal gate is the detailed implementation plan/review for **Block 4 – Home Assistant Adapter**. Block 4 product-code implementation has **not** started.
