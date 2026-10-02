@@ -4,17 +4,21 @@ import assert from "node:assert/strict";
 import { createJamesUICore } from "../custom_components/jamesui/frontend/core/index.js";
 import { FakeElement, createFakeDocument } from "./helpers/fake-dom.js";
 
-function moduleManifest(id, type = "provider") {
+function moduleManifest(id, type = "provider", { provides = [], requires = [], version = "1.0.0" } = {}) {
   return {
     id,
     type,
-    version: "1.0.0",
+    version,
     core_api: "1.x",
     depends_on: [],
-    requires_capabilities: [],
-    provides_capabilities: [],
+    requires_capabilities: requires,
+    provides_capabilities: provides,
     config_schema: `${id}.schema.json`,
   };
+}
+
+function dataModuleUrl(source) {
+  return `data:text/javascript,${encodeURIComponent(source)}`;
 }
 
 test("stores Home Assistant host properties opaquely before mount", () => {
@@ -102,8 +106,16 @@ test("event listener failures are recorded in Core health without aborting dispa
 test("exposes Core service references as read-only", () => {
   const core = createJamesUICore({ document: createFakeDocument() });
   const router = core.router;
+  const capabilities = core.capabilities;
+  const actions = core.actions;
+  assert.ok(capabilities);
+  assert.ok(actions);
   assert.throws(() => { core.router = null; }, TypeError);
+  assert.throws(() => { core.capabilities = null; }, TypeError);
+  assert.throws(() => { core.actions = null; }, TypeError);
   assert.equal(core.router, router);
+  assert.equal(core.capabilities, capabilities);
+  assert.equal(core.actions, actions);
 });
 
 test("composes Module Registry and Loader as read-only Core services", () => {
@@ -131,10 +143,100 @@ test("module context is HA-free and Core destroy cleans loaded modules exactly o
 
   const target = { events: [] };
   assert.equal(core.moduleLoader.mount("provider.context", target), true);
-  assert.deepEqual(target.events[0], ["provider", "mount", "safe", ["events", "overlays"]]);
+  assert.deepEqual(target.events[0], [
+    "provider", "mount", "safe", ["actions", "capabilities", "events", "module", "overlays"],
+  ]);
 
   core.destroy();
   core.destroy();
   assert.equal(target.events.filter((event) => event[1] === "destroy").length, 1);
   assert.equal(core.moduleLoader.isLoaded("provider.context"), false);
+});
+
+test("provider and consumer modules exchange capabilities and actions through the safe context", async () => {
+  const core = createJamesUICore({ document: createFakeDocument(), openUrl: () => true });
+  core.hass = { states: { secret: true } };
+  core.narrow = true;
+  core.route = { path: "/jamesui" };
+  core.panel = { title: "JamesUI" };
+
+  const providerSource = `
+    export function create(context) {
+      let target = null;
+      let handle = null;
+      return {
+        mount(nextTarget) {
+          target = nextTarget;
+          target.keys = Object.keys(context).sort();
+          target.module = context.module;
+          target.moduleFrozen = Object.isFrozen(context.module);
+          handle = context.capabilities.register(context.module.id, "demo.value");
+          handle.available({ value: 42 });
+        },
+        update(nextContext) { target.updatedModule = nextContext.module; },
+        destroy() { target.unregisterResult = handle.unregister(); }
+      };
+    }
+  `;
+  const consumerSource = `
+    export function create(context) {
+      let target = null;
+      let stop = null;
+      return {
+        mount(nextTarget) {
+          target = nextTarget;
+          target.keys = Object.keys(context).sort();
+          target.module = context.module;
+          target.moduleFrozen = Object.isFrozen(context.module);
+          target.states = [];
+          stop = context.capabilities.subscribe("demo.value", (state) => target.states.push(state));
+          target.actionPromise = context.actions.execute({ type: "navigate", route: "house" })
+            .then((result) => { target.actionResult = result; return result; });
+        },
+        update(nextContext) { target.updatedModule = nextContext.module; },
+        destroy() { stop?.(); }
+      };
+    }
+  `;
+
+  core.moduleRegistry.register(
+    moduleManifest("provider.demo", "provider", { provides: ["demo.value"], version: "1.2.0" }),
+    { entryUrl: dataModuleUrl(providerSource) },
+  );
+  core.moduleRegistry.register(
+    moduleManifest("widget.demo", "widget", { requires: ["demo.value"], version: "2.3.0" }),
+    { entryUrl: dataModuleUrl(consumerSource) },
+  );
+
+  assert.equal(await core.moduleLoader.load("provider.demo"), true);
+  assert.equal(await core.moduleLoader.load("widget.demo"), true);
+  const providerTarget = {};
+  const consumerTarget = {};
+  assert.equal(core.moduleLoader.mount("provider.demo", providerTarget), true);
+  assert.equal(core.moduleLoader.mount("widget.demo", consumerTarget), true);
+  await consumerTarget.actionPromise;
+
+  const expectedKeys = ["actions", "capabilities", "events", "module", "overlays"];
+  assert.deepEqual(providerTarget.keys, expectedKeys);
+  assert.deepEqual(consumerTarget.keys, expectedKeys);
+  assert.deepEqual(providerTarget.module, { id: "provider.demo", type: "provider", version: "1.2.0" });
+  assert.deepEqual(consumerTarget.module, { id: "widget.demo", type: "widget", version: "2.3.0" });
+  assert.equal(providerTarget.moduleFrozen, true);
+  assert.equal(consumerTarget.moduleFrozen, true);
+  assert.equal("hass" in providerTarget.module, false);
+  assert.equal(consumerTarget.states[0].status, "available");
+  assert.deepEqual(consumerTarget.states[0].value, { value: 42 });
+  assert.equal(consumerTarget.actionResult.status, "success");
+  assert.equal(core.router.currentRouteId, "house");
+
+  assert.equal(core.moduleLoader.update("provider.demo", {}), true);
+  assert.equal(core.moduleLoader.update("widget.demo", {}), true);
+  assert.equal(providerTarget.updatedModule.id, "provider.demo");
+  assert.equal(consumerTarget.updatedModule.id, "widget.demo");
+
+  core.destroy();
+  assert.equal(providerTarget.unregisterResult, true);
+  assert.equal(consumerTarget.states.at(-1).status, "unavailable");
+  assert.equal(consumerTarget.states.at(-1).provider, null);
+  assert.equal((await core.actions.execute({ type: "navigate", route: "home" })).status, "unavailable");
 });
