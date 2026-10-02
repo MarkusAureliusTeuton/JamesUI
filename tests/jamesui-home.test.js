@@ -168,18 +168,20 @@ function alpinePanel(overrides = {}) {
   };
 }
 
-test("renders V9 hero with moon integrated into the daily weather facts", () => {
+test("renders pictogram weather facts while keeping accessible labels", () => {
   const html = renderAlpineHome(alpinePanel());
   assert.match(html, /class="start-v9-hero/);
   assert.match(html, /class="start-v9-weather-facts"/);
+  assert.equal((html.match(/class="start-v9-fact-icon"/g) || []).length, 7);
+  assert.match(html, /<svg[^>]*viewBox="0 0 24 24"/);
+  for (const label of ["Maximum", "Minimum", "Regen", "Wind", "Sonnenaufgang", "Sonnenuntergang", "Mond"]) {
+    assert.match(html, new RegExp(`class="start-v9-sr-only">${label}<`));
+  }
   assert.match(html, /Zunehmender Mond/);
   assert.match(html, /68%/);
-  assert.match(html, /Max/);
-  assert.match(html, /Min/);
-  assert.match(html, /Regen/);
-  assert.match(html, /Wind/);
-  assert.match(html, /Sonnenaufgang/);
-  assert.match(html, /Sonnenuntergang/);
+  assert.doesNotMatch(html, /<dt>Max<\/dt>/);
+  assert.doesNotMatch(html, /<dt>Min<\/dt>/);
+  assert.doesNotMatch(html, /<dt>Regen<\/dt>/);
   assert.doesNotMatch(html, /alpine-moon-note/);
   assert.match(html, /data-open-forecast/);
   assert.match(html, /Kühler/);
@@ -225,10 +227,11 @@ test("keeps Start free of duplicate primary navigation", () => {
   assert.match(html, /data-home-house-more/);
 });
 
-test("defines portrait-first stacked lower layout and landscape two-column grid", () => {
+test("keeps calendar and house side-by-side on tablet portrait and compacts the lower region", () => {
   assert.match(homeSource, /\.start-v9-lower-grid/);
-  assert.match(homeSource, /@media\(orientation:portrait\)/);
-  assert.match(homeSource, /grid-template-columns:1fr/);
-  assert.match(homeSource, /@media\(orientation:landscape\)/);
-  assert.match(homeSource, /grid-template-columns:minmax\(0,1fr\) minmax\(0,1fr\)/);
+  assert.match(homeSource, /@media\(orientation:portrait\) and \(min-width:760px\)/);
+  assert.match(homeSource, /grid-template-columns:minmax\(0,\.92fr\) minmax\(0,1\.08fr\)/);
+  assert.match(homeSource, /min-height:clamp\(410px,44vh,540px\)/);
+  assert.match(homeSource, /\.start-v9-section\{[^}]*padding:20px/);
+  assert.match(homeSource, /\.start-v9-scenes\{margin-top:14px/);
 });

@@ -17,6 +17,7 @@ Core rules:
 - Local operation preferred; avoid unnecessary dependencies/cloud runtime assets.
 - Automatic discovery first; manual mapping only where needed.
 - Alpine-Chic / Chalet style: photorealistic outdoor weather atmosphere, near-black/anthracite base, restrained warm champagne accents, no fake apartment scene, no generic card grid, no glowing borders.
+- Start should fit the important daily information on one portrait screen whenever the target tablet viewport allows it.
 
 ## 2. Repository / release state
 
@@ -26,16 +27,19 @@ Default branch: `main`
 
 Integration / manifest version: **0.5.1**
 
-Frontend revision on `main`: **0.5.1-r9**
+Current refinement branch: `fix/start-dashboard-v9-compact-grid`
 
-V9 integration state:
+Frontend revision on refinement branch: **0.5.1-r10**
 
-- PR #9 merged into `main`
-- squash merge commit: `fa9749c9be660ac8b7db6b2ee20d1d126989c14a`
-- final `main` validation: **Validate JamesUI #149 → success**
-- practical browser / OnePlus portrait verification still required
+Verified history:
 
-`main` is the implementation truth. The V9 feature branch is no longer an alternate product state.
+- PR #9 merged V9 to `main`
+- merge commit: `fa9749c9be660ac8b7db6b2ee20d1d126989c14a`
+- `main` validation #149 → success
+- first real portrait screenshot received and reviewed
+- r10 refinement branch validation #151 → success before final documentation/revision update
+
+`main` remains implementation truth after finished green refinements are merged. Approved JamesUI changes should be implemented in the repository and finished green work integrated into `main` without re-asking the user for that preference.
 
 ## 3. Critical runtime chain
 
@@ -58,25 +62,25 @@ Do not bypass this chain casually. Previous failures included blank panel from d
 | `frontend/jamesui-entry.js` | classic loader + Shadow-DOM/property bridge | critical |
 | `frontend/jamesui-home-entry.js` | Start module bridge + initial rerender | critical |
 | `frontend/jamesui-panel.js` | app shell, global nav, Haus/Klima/Medien/Tür, settings, base fallback Start | active; do not duplicate shell logic |
-| `frontend/jamesui-home.js` | V9 Start renderer, weather hero, weather tendency, house-status model, responsive layout | active Start owner |
-| `frontend/jamesui-home-data.js` | calendar lifecycle, scene discovery/actions, Start overlays and Start-only shell interaction bridge | active V9 live-data owner |
+| `frontend/jamesui-home.js` | V9/r10 Start renderer, pictogram weather facts, weather tendency, house-status model, responsive compact grid | active Start owner |
+| `frontend/jamesui-home-data.js` | calendar lifecycle, scene discovery/actions, Start overlays and Start-only shell interaction bridge | active live-data owner |
 | `frontend/jamesui-home-background.js` | Auto/Manual background mode, photo treatment, four favorite-scene selectors + Start save flow | active background/settings owner |
 | `frontend/assets/alpine/` | 8 local photorealistic WebP scenes | active |
 | `frontend/assets/weather/` | old SVG base-Start fallback | intentional compatibility code |
-| `tests/jamesui-home.test.js` | V9 hero/calendar/house/weather/status regressions | active |
+| `tests/jamesui-home.test.js` | Start hero/calendar/house/weather/responsive regressions | active |
 | `tests/jamesui-home-data.test.js` | calendar/scene/live-interaction/overlay regressions | active |
 | `tests/jamesui-background.test.js` | background + favorite scene settings/API regressions | active |
 | `tests/test_alpine_assets.py` | WebP signature/RIFF-length/detail checks | critical |
 | `tests/test_frontend_entrypoint.py` | loader/revision/module/Shadow-DOM/property/rerender checks | critical |
 | `PROJECT_STATUS.md` | persistent handover | keep current |
 
-## 5. Start page – V9
+## 5. Start page – V9 / r10 refinement
 
-**Status: ⚠️ implementation, PR and `main` CI verified; practical visual/runtime test required.**
+**Status: ⚠️ code + CI verified; r10 needs a fresh real browser/OnePlus portrait screenshot after merge.**
 
 ### Weather hero
 
-The upper Start area is one large image-backed hero using the existing local Alpine background family.
+The upper Start area remains the large image-backed Alpine hero. The first real V9 screenshot confirmed that this direction works well and should not be redesigned wholesale.
 
 It contains:
 
@@ -84,31 +88,37 @@ It contains:
 - large clock
 - Home Assistant location label
 - current weather icon, temperature and condition
-- one integrated daily information row:
-  - maximum temperature
-  - minimum temperature
-  - precipitation probability / `ab HH:MM` when hourly or twice-daily forecast can derive a first rain time
-  - wind
-  - sunrise
-  - sunset
-  - **moon phase + illumination**
-- compact `3-Tage-Prognose` action with temperature tendency (`Wärmer`, `Kühler`, `Stabil`) and rain expectation
-- existing forecast detail overlay remains the full 3-day view
+- one compact daily-information row
+- compact `3-Tage-Prognose` action
 - one subtle `…` button in the upper-right
 
-The former separate moon block is removed from the enhanced Start renderer.
+r10 changes the daily information row from visible text headings to **local inline SVG pictograms**. The seven facts are:
 
-### Start app chrome
+- maximum temperature → sun pictogram
+- minimum temperature → moon/night pictogram
+- precipitation / first rain time → rain pictogram
+- wind → wind pictogram
+- sunrise → sunrise pictogram
+- sunset → sunset pictogram
+- moon phase + illumination → moon pictogram
 
-On normal Start only:
+The text labels remain visually hidden for accessibility. No external icon package or cloud dependency is added.
 
-- large JamesUI topbar is hidden
-- content uses the full available width/height above the fixed bottom navigation
-- hero `…` reuses the existing app-menu state/methods
-- Start app menu additionally exposes **Einstellungen** inside the same menu, so the separate topbar settings button is unnecessary on Start
-- other pages/settings keep the existing topbar until they are redesigned separately
+Rain behavior remains conservative: exact `ab HH:MM` is shown only when granular hourly/twice-daily forecast data actually supports it. Otherwise precipitation probability is shown.
 
-The bottom navigation remains `Start | Haus | Klima | Medien | Tür` but V9 applies a calmer translucent dark treatment, refined spacing and a small champagne active indicator. No glow frame is used.
+### Compact portrait composition
+
+The first real portrait screenshot showed that stacking Kalender and Hausstatus forced scenes below the fold. r10 therefore changes the target-tablet portrait layout:
+
+- Hero is slightly shorter: target range roughly `410–540 px` / about `44vh` on portrait tablet.
+- At portrait widths **>= 760 px**, the lower region remains a two-column grid.
+- Calendar uses the slightly narrower left column.
+- House status uses the slightly wider right column.
+- Ratio: approximately `0.92fr / 1.08fr`.
+- Only narrow/mobile widths below 760 px fall back to stacked layout.
+- Lower section padding, headings, timeline and status rows are tightened while preserving readability.
+
+This is specifically intended to make **Hero + Kalender + Hausstatus + 4 Szenen + bottom nav** fit on one OnePlus Pad 2 portrait screen without normal scrolling.
 
 ### Calendar
 
@@ -118,21 +128,21 @@ Behavior:
 
 - auto-discovers `calendar.*`
 - subscribes via `calendar/event/subscribe`
-- rolling window: current local day through the following 7 days
-- merges and sorts all calendars
-- conservative deduplication only within the same calendar for identical event/time pairs
+- rolling window: current local day through following 7 days
+- merges/sorts all calendars
+- conservative deduplication
 - supports timed and all-day events
-- Start shows a compact selection; `Weitere Termine` opens a larger overlay with the available subscribed events
-- missing/no calendar data shows `Keine Kalenderdaten`
-- subscriptions are cleaned up on panel disconnect
+- Start now shows at most **3 compact events** to preserve the one-screen composition
+- `Weitere Termine` opens the larger overlay
+- missing/no data shows a compact `Keine Kalenderdaten` state rather than a large empty region
 
-No external calendar credentials or cloud API are added to JamesUI.
+Current real screenshot showed **Keine Kalenderdaten**, so actual HA calendar availability still needs to be verified separately from layout.
 
 ### Hausstatus
 
-Start summarizes the existing HA state without creating a second Haus implementation.
+Start summarizes real HA state without creating a second Haus implementation.
 
-Current status groups:
+Current groups:
 
 - Licht
 - Steckdosen
@@ -142,22 +152,21 @@ Current status groups:
 - Klima
 - Medien
 
-Window/door status uses real `binary_sensor.*` device classes and common opening names. Open windows/doors contribute to `Aufmerksamkeit nötig`; calm state is `Alles in Ordnung`.
+r10 compacts these into a **3-column status grid** on tablet-width Start so they consume fewer rows. Open windows/doors still contribute to `Aufmerksamkeit nötig`.
 
-`Weitere` navigates to the existing `Haus` page.
+The first real screenshot showed `–` for Fenster/Türen/Klima, meaning suitable entities were not detected in that runtime state. This is a data/classification issue, not a layout placeholder.
 
 ### Lieblingsszenen
 
-- discovers real `scene.*` entities
-- exactly up to four favorites shown on Start
-- favorites are configurable in Start settings as an ordered list
-- if configuration is incomplete/missing, remaining slots fall back deterministically to discovered scenes by name
-- invalid/missing scene IDs are ignored in the frontend resolver and validated by the backend config API
+- discovers real `scene.*`
+- up to four favorites shown on Start
+- ordered favorites configurable in Start settings
+- deterministic fallback to discovered scenes if configuration is incomplete
 - activation uses `scene.turn_on`
-- scene buttons use momentary feedback only; JamesUI does not pretend scenes have a persistent active state
-- `Weitere` opens an overlay of all discovered scenes
+- momentary feedback only
+- `Weitere` opens all-scenes overlay
 
-Config key: `home_scene_entities` (ordered list, max 4).
+r10 keeps all four scene buttons directly below the compact house-status grid so they remain visible without scrolling on the target portrait tablet.
 
 ## 6. Background system
 
@@ -167,8 +176,7 @@ Start settings retain:
 - **Manuell**: forces one of 8 local scenes for visual testing while weather values remain live
 - immediate scene preview
 - dedicated `Start speichern` action
-
-The same save action now persists both background selection and the four favorite scene selectors.
+- four favorite scene selectors
 
 Alpine assets:
 
@@ -199,8 +207,6 @@ Do not re-debug these from scratch:
 
 Only remove base Start + old weather SVGs together after enhanced Start is proven stable on OnePlus/Fully and browser, loader architecture is settled, and a tested safe render path remains if enhancement loading fails.
 
-V9 therefore evolves the enhanced Start renderer in place rather than deleting fallback code.
-
 ## 9. Other pages
 
 ### Haus
@@ -225,31 +231,30 @@ V9 therefore evolves the enhanced Start renderer in place rather than deleting f
 - guarded classic loader + revision propagation
 - nested Shadow-DOM panel discovery/property bridge/initial rerender
 - Alpine WebP/RIFF integrity
-- V9 Start renderer/status/weather tests
+- Start renderer/status/weather/responsive tests
 - background/favorite-scene settings tests
 - calendar/scene/live-interaction tests
-
-Current verified `main` validation: **#149 → success** on merge commit `fa9749c9be660ac8b7db6b2ee20d1d126989c14a`.
 
 Development rules:
 
 1. inspect existing code/assets first
-2. use small cohesive batches when work is risky
+2. use small cohesive branches when work is risky
 3. TDD red states stay off `main`
 4. no duplicate implementations
 5. update this file after substantive work
 6. practical visual confirmation is required before declaring tablet UX final
+7. approved green JamesUI repository work should be merged to `main` without asking the user to repeat that preference
 
 ## 11. Current priorities
 
-1. Update/reload Home Assistant so **`0.5.1-r9`** is served.
-2. Browser test: verify the Start header is gone, hero `…` opens one combined menu, and Settings opens from it.
-3. Verify weather hero: current values, max/min, rain probability/timing, sunrise/sunset, moon phase/illumination and 3-day tendency.
-4. Verify real `calendar.*` events appear; test `Weitere Termine`.
-5. Configure four favorite scenes in Start settings and test activation + `Weitere` scene overlay.
-6. Verify Hausstatus classifications against actual entities, especially windows/doors.
-7. Send a fresh browser screenshot; when OnePlus is available, repeat in portrait because portrait remains design authority.
-8. Fine-tune spacing/crop/brightness only from real screenshots.
+1. Finish/merge the r10 compact-grid refinement and verify `main` CI.
+2. Reload Home Assistant/JamesUI so **`0.5.1-r10`** is served.
+3. Send a fresh portrait screenshot and verify that normal Start no longer scrolls on OnePlus Pad 2.
+4. Check pictogram sizing/alignment and whether moon text still fits comfortably.
+5. Verify real `calendar.*` entities/data, because the first screenshot showed no calendar data.
+6. Configure/test four favorite scenes and verify they are visible and actionable without scrolling.
+7. Investigate Fenster/Türen/Klima `–` values against actual HA entities/classification.
+8. Fine-tune only from real screenshots, preserving the approved overall composition.
 9. Continue Haus room-first, then real Klima, Media verification, and later Tür backend integration.
 
 ## 12. Working style
@@ -258,7 +263,7 @@ JamesUI replies start with `✅ Fertig:`, `⚠️ Test nötig:` or `🚧 Nicht f
 
 - fewer confirmation questions; make progress when intent is clear
 - direct repository edits when available
-- **when JamesUI code changes are approved and repository access is available, implement them directly in the repository and integrate finished green work into `main` without asking the user to repeat that preference**
+- when JamesUI code changes are approved and repository access is available, implement them directly and integrate finished green work into `main`
 - one useful troubleshooting step at a time
 - no unnecessary user copy/paste
 - no intentionally red `main`
@@ -273,7 +278,7 @@ JamesUI replies start with `✅ Fertig:`, `⚠️ Test nötig:` or `🚧 Nicht f
 ## 14. Next-chat instruction
 
 1. Read `PROJECT_STATUS.md` first.
-2. Treat `main` as implementation truth.
+2. Treat `main` as implementation truth; inspect any active refinement PR before starting parallel Start work.
 3. Inspect relevant existing files/assets before changing them.
 4. Continue directly without asking the user to repeat documented decisions.
 5. Update this file after substantive work.
