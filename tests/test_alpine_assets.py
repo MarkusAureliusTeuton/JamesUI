@@ -22,6 +22,18 @@ class AlpineAssetTest(unittest.TestCase):
             self.assertGreaterEqual(len(data), 12, f"Alpine asset too small: {name}")
             self.assertEqual(data[:4], b"RIFF", f"Invalid RIFF header: {name}")
             self.assertEqual(data[8:12], b"WEBP", f"Invalid WEBP signature: {name}")
+            declared_size = int.from_bytes(data[4:8], "little") + 8
+            self.assertEqual(
+                declared_size,
+                len(data),
+                f"Truncated or malformed WebP asset: {name}",
+            )
+
+    def test_r7_night_assets_have_photographic_detail(self):
+        root = Path("custom_components/jamesui/frontend/assets/alpine")
+        for name in ("clear-night.webp", "cloudy-night.webp"):
+            data = (root / name).read_bytes()
+            self.assertGreater(len(data), 10000, f"Night asset lacks photographic detail: {name}")
 
 
 if __name__ == "__main__":

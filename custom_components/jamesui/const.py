@@ -3,7 +3,7 @@
 DOMAIN = "jamesui"
 NAME = "JamesUI"
 VERSION = "0.5.1"
-FRONTEND_REVISION = "0.5.1-r6"
+FRONTEND_REVISION = "0.5.1-r7"
 
 PANEL_URL = "jamesui"
 PANEL_TITLE = "JamesUI"

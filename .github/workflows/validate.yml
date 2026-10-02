@@ -42,3 +42,6 @@ jobs:
 
       - name: Test home status model
         run: node --experimental-default-type=module --test tests/jamesui-home.test.js
+
+      - name: Test Start background settings
+        run: node --experimental-default-type=module --test tests/jamesui-background.test.js
