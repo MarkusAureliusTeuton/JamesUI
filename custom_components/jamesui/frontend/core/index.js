@@ -28,11 +28,7 @@ export function createJamesUICore({ document = globalThis.document, renderPage }
     renderPage,
   });
 
-  return {
-    router,
-    events,
-    overlays,
-    health,
+  const core = {
     mount(target) {
       return shell.mount(target);
     },
@@ -54,4 +50,13 @@ export function createJamesUICore({ document = globalThis.document, renderPage }
     get panel() { return hostContext.get("panel"); },
     set panel(value) { hostContext.set("panel", value); },
   };
+
+  Object.defineProperties(core, {
+    router: { value: router, enumerable: true },
+    events: { value: events, enumerable: true },
+    overlays: { value: overlays, enumerable: true },
+    health: { value: health, enumerable: true },
+  });
+
+  return core;
 }
