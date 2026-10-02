@@ -74,12 +74,12 @@ Fresh-chat / ChatGPT-Project handover and start prompt:
   - Block 3 builds Action Registry contracts with non-HA actions/fakes; real HA-backed actions are wired only in Block 4 through the HA Adapter,
   - Event Bus is restricted to transient technical/UI/lifecycle events and may not bypass Capabilities or Actions.
 - **Block 0 – Baseline and preservation tests: complete and green.**
-- **Block 1 – JamesUI Core shell: complete and green in PR #13, ready for integration.**
+- **Block 1 – JamesUI Core shell: complete, green and merged through PR #13.**
 - Block 1 adds the parallel Core under `custom_components/jamesui/frontend/core/`: canonical routing, structural persistent shell/navigation, transient Event Bus, Overlay Service, Health Service and opaque Home Assistant host-context handoff.
 - The new Core is intentionally **not wired into the production Home Assistant panel entry**. Current r11 remains production/reference until the controlled cutover.
 - Core architecture tests prohibit direct HA state/service access, legacy Start coupling and release-version naming in the new Core.
-- PR #13 validation: **success** after whole-branch review and the read-only Core service-reference correction.
-- **Block 2 has not started.** Next gate after Block 1 integration: detailed implementation plan/review for Block 2 – Module manifest, registry and loader.
+- PR #13 validation and `main` validation #192: **success** after whole-branch review and the read-only Core service-reference correction.
+- **Block 2 has not started.** Next gate: detailed implementation plan/review for Block 2 – Module manifest, registry and loader.
 
 ## 4. Current production/reference runtime
 
@@ -113,7 +113,7 @@ Main findings:
 - Old Start still exists in the panel while newer Start modules replace/wrap it at runtime.
 - `jamesui-home-background.js` wraps panel methods and rewrites rendered HTML.
 - `jamesui-home-data.js` wraps render/lifecycle behavior to add calendar/scenes/runtime hooks.
-- `jamesui-v11-polish.js` is another visual override layer using `!important`, data-URL SVGs and positional rules.
+- `jamesui-v11-polish.js` is another visual override layer using `!important`, data-URL SVGs and positional styling rules.
 - Icons are inconsistent: Unicode + inline SVG + data-URL SVG + legacy SVG assets.
 - Config is a flat set of unrelated options and will not scale to pages/layouts/widgets/buttons/modules.
 - Klima contains hard-coded demo rooms/temperatures.
@@ -298,6 +298,6 @@ Preferences:
 
 ## 15. Next action
 
-After Block 1 is merged green, **create and review the detailed implementation plan for Block 2 – Module manifest, registry and loader**.
+**Create and review the detailed implementation plan for Block 2 – Module manifest, registry and loader.**
 
 Do not begin Block 2 product-code implementation before that plan is reviewed and approved.
