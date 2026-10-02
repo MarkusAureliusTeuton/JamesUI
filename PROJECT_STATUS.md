@@ -57,6 +57,10 @@ Completed implementation plans:
 - `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-3-capability-action-registries.md`
 - `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-4-home-assistant-adapter.md`
 
+Current detailed implementation plan:
+
+`docs/superpowers/plans/2026-10-02-jamesui-1.0-block-5-config-store-migrations.md`
+
 Canonical Block 0 baseline:
 
 `docs/JAMESUI_1_0_BASELINE.md`
@@ -85,7 +89,12 @@ Fresh-chat / ChatGPT-Project handover and start prompt:
 - Direct new-runtime HA access is architecture-guarded to `frontend/ha/`; the production `jamesui-entry.js` remains on r11.
 - Block 4 branch validation #229 and `main` validation #230: **success** after the full RED → GREEN implementation cycle and whole-branch review. One Important review finding (stale state reads while disconnected) was fixed with dedicated RED → GREEN coverage before integration.
 - The new Core/module/capability/action/HA runtime remains intentionally **unwired from the production Home Assistant panel entry**. Current r11 remains production/reference until the controlled cutover.
-- **Block 5 – Versioned configuration store and migrations has not started.** Next gate: detailed implementation plan/review for Block 5.
+- Detailed implementation plan for **Block 5 – Versioned configuration store and migrations**: **created and awaiting review/approval**.
+- Block 5 will use one canonical Home Assistant `.storage` Store with atomic writes and schema version `1`; `config_entry.options` will no longer be the canonical persistence source.
+- The 15 known r11 option values have an explicit deterministic mapping into `data_sources` and `module_settings`; `pages`, `layouts`, `widget_instances` and `dynamic_buttons` remain intentionally empty until their owning blocks.
+- Existing r11 config WebSocket commands remain temporarily compatible by projecting/patching the same structured Store, with explicit removal at Block 20/21. No second config persistence path is allowed.
+- Device-local `jamesui-display-calibration` remains browser-local and is explicitly excluded from shared configuration/migration.
+- **Block 5 product-code implementation has not started.** Do not begin Block 6 before Block 5 is completed and merged green.
 
 ## 4. Current production/reference runtime
 
@@ -304,6 +313,10 @@ Preferences:
 
 ## 15. Next action
 
-Create and review the detailed implementation plan for **Block 5 – Versioned configuration store and migrations**.
+Review the detailed Block 5 plan:
 
-Do not begin Block-5 product-code work before that plan is reviewed and approved.
+`docs/superpowers/plans/2026-10-02-jamesui-1.0-block-5-config-store-migrations.md`
+
+If approved, execute **Block 5 – Versioned configuration store and migrations** on an isolated branch according to that plan.
+
+Do not begin Block 6 or other dependent JamesUI 1.0 product-code work before Block 5 is completed and merged green.
