@@ -63,6 +63,13 @@ jobs:
             tests/jamesui-action-registry.test.js \
             tests/jamesui-core-actions.test.js
 
+      - name: Test JamesUI Block 4 Home Assistant boundary
+        run: |
+          node --experimental-default-type=module --test \
+            tests/jamesui-home-assistant-adapter.test.js \
+            tests/jamesui-ha-actions.test.js \
+            tests/jamesui-core-ha-integration.test.js
+
       - name: Validate Alpine atmosphere assets
         run: python -m unittest tests/test_alpine_assets.py
 

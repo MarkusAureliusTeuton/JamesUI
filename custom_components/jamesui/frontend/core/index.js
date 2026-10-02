@@ -9,6 +9,8 @@ import { createModuleLoader } from "./module-loader.js";
 import { createCapabilityRegistry } from "./capability-registry.js";
 import { createActionRegistry } from "./action-registry.js";
 import { registerCoreActionProviders } from "./core-action-providers.js";
+import { createHomeAssistantAdapter } from "../ha/home-assistant-adapter.js";
+import { registerHomeAssistantActionProviders } from "../ha/ha-action-providers.js";
 
 function defaultOpenUrl(url) {
   if (typeof globalThis.open !== "function") return false;
@@ -31,17 +33,33 @@ export function createJamesUICore({ document = globalThis.document, renderPage, 
   const moduleRegistry = createModuleRegistry();
   const capabilities = createCapabilityRegistry({ moduleRegistry });
   const actions = createActionRegistry({ health });
+  const homeAssistant = createHomeAssistantAdapter({
+    onSubscriberError: ({ kind, key, error }) => {
+      health.report("core:home-assistant-adapter", {
+        status: "error",
+        message: `Home Assistant ${kind} subscriber failed${key ? `: ${key}` : ""}`,
+        error,
+      });
+    },
+  });
   const unregisterCoreActions = registerCoreActionProviders({ actions, router, openUrl });
+  const unregisterHomeAssistantActions = registerHomeAssistantActionProviders({ actions, homeAssistant });
   const moduleLoader = createModuleLoader({
     registry: moduleRegistry,
     health,
-    getContext: ({ id, manifest }) => Object.freeze({
-      events,
-      overlays,
-      capabilities,
-      actions,
-      module: Object.freeze({ id, type: manifest.type, version: manifest.version }),
-    }),
+    getContext: ({ id, manifest }) => {
+      const context = {
+        events,
+        overlays,
+        capabilities,
+        actions,
+        module: Object.freeze({ id, type: manifest.type, version: manifest.version }),
+      };
+      if (manifest.type === "provider" || manifest.type === "action") {
+        context.homeAssistant = homeAssistant;
+      }
+      return Object.freeze(context);
+    },
   });
   const hostContext = createHostContext({ events });
   const shell = createAppShell({
@@ -60,6 +78,8 @@ export function createJamesUICore({ document = globalThis.document, renderPage, 
     destroy() {
       moduleLoader.destroyAll();
       unregisterCoreActions();
+      unregisterHomeAssistantActions();
+      homeAssistant.destroy();
       capabilities.destroy();
       actions.destroy();
       shell.destroy();
@@ -71,7 +91,10 @@ export function createJamesUICore({ document = globalThis.document, renderPage, 
       return hostContext.snapshot();
     },
     get hass() { return hostContext.get("hass"); },
-    set hass(value) { hostContext.set("hass", value); },
+    set hass(value) {
+      homeAssistant.setHass(value);
+      hostContext.set("hass", value);
+    },
     get narrow() { return hostContext.get("narrow"); },
     set narrow(value) { hostContext.set("narrow", value); },
     get route() { return hostContext.get("route"); },
@@ -89,6 +112,7 @@ export function createJamesUICore({ document = globalThis.document, renderPage, 
     moduleLoader: { value: moduleLoader, enumerable: true },
     capabilities: { value: capabilities, enumerable: true },
     actions: { value: actions, enumerable: true },
+    homeAssistant: { value: homeAssistant, enumerable: true },
   });
 
   return core;
