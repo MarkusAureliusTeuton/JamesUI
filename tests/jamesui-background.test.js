@@ -50,7 +50,7 @@ test("exposes the eight approved manual Alpine background scenes", () => {
   assert.ok(HOME_BACKGROUND_SCENES.every((scene) => scene.label && scene.asset.endsWith(".webp")));
 });
 
-test("renders background controls for the existing Start settings flow", () => {
+test("renders a dedicated background save action at the end of the background settings", () => {
   const html = renderBackgroundSettings({ background_mode: "manual", background_scene: "fog" });
   assert.match(html, /data-config-background-mode/);
   assert.match(html, /value="manual" selected/);
@@ -58,16 +58,24 @@ test("renders background controls for the existing Start settings flow", () => {
   assert.match(html, /value="fog" selected/);
   assert.match(html, /Automatisch/);
   assert.match(html, /Bewölkte Nacht/);
+  assert.match(html, /data-save-background/);
+  assert.match(html, /Hintergrund speichern/);
 });
 
-test("Start background controls reuse the existing Home config save path", () => {
+test("background settings save independently from the entity mapping save path", () => {
   assert.match(backgroundSource, /_homeSettingsPage/);
-  assert.match(backgroundSource, /_saveHomeConfig/);
+  assert.match(backgroundSource, /data-save-background/);
+  assert.match(backgroundSource, /saveBackgroundConfig/);
+  assert.doesNotMatch(backgroundSource, /originalSaveHomeConfig/);
   assert.match(backgroundSource, /jamesui\/config\/update/);
   assert.match(apiSource, /background_mode/);
   assert.match(apiSource, /background_scene/);
-  assert.match(apiSource, /clear-day/);
-  assert.match(apiSource, /cloudy-night/);
+});
+
+test("manual scene selector updates its preview immediately before persistence", () => {
+  assert.match(backgroundSource, /data-config-background-scene/);
+  assert.match(backgroundSource, /alpine-background-preview/);
+  assert.match(backgroundSource, /addEventListener\("change"/);
 });
 
 test("r7 replaces the old near-black veil with a restrained photo overlay", () => {
