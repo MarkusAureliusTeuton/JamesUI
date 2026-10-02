@@ -26,18 +26,16 @@ Default branch: `main`
 
 Integration / manifest version: **0.5.1**
 
-V9 implementation branch: `implementation/start-dashboard-v9`
+Frontend revision on `main`: **0.5.1-r9**
 
-Frontend revision on V9 branch: **0.5.1-r9**
+V9 integration state:
 
-V9 verification state:
+- PR #9 merged into `main`
+- squash merge commit: `fa9749c9be660ac8b7db6b2ee20d1d126989c14a`
+- final `main` validation: **Validate JamesUI #149 → success**
+- practical browser / OnePlus portrait verification still required
 
-- PR #9 open as draft against `main`
-- latest full PR validation before this documentation-only update: **#147 → success**
-- implementation head validated: `2bf5de22294990fb5da876eed781505ee3b3136d`
-- practical browser / OnePlus portrait verification still required after integration
-
-`main` remains implementation truth until PR #9 is integrated. The V9 branch is the only active implementation branch for the Start redesign.
+`main` is the implementation truth. The V9 feature branch is no longer an alternate product state.
 
 ## 3. Critical runtime chain
 
@@ -74,7 +72,7 @@ Do not bypass this chain casually. Previous failures included blank panel from d
 
 ## 5. Start page – V9
 
-**Status: ⚠️ implementation and CI verified on PR branch; practical visual/runtime test required after integration.**
+**Status: ⚠️ implementation, PR and `main` CI verified; practical visual/runtime test required.**
 
 ### Weather hero
 
@@ -219,7 +217,7 @@ V9 therefore evolves the enhanced Start renderer in place rather than deleting f
 
 ## 10. Validation / workflow
 
-`.github/workflows/validate.yml` now covers:
+`.github/workflows/validate.yml` covers:
 
 - Python syntax
 - JSON validity
@@ -230,6 +228,8 @@ V9 therefore evolves the enhanced Start renderer in place rather than deleting f
 - V9 Start renderer/status/weather tests
 - background/favorite-scene settings tests
 - calendar/scene/live-interaction tests
+
+Current verified `main` validation: **#149 → success** on merge commit `fa9749c9be660ac8b7db6b2ee20d1d126989c14a`.
 
 Development rules:
 
@@ -242,16 +242,15 @@ Development rules:
 
 ## 11. Current priorities
 
-1. Integrate PR #9 into `main` after branch-completion decision.
-2. Update/reload Home Assistant so **`0.5.1-r9`** is served.
-3. Browser test: verify the Start header is gone, hero `…` opens one combined menu, and Settings opens from it.
-4. Verify weather hero: current values, max/min, rain probability/timing, sunrise/sunset, moon phase/illumination and 3-day tendency.
-5. Verify real `calendar.*` events appear; test `Weitere Termine`.
-6. Configure four favorite scenes in Start settings and test activation + `Weitere` scene overlay.
-7. Verify Hausstatus classifications against actual entities, especially windows/doors.
-8. Send a fresh browser screenshot; when OnePlus is available, repeat in portrait because portrait remains design authority.
-9. Fine-tune spacing/crop/brightness only from real screenshots.
-10. Continue Haus room-first, then real Klima, Media verification, and later Tür backend integration.
+1. Update/reload Home Assistant so **`0.5.1-r9`** is served.
+2. Browser test: verify the Start header is gone, hero `…` opens one combined menu, and Settings opens from it.
+3. Verify weather hero: current values, max/min, rain probability/timing, sunrise/sunset, moon phase/illumination and 3-day tendency.
+4. Verify real `calendar.*` events appear; test `Weitere Termine`.
+5. Configure four favorite scenes in Start settings and test activation + `Weitere` scene overlay.
+6. Verify Hausstatus classifications against actual entities, especially windows/doors.
+7. Send a fresh browser screenshot; when OnePlus is available, repeat in portrait because portrait remains design authority.
+8. Fine-tune spacing/crop/brightness only from real screenshots.
+9. Continue Haus room-first, then real Klima, Media verification, and later Tür backend integration.
 
 ## 12. Working style
 
@@ -259,6 +258,7 @@ JamesUI replies start with `✅ Fertig:`, `⚠️ Test nötig:` or `🚧 Nicht f
 
 - fewer confirmation questions; make progress when intent is clear
 - direct repository edits when available
+- **when JamesUI code changes are approved and repository access is available, implement them directly in the repository and integrate finished green work into `main` without asking the user to repeat that preference**
 - one useful troubleshooting step at a time
 - no unnecessary user copy/paste
 - no intentionally red `main`
@@ -273,7 +273,7 @@ JamesUI replies start with `✅ Fertig:`, `⚠️ Test nötig:` or `🚧 Nicht f
 ## 14. Next-chat instruction
 
 1. Read `PROJECT_STATUS.md` first.
-2. Treat `main` as implementation truth; if PR #9 is not yet merged, inspect its branch before continuing V9 work.
+2. Treat `main` as implementation truth.
 3. Inspect relevant existing files/assets before changing them.
 4. Continue directly without asking the user to repeat documented decisions.
 5. Update this file after substantive work.
