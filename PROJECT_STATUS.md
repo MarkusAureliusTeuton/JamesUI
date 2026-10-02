@@ -75,15 +75,15 @@ Fresh-chat / ChatGPT-Project handover and start prompt:
 - **Block 0 – Baseline and preservation tests: complete and green.**
 - **Block 1 – JamesUI Core shell: complete, green and merged through PR #13.**
 - **Block 2 – Module manifest, registry and loader: complete, green and merged through PR #14.**
-- **Block 3 – Capability Registry and Action Registry: implementation complete and branch validation green; integration through PR #15 is the current closure step.**
+- **Block 3 – Capability Registry and Action Registry: complete, green and merged through PR #15.**
 - Block 3 adds runtime capability provider handles, explicit `available | unavailable | not_configured` snapshots and isolated consumer subscriptions tied to Block-2 manifest capability ownership.
 - Block 3 adds a generic Action Registry with normalized `success | unavailable | rejected | error` results and Health Service error isolation.
 - Only `navigate` and `url.open` are real Block-3 action providers. `entity.toggle`, `ha.service` and `scene.activate` remain fake/test contracts until Block 4.
 - Module context is now exactly `events`, `overlays`, `capabilities`, `actions`, `module`; `module` is frozen `{ id, type, version }`. Raw Home Assistant host context, Router, Health Service and Module Registry/Loader remain absent.
 - Module Loader passes `{ id, manifest }` to the context factory on both create and update.
 - The new Core/module/capability/action runtime remains intentionally **unwired from the production Home Assistant panel entry**. Current r11 remains production/reference until the controlled cutover.
-- Block 3 branch validation #212: **success** after the full RED → GREEN implementation cycle and whole-branch review.
-- **Block 4 has not started.** Next gate after Block 3 integration: detailed implementation plan/review for Block 4 – Home Assistant Adapter.
+- Block 3 branch validation #212 and `main` validation #214: **success** after the full RED → GREEN implementation cycle and whole-branch review.
+- **Block 4 has not started.** Next gate: detailed implementation plan/review for Block 4 – Home Assistant Adapter.
 
 ## 4. Current production/reference runtime
 
@@ -302,6 +302,6 @@ Preferences:
 
 ## 15. Next action
 
-Complete integration of **Block 3 – Capability Registry and Action Registry** through PR #15 and verify the resulting `main` workflow.
+Create and review the detailed implementation plan for **Block 4 – Home Assistant Adapter**.
 
-After Block 3 is merged green, create and review the detailed implementation plan for **Block 4 – Home Assistant Adapter**. Do not begin Block-4 product-code work before that plan is reviewed and approved.
+Do not begin Block-4 product-code work before that plan is reviewed and approved.
