@@ -19,6 +19,8 @@ function panelWith(states, house = {}) {
     _houseSummary() {
       return {
         lightsOn: 0,
+        socketsOn: 0,
+        fansOn: 0,
         unavailable: 0,
         lowBattery: 0,
         ...house,
@@ -60,6 +62,11 @@ test("prioritizes relevant house alerts and detects live activity", () => {
   assert.equal(model.door.tone, "alert");
 });
 
+test("keeps compact house activity facts for the Start status area", () => {
+  const model = summarizeHomeState(panelWith({}, { lightsOn: 3, socketsOn: 2, fansOn: 1 }));
+  assert.deepEqual(model.activity, ["3 Lichter an", "2 Steckdosen an", "1 Lüftung aktiv"]);
+});
+
 test("maps Home Assistant weather and sun period to alpine atmosphere", () => {
   assert.equal(resolveHomeAtmosphere("sunny", "day").key, "clear-day");
   assert.equal(resolveHomeAtmosphere("cloudy", "night").key, "cloudy-night");
@@ -86,7 +93,7 @@ test("alpine atmosphere uses approved local assets", () => {
   }
 });
 
-test("builds ordered functional navigation from live status", () => {
+test("builds ordered functional navigation from live status for compatibility helpers", () => {
   const status = {
     house: { value: "3 Lichter an", tone: "active" },
     climate: { value: "21,4°", tone: "quiet" },
@@ -95,8 +102,6 @@ test("builds ordered functional navigation from live status", () => {
   };
   const items = homeNavItems(status);
   assert.deepEqual(items.map((item) => item.target), ["house", "climate", "media", "door"]);
-  assert.deepEqual(items.map((item) => item.value), ["3 Lichter an", "21,4°", "Keine Wiedergabe", "Geschlossen"]);
-  assert.deepEqual(items.map((item) => item.tone), ["active", "quiet", "quiet", "quiet"]);
 });
 
 function alpinePanel(overrides = {}) {
@@ -136,21 +141,22 @@ function alpinePanel(overrides = {}) {
     _weatherConditionLabel: () => "Teilweise bewölkt",
     _weatherSymbol: () => "◒",
     _isNight: () => false,
-    _houseSummary: () => ({ lightsOn: 2, unavailable: 0, lowBattery: 0 }),
+    _houseSummary: () => ({ lightsOn: 2, socketsOn: 1, fansOn: 0, unavailable: 0, lowBattery: 0 }),
     _entityIds: () => [],
     ...overrides,
   };
 }
 
-test("renders one alpine surface with integrated functional strip instead of card grid", () => {
+test("renders one alpine surface without a second in-content navigation menu", () => {
   const html = renderAlpineHome(alpinePanel());
   assert.match(html, /class="alpine-home/);
   assert.match(html, /class="alpine-atmosphere"/);
   assert.match(html, /class="alpine-home-status/);
-  assert.match(html, /class="alpine-function-strip"/);
-  for (const target of ["house", "climate", "media", "door"]) {
-    assert.match(html, new RegExp(`data-nav="${target}"`));
-  }
+  assert.doesNotMatch(html, /class="alpine-function-strip"/);
+  assert.doesNotMatch(html, /data-nav="(?:house|climate|media|door)"/);
+  assert.match(html, /class="alpine-house-activity"/);
+  assert.match(html, /2 Lichter an/);
+  assert.match(html, /1 Steckdose an/);
   assert.match(html, /class="alpine-moon-note"/);
   assert.doesNotMatch(html, /home-nav-card|home-nav-grid|home-action-row/);
 });
@@ -170,7 +176,6 @@ test("renders graceful fallback values when optional weather data is missing", (
   assert.match(html, /Keine Wetterdaten/);
   assert.match(html, />–</);
   assert.match(html, /cloudy-night\.webp/);
-  assert.match(html, /data-nav="house"/);
 });
 
 test("renders v2 as a flatter architectural surface with semantic weather facts", () => {
@@ -182,7 +187,7 @@ test("renders v2 as a flatter architectural surface with semantic weather facts"
   assert.doesNotMatch(html, /class="alpine-facts"/);
 });
 
-test("defines v4 as a portrait-first visible Alpine weather hero", () => {
+test("defines portrait-first visible Alpine weather hero", () => {
   const html = renderAlpineHome(alpinePanel());
   assert.match(html, /class="alpine-home[^\"]*alpine-home-v3/);
   assert.match(homeSource, /@media\(orientation:portrait\)/);
@@ -192,7 +197,14 @@ test("defines v4 as a portrait-first visible Alpine weather hero", () => {
   assert.match(homeSource, /grid-template-rows:minmax\(430px,58vh\) auto/);
   assert.match(homeSource, /tone-night \.alpine-atmosphere\{filter:saturate\(\.86\) contrast\(1\.02\) brightness\(\.93\)\}/);
   assert.match(homeSource, /grid-template-columns:minmax\(0,1fr\) auto/);
-  assert.match(homeSource, /grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
+});
+
+test("uses stronger Start typography for glanceable wall-tablet information", () => {
+  assert.match(homeSource, /\.alpine-weather-facts dt\{[^}]*font-size:10px/);
+  assert.match(homeSource, /\.alpine-weather-facts dd\{[^}]*font-size:12px/);
+  assert.match(homeSource, /\.alpine-home-status>p\{[^}]*font-size:12px/);
+  assert.match(homeSource, /\.alpine-status-quietline\{[^}]*font-size:11px/);
+  assert.match(homeSource, /\.alpine-house-activity\{[^}]*font-size:11px/);
 });
 
 test("keeps the Alpine atmosphere above the host background and below the UI surface", () => {
