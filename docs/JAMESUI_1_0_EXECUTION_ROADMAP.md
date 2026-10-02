@@ -1,6 +1,6 @@
 # JamesUI 1.0 – Execution Roadmap
 
-_Status: written architecture spec approved; Blocks 0–1 complete and validated; next gate Block 2 detailed plan_
+_Status: written architecture spec approved; Blocks 0–1 complete and validated; Block 2 plan created and awaiting approval_
 _Date: 2026-10-02_
 
 This document defines the implementation order for the JamesUI 1.0 rebuild using the approved **Variant B: clean foundation + controlled cutover** strategy.
@@ -112,6 +112,10 @@ Routes may initially render neutral placeholders.
 ## Block 2 – Module manifest, registry and loader
 
 **Goal:** Introduce the modular runtime contract.
+
+**Detailed implementation plan:**
+
+`docs/superpowers/plans/2026-10-02-jamesui-1.0-block-2-module-system.md`
 
 ### Scope
 - module manifest schema with separate `depends_on`, `requires_capabilities` and `provides_capabilities`
@@ -608,7 +612,7 @@ Block 3 must not introduce raw Home Assistant service access merely to complete 
 - `jamesui-home-data.js`
 - `jamesui-home-background.js`
 - `jamesui-v11-polish.js`
-- unused legacy weather SVG assets
+- unused legacy weather SVG family
 - Klima demo data
 - doorbell demo
 - release-patch-specific tests no longer relevant
@@ -686,4 +690,4 @@ Current state:
 | 20 Cutover | ⬜ |
 | 21 Legacy deletion/gate | ⬜ |
 
-Blocks 0 and 1 are complete and validated. After Block 1 integration, the next formal gate is the detailed implementation plan/review for **Block 2 – Module manifest, registry and loader**. Block 2 has **not** started.
+Blocks 0 and 1 are complete and validated. The detailed implementation plan for **Block 2 – Module manifest, registry and loader** is now created and awaiting review/approval. Block 2 product-code implementation has **not** started.
