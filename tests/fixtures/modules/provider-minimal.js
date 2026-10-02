@@ -4,11 +4,11 @@ export function create(context, config) {
   return {
     mount(nextTarget) {
       target = nextTarget;
-      target.events.push(["provider", "mount", currentConfig.value ?? null, context.marker ?? null]);
+      target.events.push(["provider", "mount", currentConfig.value ?? null, Object.keys(context).sort()]);
     },
     update(nextContext, nextConfig) {
       currentConfig = nextConfig;
-      target?.events.push(["provider", "update", currentConfig.value ?? null, nextContext.marker ?? null]);
+      target?.events.push(["provider", "update", currentConfig.value ?? null, Object.keys(nextContext).sort()]);
     },
     destroy() {
       target?.events.push(["provider", "destroy"]);
