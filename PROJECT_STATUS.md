@@ -27,19 +27,19 @@ Default branch: `main`
 
 Integration / manifest version: **0.5.1**
 
-Current refinement branch: `fix/start-dashboard-v9-compact-grid`
+Frontend revision on `main`: **0.5.1-r10**
 
-Frontend revision on refinement branch: **0.5.1-r10**
+Latest verified implementation:
 
-Verified history:
+- PR #9 merged the V9 Start redesign
+- V9 merge commit: `fa9749c9be660ac8b7db6b2ee20d1d126989c14a`
+- first real OnePlus/browser portrait screenshot received and reviewed
+- PR #10 merged the r10 compact-grid/pictogram refinement
+- r10 merge commit: `bf9fecbbaef8773eccf46b54985e6520f933538e`
+- PR validation #154 → success
+- final `main` validation #155 → success
 
-- PR #9 merged V9 to `main`
-- merge commit: `fa9749c9be660ac8b7db6b2ee20d1d126989c14a`
-- `main` validation #149 → success
-- first real portrait screenshot received and reviewed
-- r10 refinement branch validation #151 → success before final documentation/revision update
-
-`main` remains implementation truth after finished green refinements are merged. Approved JamesUI changes should be implemented in the repository and finished green work integrated into `main` without re-asking the user for that preference.
+`main` is implementation truth. Approved JamesUI changes should be implemented directly in the repository and finished green work integrated into `main` without asking the user to repeat that preference.
 
 ## 3. Critical runtime chain
 
@@ -74,9 +74,9 @@ Do not bypass this chain casually. Previous failures included blank panel from d
 | `tests/test_frontend_entrypoint.py` | loader/revision/module/Shadow-DOM/property/rerender checks | critical |
 | `PROJECT_STATUS.md` | persistent handover | keep current |
 
-## 5. Start page – V9 / r10 refinement
+## 5. Start page – V9 / r10
 
-**Status: ⚠️ code + CI verified; r10 needs a fresh real browser/OnePlus portrait screenshot after merge.**
+**Status: ⚠️ code + CI verified on `main`; r10 still needs a fresh real browser/OnePlus portrait screenshot.**
 
 ### Weather hero
 
@@ -111,14 +111,14 @@ Rain behavior remains conservative: exact `ab HH:MM` is shown only when granular
 The first real portrait screenshot showed that stacking Kalender and Hausstatus forced scenes below the fold. r10 therefore changes the target-tablet portrait layout:
 
 - Hero is slightly shorter: target range roughly `410–540 px` / about `44vh` on portrait tablet.
-- At portrait widths **>= 760 px**, the lower region remains a two-column grid.
+- At portrait widths **>= 760 px**, the lower region stays a two-column grid.
 - Calendar uses the slightly narrower left column.
 - House status uses the slightly wider right column.
 - Ratio: approximately `0.92fr / 1.08fr`.
 - Only narrow/mobile widths below 760 px fall back to stacked layout.
 - Lower section padding, headings, timeline and status rows are tightened while preserving readability.
 
-This is specifically intended to make **Hero + Kalender + Hausstatus + 4 Szenen + bottom nav** fit on one OnePlus Pad 2 portrait screen without normal scrolling.
+Goal: **Hero + Kalender + Hausstatus + 4 Szenen + bottom nav** should fit on one OnePlus Pad 2 portrait screen without normal scrolling.
 
 ### Calendar
 
@@ -132,11 +132,11 @@ Behavior:
 - merges/sorts all calendars
 - conservative deduplication
 - supports timed and all-day events
-- Start now shows at most **3 compact events** to preserve the one-screen composition
+- Start shows at most **3 compact events**
 - `Weitere Termine` opens the larger overlay
-- missing/no data shows a compact `Keine Kalenderdaten` state rather than a large empty region
+- missing/no data shows compact `Keine Kalenderdaten`
 
-Current real screenshot showed **Keine Kalenderdaten**, so actual HA calendar availability still needs to be verified separately from layout.
+The first real screenshot showed **Keine Kalenderdaten**, so actual HA calendar availability still needs to be verified separately from layout.
 
 ### Hausstatus
 
@@ -152,7 +152,7 @@ Current groups:
 - Klima
 - Medien
 
-r10 compacts these into a **3-column status grid** on tablet-width Start so they consume fewer rows. Open windows/doors still contribute to `Aufmerksamkeit nötig`.
+r10 compacts these into a **3-column status grid** on tablet-width Start. Open windows/doors still contribute to `Aufmerksamkeit nötig`.
 
 The first real screenshot showed `–` for Fenster/Türen/Klima, meaning suitable entities were not detected in that runtime state. This is a data/classification issue, not a layout placeholder.
 
@@ -166,7 +166,7 @@ The first real screenshot showed `–` for Fenster/Türen/Klima, meaning suitabl
 - momentary feedback only
 - `Weitere` opens all-scenes overlay
 
-r10 keeps all four scene buttons directly below the compact house-status grid so they remain visible without scrolling on the target portrait tablet.
+r10 keeps all four scene buttons directly below the compact house-status grid so they should remain visible without scrolling on the target portrait tablet.
 
 ## 6. Background system
 
@@ -235,6 +235,8 @@ Only remove base Start + old weather SVGs together after enhanced Start is prove
 - background/favorite-scene settings tests
 - calendar/scene/live-interaction tests
 
+Current verified `main` validation: **#155 → success** on `bf9fecbbaef8773eccf46b54985e6520f933538e`.
+
 Development rules:
 
 1. inspect existing code/assets first
@@ -247,15 +249,14 @@ Development rules:
 
 ## 11. Current priorities
 
-1. Finish/merge the r10 compact-grid refinement and verify `main` CI.
-2. Reload Home Assistant/JamesUI so **`0.5.1-r10`** is served.
-3. Send a fresh portrait screenshot and verify that normal Start no longer scrolls on OnePlus Pad 2.
-4. Check pictogram sizing/alignment and whether moon text still fits comfortably.
-5. Verify real `calendar.*` entities/data, because the first screenshot showed no calendar data.
-6. Configure/test four favorite scenes and verify they are visible and actionable without scrolling.
-7. Investigate Fenster/Türen/Klima `–` values against actual HA entities/classification.
-8. Fine-tune only from real screenshots, preserving the approved overall composition.
-9. Continue Haus room-first, then real Klima, Media verification, and later Tür backend integration.
+1. Reload Home Assistant/JamesUI so **`0.5.1-r10`** is served.
+2. Send a fresh portrait screenshot and verify that normal Start no longer scrolls on OnePlus Pad 2.
+3. Check pictogram sizing/alignment and whether moon text still fits comfortably.
+4. Verify real `calendar.*` entities/data, because the first screenshot showed no calendar data.
+5. Configure/test four favorite scenes and verify they are visible and actionable without scrolling.
+6. Investigate Fenster/Türen/Klima `–` values against actual HA entities/classification.
+7. Fine-tune only from real screenshots, preserving the approved overall composition.
+8. Continue Haus room-first, then real Klima, Media verification, and later Tür backend integration.
 
 ## 12. Working style
 
@@ -278,7 +279,7 @@ JamesUI replies start with `✅ Fertig:`, `⚠️ Test nötig:` or `🚧 Nicht f
 ## 14. Next-chat instruction
 
 1. Read `PROJECT_STATUS.md` first.
-2. Treat `main` as implementation truth; inspect any active refinement PR before starting parallel Start work.
+2. Treat `main` as implementation truth.
 3. Inspect relevant existing files/assets before changing them.
 4. Continue directly without asking the user to repeat documented decisions.
 5. Update this file after substantive work.
