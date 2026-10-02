@@ -216,3 +216,21 @@ test("destroy drains all remote subscriptions despite one unsubscribe rejection"
   await new Promise((resolve) => setTimeout(resolve, 0));
   assert.deepEqual(attempts.sort(), [0, 1]);
 });
+
+test("disconnected host hides cached states and publishes removals", () => {
+  const kitchen = state("light.kitchen", "on");
+  const entitySeen = [];
+  const domainSeen = [];
+  const adapter = createHomeAssistantAdapter();
+  adapter.setHass(hass({ [kitchen.entity_id]: kitchen }, { connected: true }));
+  adapter.subscribeEntity("light.kitchen", (value) => entitySeen.push(value));
+  adapter.subscribeDomain("light", (members) => domainSeen.push(members));
+
+  adapter.setHass(hass({ [kitchen.entity_id]: kitchen }, { connected: false }));
+
+  assert.equal(adapter.getState("light.kitchen"), null);
+  assert.deepEqual(adapter.entities(), []);
+  assert.deepEqual(adapter.entities("light"), []);
+  assert.deepEqual(entitySeen, [kitchen, null]);
+  assert.deepEqual(domainSeen, [[kitchen], []]);
+});
