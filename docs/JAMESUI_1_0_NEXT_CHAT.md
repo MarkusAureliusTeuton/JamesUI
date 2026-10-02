@@ -2,7 +2,7 @@
 
 _Date: 2026-10-02_
 
-Use this document to start a completely fresh conversation or a dedicated ChatGPT Project without relying on old chat history.
+Use this document to start a fresh JamesUI conversation without relying on old chat history.
 
 ## Canonical repository
 
@@ -10,9 +10,9 @@ Use this document to start a completely fresh conversation or a dedicated ChatGP
 
 Default branch: `main`
 
-The repository is the source of truth. Do not reconstruct architecture from memory when these files are available.
+The repository is the source of truth.
 
-## Required reading order for a new chat
+## Required reading order
 
 1. `PROJECT_STATUS.md`
 2. `docs/superpowers/specs/2026-10-02-jamesui-1.0-foundation-design.md`
@@ -22,229 +22,250 @@ The repository is the source of truth. Do not reconstruct architecture from memo
 6. `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-2-module-system.md`
 7. `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-3-capability-action-registries.md`
 8. `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-4-home-assistant-adapter.md`
-9. inspect current Core/runtime/backend files only as required by the active block plan
+9. `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-5-config-store-migrations.md`
+10. inspect current files only as required by the active block
 
-The r11 implementation remains the running design/reference runtime. The approved strategic direction is **Variant B: clean JamesUI 1.0 foundation in parallel, controlled cutover, then delete the old implementation**.
+## Binding direction
 
-## Current process state
+Variant B remains binding:
+- build the clean JamesUI 1.0 runtime in parallel
+- r11 remains production/reference until controlled cutover
+- port only desired behavior
+- switch once the cutover gate is satisfied
+- delete obsolete legacy code afterwards
+- Git history is the archive
 
-The written architecture specification has been reviewed, clarified and **approved**.
+No normal feature development on the r11 architecture.
 
-Approved clarifications included in the canonical spec/roadmap:
+## Current execution state
 
-- manifest module dependencies are separate from required/provided capabilities,
-- Block 3 defines the Action Registry and HA-backed action contracts with fakes; real HA-backed actions are implemented only in Block 4 through the HA Adapter,
-- Event Bus is restricted to transient technical/UI/lifecycle events and cannot bypass Capabilities or Actions.
+Completed and merged:
+- Block 0 – Baseline ✅
+- Block 1 – Core shell ✅ PR #13
+- Block 2 – Module system ✅ PR #14
+- Block 3 – Capability/Action registries ✅ PR #15
+- Block 4 – Home Assistant Adapter ✅ PR #16
+- Block 5 – Versioned Config Store + migrations ✅ PR #17
 
-**Block 0 – Baseline and preservation tests is complete and merged.**
+Block 5 merge commit:
+`1882bd85a4918a80a487d6044f1a6baf25b06fc9`
 
-**Block 1 – JamesUI Core shell is complete, green and merged through PR #13.** Main validation #192 succeeded.
+Validation:
+- branch #253 success
+- main #254 success
 
-**Block 2 – Module manifest, registry and loader is complete, green and merged through PR #14.** Branch validation #196 and main validation #197 succeeded.
+**Next formal gate: detailed implementation plan for Block 6 – Design system and base components.**
 
-**Block 3 – Capability Registry and Action Registry is complete, green and merged through PR #15.** Branch validation #212 and main validation #214 succeeded.
+Block 6 product code has not started.
 
-**Block 4 – Home Assistant Adapter is complete, green and merged through PR #16.** Branch validation #229 and main validation #230 succeeded.
+## Current JamesUI 1.0 platform
 
-The next formal gate is the detailed implementation plan/review for **Block 5 – Versioned configuration store and migrations**. Block 5 product code has not started.
-
-## Block 1 result to preserve
-
-The parallel Core under `custom_components/jamesui/frontend/core/` provides:
-
+### Core
+`custom_components/jamesui/frontend/core/` now provides:
 - canonical routes `home | house | climate | media | door`
-- internal router and persistent `Start | Haus | Klima | Medien | Tür` navigation
-- structural app shell and isolated page-error state
-- transient technical Event Bus
-- single-active Overlay Service with stale-close protection
-- generic keyed Health Service
-- opaque host-context handoff for `hass`, `narrow`, `route`, `panel`
-- Core composition entry with read-only service references
-- architecture guards preventing direct HA access and legacy coupling
+- persistent `Start | Haus | Klima | Medien | Tür` navigation
+- structural shell
+- Router
+- Event Bus for transient technical/UI/lifecycle events only
+- Overlay Service
+- Health Service
+- Module Registry + Loader
+- Capability Registry
+- Action Registry
+- read-only Home Assistant Adapter reference
+- read-only Config Service reference
 
-## Block 2 result to preserve
+### Module contract
+Initial module types:
+- `layout`
+- `widget`
+- `provider`
+- `action`
 
-Block 2 added the modular runtime contract:
+Manifest fields keep these concepts separate:
+- `depends_on`
+- `requires_capabilities`
+- `provides_capabilities`
 
-- `CORE_API_VERSION = 1.0.0` with narrow `N.x` compatibility checks
-- strict manifests with separate `depends_on`, `requires_capabilities`, `provides_capabilities`
-- supported module types `layout`, `widget`, `provider`, `action`
-- immutable Module Registry with concrete dependency checks and capability declaration ownership
-- versioned Module Loader using module-specific `v=` import tokens
-- lifecycle `create / mount / update / destroy`
-- isolated per-module reload generation via `r=`
-- module health isolation through `module:<id>`
-- Core composition exposes read-only `moduleRegistry` and `moduleLoader`
-- test-only fixture modules and dedicated manifest/Registry/Loader CI coverage
+Lifecycle:
+- `create(context, config)`
+- `mount(target)`
+- `update(nextContext, nextConfig)`
+- `destroy()`
 
-## Block 3 result to preserve
+Module context:
+- layout/widget: `events`, `overlays`, `capabilities`, `actions`, `module`
+- provider/action: same five + `homeAssistant`
+- Config Service is intentionally **not** in module context
+- module config is passed via lifecycle config arguments
+- raw `hass`, Router, Health, Module Registry/Loader remain absent
 
-Block 3 added runtime exchange contracts.
+### Capability / Action runtime
+Capability states:
+- `available`
+- `unavailable`
+- `not_configured`
 
-### Capability Registry
+Action results:
+- `success`
+- `unavailable`
+- `rejected`
+- `error`
 
-- provider runtime registration is tied to Module Registry capability declaration ownership
-- explicit states: `available | unavailable | not_configured`
-- consumers can subscribe to named capabilities without importing provider internals
-- current state is emitted immediately by default
-- provider removal publishes explicit synthetic `unavailable` and invalidates stale provider handles
-- subscriber failures are isolated without using Event Bus as the data channel
-
-### Action Registry
-
-- generic action provider registration/dispatch
-- normalized results: `success | unavailable | rejected | error`
-- Action Registry errors use keyed Health Service records
-- HA-independent Core actions:
-  - `navigate`
-  - `url.open`
-
-### Module context foundation
-
-Module Loader requests context with `{ id, manifest }` for both create and update. The Block-3 five-key safe module context remains the basis for all modules:
-
-- `events`
-- `overlays`
-- `capabilities`
-- `actions`
-- frozen `module` identity (`id`, `type`, `version`)
-
-Block 4 extends only provider/action contexts with the HA Adapter. Raw `hass`, `narrow`, host `route`, `panel`, raw Router, Health Service and Module Registry/Loader remain absent from module contexts.
-
-## Block 4 result to preserve
-
-Block 4 introduced the **Home Assistant Adapter**, the only permitted direct Home Assistant runtime boundary for the new architecture.
-
-### Adapter responsibilities
-
-- private ownership of the current panel-supplied `hass` object
-- explicit connection state: `unavailable | connected | disconnected`
-- entity state lookup and domain queries
-- entity/domain subscriptions driven by successive HA host snapshots
-- disconnected/unavailable state views are deliberately empty, so stale cached HA state is not exposed
-- generic `callService(domain, service, data, target)`
-- generic `callWS(message)`
-- WebSocket streaming subscriptions through `connection.subscribeMessage`
-- area/device/entity registry helpers
-- deterministic local and remote subscription cleanup
-- reusable fake adapter for provider/action tests
-
-### Action integration
-
-Real Action Registry providers now exist for:
-
+Real actions:
+- `navigate`
+- `url.open`
 - `entity.toggle`
 - `ha.service`
 - `scene.activate`
 
-These production action providers call the Home Assistant Adapter only. `HomeAssistantUnavailableError` normalizes to Action Registry `unavailable`; other backend failures normalize to `error` through the existing registry/health path.
+### Home Assistant boundary
+All direct new-runtime HA access belongs under:
+`custom_components/jamesui/frontend/ha/`
 
-### Module-context boundary after Block 4
+The adapter owns state/entity/domain access, connection state, service calls, WebSocket calls/subscriptions, registry helpers and cleanup.
 
-- `layout` and `widget`: exactly `events`, `overlays`, `capabilities`, `actions`, `module`
-- `provider` and `action`: the same five keys plus `homeAssistant`
-- raw `hass`, `narrow`, host `route`, `panel`, Router, Health Service and Module Registry/Loader remain absent everywhere
+Provider/action modules may receive the adapter. Layouts/widgets never do.
 
-### Architecture guard
+Disconnected/unavailable states expose no stale cached entity values.
 
-- direct new-runtime HA access is confined to `custom_components/jamesui/frontend/ha/`
-- Core composes the adapter but may not directly use raw `hass.states`, `hass.callService`, `hass.callWS` or `connection.subscribeMessage`
-- HA-backed action identifiers live in the HA boundary, not Core
-- production `jamesui-entry.js` is still the legacy r11 runtime; no cutover occurred
+## Block 5 result to preserve
 
-The new Core/module/capability/action/HA runtime remains **unwired from `jamesui-entry.js`**. The running panel stays r11 until the controlled cutover.
+Canonical persistence is now one versioned Home Assistant Store:
+- key `jamesui.config`
+- schema version `1`
+- atomic writes
 
-## Block 5 boundary
+Schema:
+```json
+{
+  "schema_version": 1,
+  "pages": {},
+  "layouts": {},
+  "widget_instances": {},
+  "dynamic_buttons": {},
+  "data_sources": {},
+  "module_settings": {}
+}
+```
 
-Block 5 replaces the current flat configuration model with a **versioned structured configuration store and explicit migrations**.
+Behavior:
+- strict schema/container validation
+- JSON-safe nested values
+- transactional writes
+- serialized update transforms
+- failed validation/store write leaves current config unchanged
+- explicit future schema migration framework
+- unsupported/newer versions do not silently downgrade
+
+All 15 retained r11 config values migrate deterministically into structured `data_sources` / `module_settings`.
+
+On initialization:
+- existing structured Store wins over stale legacy options
+- known legacy option keys are removed only after successful Store initialization
+- unrelated config-entry options are preserved
+
+Temporary r11 compatibility until Block 20/21:
+- `jamesui/config`
+- `jamesui/config/update`
+
+These project/patch the same Store, not a second persistence copy.
+
+Structured API:
+- `jamesui/config/get`
+- `jamesui/config/replace`
+
+Frontend `core.config` uses the Home Assistant Adapter only.
+
+Local display calibration stays in browser-local `jamesui-display-calibration` and is not shared/migrated.
+
+## r11 / cutover status
+
+r11 is **still the running production/reference frontend**.
+
+`jamesui-entry.js` still loads the old panel/start bridge. The new Core is not wired into production yet.
+
+Do not cut over before Blocks 19–20.
+
+## Block 6 boundary
+
+Block 6 – **Design system and base components** should establish one shared visual language for all upcoming new UI.
 
 Roadmap scope:
+- colors
+- typography
+- spacing
+- radii
+- borders/highlights
+- shadows/blur
+- motion tokens
+- icon-size tokens
+- common surface primitives
+- common button primitives
+- common overlay/dialog primitives
 
-- versioned backend storage
-- schema validation
-- config service/API
-- migration framework
-- initial schema sections:
-  - `pages`
-  - `layouts`
-  - `widget_instances`
-  - `dynamic_buttons`
-  - `data_sources`
-  - `module_settings`
-- deterministic migration of the relevant current r11 config values inventoried in `docs/JAMESUI_1_0_BASELINE.md`
-- local-only display calibration remains outside shared configuration
-
-Hard boundaries for Block 5:
-
-- no design-system work yet
-- no weather/calendar/house/media/climate/door domain implementation
+Important boundaries:
+- no Block-7 icon registry/assets yet
+- no Block-8 Start layout implementation yet
+- no weather/calendar/house domain logic
 - no production cutover
-- no fake data
-- migration must be explicit, idempotent and tested
-- invalid structured configuration must be rejected rather than silently repaired into a different meaning
+- no new visual constants scattered into modules
+- use the approved Alpine-Chic direction and OnePlus Pad 2 portrait as the target, but Block 6 should build reusable primitives rather than the final Start screen
+
+Before any Block-6 product code:
+1. inspect current spec/roadmap and relevant r11 visual reference
+2. create the detailed Block-6 implementation plan
+3. review it for completeness and boundary violations
+4. wait for user approval
+
+## Start page direction to preserve for later blocks
+
+- persistent bottom navigation `Start | Haus | Klima | Medien | Tür`
+- Alpine/weather hero
+- weekday/date + large clock
+- current temperature/weather
+- high/low, rain/time, wind/storm, snow relevance, sunrise/sunset, moon
+- temperature tap opens forecast overlay without layout shift
+- lower shared deck extending to bottom navigation
+- Calendar left
+- House Quick right/main
+- four configurable Dynamic Buttons below
+- dark/translucent Alpine-Chic treatment with restrained warm champagne shimmer
+- no labels `Home`, `HEUTE & DANACH`, `ZUHAUSE`
 
 ## Working preferences
 
-- German communication
-- concise technical collaboration
-- repository changes directly through GitHub when access is available
-- no unnecessary user copy/paste
-- approved green work merges to `main` without repeated repository confirmation
-- one implementation block at a time
+- German
+- concise, technical, direct
+- repository edits directly through GitHub when available
+- no unnecessary copy/paste instructions to the user
+- one roadmap block at a time
 - TDD for behavior changes
-- intentionally red tests never go to `main`
-- keep `PROJECT_STATUS.md`, roadmap and this handover current
-- OnePlus Pad 2 portrait is the primary visual target
-- Fully is the kiosk/display shell only
-- Home Assistant is backend/source of truth; KNX remains primary building automation
-- no new monkey-patches, version-specific polish layers, duplicate implementations or permanent compatibility shims
+- intentionally red tests never to `main`
+- approved green blocks merge to `main` without repeated confirmation
+- update status/roadmap/handover after merged work
+- no new monkey-patches, Prototype overrides, version-polish files, duplicate implementations or permanent compatibility shims
+- OnePlus Pad 2 portrait is primary visual target
+- Fully is only the kiosk shell
 
-## Product goal in one paragraph
-
-JamesUI is a permanent wall-tablet interface that shows important household information at a glance and gives fast access to common KNX/Home Assistant controls, while allowing deeper control pages for ventilation schedules, heating modes, shutters, appliances, media and door/camera functions. The permanent architecture is modular: pages select layouts, layouts expose slots, widgets consume registered capabilities, actions dispatch through an Action Registry, configuration is structured/versioned/migratable, modules have independent versions and lifecycles, and the visual language comes from one design system and icon library.
-
-## Start page direction to preserve
-
-- persistent bottom navigation `Start | Haus | Klima | Medien | Tür`
-- upper Alpine/weather hero
-- weekday/date + large time
-- current temperature and weather
-- max/min, rain/time, wind/storm, snow relevance, sunrise/sunset, moon
-- tap current temperature for forecast overlay without layout shift
-- lower shared widget deck starting below/overlapping the hero and extending to bottom navigation
-- Calendar left, House Quick right, four configurable Dynamic Buttons below House Quick
-- dark/translucent Alpine-Chic surface with restrained warm shimmer
-- no labels `Home`, `HEUTE & DANACH`, `ZUHAUSE`
-
-## Legacy policy
-
-Keep old r11 only until the new architecture reaches the cutover gate. After cutover, delete obsolete production code/assets/tests. Git history is the archive; do not create permanent legacy source trees.
-
-## Copy/paste start prompt for a fresh chat
+## Fresh-chat prompt
 
 ```text
 Wir setzen mein Projekt JamesUI aus dem Repository MarkusAureliusTeuton/JamesUI fort.
 
-Bitte arbeite NICHT aus Erinnerung oder alten Chat-Zusammenfassungen, sondern lies zuerst im Repository:
+Bitte arbeite nicht aus Erinnerung, sondern lies zuerst:
 1. PROJECT_STATUS.md
 2. docs/superpowers/specs/2026-10-02-jamesui-1.0-foundation-design.md
 3. docs/JAMESUI_1_0_EXECUTION_ROADMAP.md
 4. docs/JAMESUI_1_0_BASELINE.md
 5. docs/JAMESUI_1_0_NEXT_CHAT.md
-6. docs/superpowers/plans/2026-10-02-jamesui-1.0-block-1-core-shell.md
-7. docs/superpowers/plans/2026-10-02-jamesui-1.0-block-2-module-system.md
-8. docs/superpowers/plans/2026-10-02-jamesui-1.0-block-3-capability-action-registries.md
-9. docs/superpowers/plans/2026-10-02-jamesui-1.0-block-4-home-assistant-adapter.md
+6. die vorhandenen Block-Pläne 1 bis 5
 
-Variante B und die schriftliche Architektur-Spec sind verbindlich freigegeben. Blocks 0 bis 4 sind abgeschlossen, grün und nach main integriert. Der neue Core inklusive Module Registry/Loader, Capability-/Action-Runtime und Home Assistant Adapter liegt parallel unter custom_components/jamesui/frontend/ und ist noch nicht in den laufenden r11-Home-Assistant-Panel-Bootstrap geschaltet.
+Variante B ist verbindlich. Blocks 0 bis 5 sind abgeschlossen, grün und auf main. r11 läuft weiterhin produktiv; der neue Core ist noch nicht in den Panel-Bootstrap geschaltet.
 
-Nächster Gate: Erstelle und prüfe den detaillierten Implementierungsplan für Block 5 – Versioned configuration store and migrations. Noch keinen Block-5-Produktcode schreiben, bevor der Plan geprüft und freigegeben ist.
+Nächster Gate: Erstelle den detaillierten Implementierungsplan für Block 6 – Design system and base components. Noch keinen Block-6-Produktcode schreiben, bevor der Plan geprüft und freigegeben ist.
 
-Block 5 ersetzt die aktuelle flache Konfiguration durch einen versionierten strukturierten Store mit Schema-Validierung, Config-Service/API und expliziten, idempotenten Migrationen. Die initialen Bereiche sind pages, layouts, widget_instances, dynamic_buttons, data_sources und module_settings. Die relevanten r11-Werte aus docs/JAMESUI_1_0_BASELINE.md müssen deterministisch migriert werden; lokale Display-Kalibrierung bleibt außerhalb der Shared Config. Kein Design-System, keine Domain-Provider und kein Cutover in Block 5.
+Block 6 soll die wiederverwendbaren Design-Tokens und Basisprimitives für JamesUI 1.0 definieren. Noch keine Block-7-Iconbibliothek, keine Block-8-Startseite, keine Domain-Provider und kein Cutover vorziehen.
 
-Wichtig: Deutsch, kurz und technisch sauber. Repository direkt bearbeiten, wenn GitHub-Zugriff vorhanden ist. Keine manuellen Copy/Paste-Anweisungen an mich, wenn du selbst committen kannst. TDD für Verhaltensänderungen; absichtlich rote Tests niemals nach main. Keine neuen Monkey-Patches, Prototype-Overrides, Versions-Polish-Dateien, parallelen Implementierungen oder dauerhaften Legacy-Krücken. OnePlus Pad 2 Hochformat ist das primäre Ziel; Fully ist nur die Kiosk-Hülle.
+Wichtig: Deutsch, kurz und technisch sauber. Repository direkt bearbeiten, wenn GitHub-Zugriff vorhanden ist. TDD für Verhaltensänderungen; absichtlich rote Tests niemals nach main. Keine neuen Monkey-Patches, Prototype-Overrides, Versions-Polish-Dateien, parallelen Implementierungen oder dauerhaften Legacy-Krücken. OnePlus Pad 2 Hochformat ist das primäre Ziel; Fully ist nur die Kiosk-Hülle.
 ```
-
-## Recommended dedicated ChatGPT Project name
-
-`JamesUI 1.0`
