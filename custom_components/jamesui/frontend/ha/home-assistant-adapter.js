@@ -14,6 +14,7 @@ function connectionStateFor(hass) {
 }
 
 function statesFor(hass) {
+  if (connectionStateFor(hass) !== "connected") return {};
   return hass?.states && typeof hass.states === "object" ? hass.states : {};
 }
 
