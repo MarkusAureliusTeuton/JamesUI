@@ -61,6 +61,10 @@ Completed Block 2 implementation plan:
 
 `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-2-module-system.md`
 
+Current detailed implementation plan:
+
+`docs/superpowers/plans/2026-10-02-jamesui-1.0-block-3-capability-action-registries.md`
+
 Canonical Block 0 baseline:
 
 `docs/JAMESUI_1_0_BASELINE.md`
@@ -86,7 +90,10 @@ Fresh-chat / ChatGPT-Project handover and start prompt:
 - Module context in Block 2 contains only safe Core infrastructure (`events`, `overlays`) and does not expose raw Home Assistant host context or services.
 - The new Core/module system remains intentionally **unwired from the production Home Assistant panel entry**. Current r11 remains production/reference until the controlled cutover.
 - PR #14 branch validation #196 and `main` validation #197: **success** after whole-branch review.
-- **Block 3 has not started.** Next gate: detailed implementation plan/review for Block 3 – Capability Registry and Action Registry.
+- Detailed implementation plan for **Block 3 – Capability Registry and Action Registry**: **created and awaiting review/approval**.
+- Block 3 implementation: **not started**.
+- Block 3 will add runtime capability state/subscriptions and normalized action dispatch. Only `navigate` and `url.open` become real actions; HA-backed actions remain fake/test contracts until Block 4.
+- No Block 3 product-code implementation should start before the Block 3 plan is approved.
 
 ## 4. Current production/reference runtime
 
@@ -305,6 +312,10 @@ Preferences:
 
 ## 15. Next action
 
-**Create and review the detailed implementation plan for Block 3 – Capability Registry and Action Registry.**
+**Review the detailed Block 3 plan:**
 
-Do not begin Block 3 product-code implementation before that plan is reviewed and approved.
+`docs/superpowers/plans/2026-10-02-jamesui-1.0-block-3-capability-action-registries.md`
+
+If approved, execute **Block 3 – Capability Registry and Action Registry** on an isolated branch according to that plan.
+
+Do not begin Block 4 or other dependent JamesUI 1.0 product-code work before Block 3 is completed and merged green.
