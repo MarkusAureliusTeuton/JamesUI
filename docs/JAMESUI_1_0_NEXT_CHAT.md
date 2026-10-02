@@ -21,7 +21,7 @@ The repository is the source of truth. Do not reconstruct architecture from memo
 5. `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-1-core-shell.md`
 6. `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-2-module-system.md`
 7. `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-3-capability-action-registries.md`
-8. inspect current Core/module-system files only as required by the active block plan
+8. inspect current Core/runtime files only as required by the active block plan
 
 The r11 implementation remains the running design/reference runtime. The approved strategic direction is **Variant B: clean JamesUI 1.0 foundation in parallel, controlled cutover, then delete the old implementation**.
 
@@ -41,11 +41,9 @@ Approved clarifications included in the canonical spec/roadmap:
 
 **Block 2 – Module manifest, registry and loader is complete, green and merged through PR #14.** Branch validation #196 and main validation #197 succeeded.
 
-The detailed implementation plan for **Block 3 – Capability Registry and Action Registry** now exists at:
+**Block 3 – Capability Registry and Action Registry is complete, green and merged through PR #15.** Branch validation #212 and main validation #214 succeeded.
 
-`docs/superpowers/plans/2026-10-02-jamesui-1.0-block-3-capability-action-registries.md`
-
-The next formal gate is **review/approval of the Block 3 plan**. Block 3 product-code implementation has not started. Do not start Block 4 or other dependent JamesUI 1.0 product-code work before Block 3 is completed and merged green.
+The next formal gate is the detailed implementation plan/review for **Block 4 – Home Assistant Adapter**. Block 4 product code has not started.
 
 ## Block 1 result to preserve
 
@@ -74,54 +72,80 @@ Block 2 added the modular runtime contract:
 - isolated per-module reload generation via `r=`
 - module health isolation through `module:<id>`
 - Core composition exposes read-only `moduleRegistry` and `moduleLoader`
-- module context contains only `events` and `overlays`; raw Home Assistant host context is not exposed
 - test-only fixture modules and dedicated manifest/Registry/Loader CI coverage
 
-`requires_capabilities` and `provides_capabilities` are still declaration metadata only. Block 2 does **not** provide runtime capability values or subscriptions.
+## Block 3 result to preserve
 
-The new Core/module system remains **unwired from `jamesui-entry.js`**. The running panel stays r11 until the controlled cutover.
-
-## Block 3 planned boundary
-
-Block 3 introduces runtime exchange contracts without Home Assistant access.
+Block 3 added runtime exchange contracts without Home Assistant access.
 
 ### Capability Registry
 
 - provider runtime registration is tied to Module Registry capability declaration ownership
 - explicit states: `available | unavailable | not_configured`
-- consumer subscriptions receive an explicit current state immediately by default
-- provider removal publishes explicit `unavailable` rather than stale/missing data
+- consumers can subscribe to named capabilities without importing provider internals
+- current state is emitted immediately by default
+- provider removal publishes explicit synthetic `unavailable` and invalidates stale provider handles
 - subscriber failures are isolated without using Event Bus as the data channel
 
 ### Action Registry
 
 - generic action provider registration/dispatch
 - normalized results: `success | unavailable | rejected | error`
-- real non-HA actions only:
+- Action Registry errors use keyed Health Service records
+- real HA-independent actions:
   - `navigate`
   - `url.open`
-- HA-backed action identifiers/contracts are tested with fake providers only:
+- HA-backed action identifiers/contracts exist only through tests/fake providers:
   - `entity.toggle`
   - `ha.service`
   - `scene.activate`
 
-### Module context change
+### Module context
 
-Block 3 plans to widen module context from `events` / `overlays` to the exact safe set:
+Module Loader now requests context with `{ id, manifest }` for both create and update. Core exposes to modules exactly:
 
 - `events`
 - `overlays`
 - `capabilities`
 - `actions`
-- immutable `module` identity (`id`, `type`, `version`)
+- frozen `module` identity (`id`, `type`, `version`)
 
-Raw `hass`, host `route`, `panel`, raw Router, Module Registry/Loader and Home Assistant APIs remain absent.
+Raw `hass`, `narrow`, host `route`, `panel`, raw Router, Health Service, Module Registry/Loader and future HA Adapter remain absent from module context.
+
+The new Core/module/capability/action runtime remains **unwired from `jamesui-entry.js`**. The running panel stays r11 until the controlled cutover.
+
+## Block 4 boundary
+
+Block 4 introduces the **Home Assistant Adapter**, the only permitted direct Home Assistant runtime boundary for the new architecture.
+
+### Adapter responsibilities
+
+- state access and state subscriptions
+- entity/device/area registry queries as needed
+- WebSocket commands and subscriptions
+- service execution
+- Home Assistant connection status
+- narrow domain/entity helpers where they reduce repeated HA-specific code
+- a fake adapter for tests
+
+### Action integration
+
+Block 4 adds real Action Registry providers for:
+
+- `entity.toggle`
+- `ha.service`
+- `scene.activate`
+
+These production action providers must call the Home Assistant Adapter only. They must not access raw `hass` directly.
 
 ### Hard boundary
 
-Block 3 must **not** add raw Home Assistant states, registries, WebSocket or service calls. Real implementations of `entity.toggle`, `ha.service` and `scene.activate` belong to Block 4 and must use the HA Adapter.
-
-Do not introduce config persistence, design system work, domain providers/widgets or production cutover in Block 3.
+- new providers use the adapter rather than raw Home Assistant APIs
+- widgets and layouts never receive raw Home Assistant runtime access
+- existing module context must not be widened with `hass` or raw HA connection objects
+- do not introduce structured config/migrations yet; that remains Block 5
+- do not begin weather/calendar/house/media/climate/door domain providers or visual design work in Block 4
+- do not switch the production r11 bootstrap to the new Core in Block 4
 
 ## Working preferences
 
@@ -175,11 +199,11 @@ Bitte arbeite NICHT aus Erinnerung oder alten Chat-Zusammenfassungen, sondern li
 7. docs/superpowers/plans/2026-10-02-jamesui-1.0-block-2-module-system.md
 8. docs/superpowers/plans/2026-10-02-jamesui-1.0-block-3-capability-action-registries.md
 
-Variante B und die schriftliche Architektur-Spec sind verbindlich freigegeben. Blocks 0, 1 und 2 sind abgeschlossen, grün und nach main integriert. Der neue Core inklusive Module Registry/Loader liegt parallel unter custom_components/jamesui/frontend/core/ und ist noch nicht in den laufenden r11-Home-Assistant-Panel-Bootstrap geschaltet.
+Variante B und die schriftliche Architektur-Spec sind verbindlich freigegeben. Blocks 0, 1, 2 und 3 sind abgeschlossen, grün und nach main integriert. Der neue Core inklusive Module Registry/Loader sowie Capability-/Action-Runtime liegt parallel unter custom_components/jamesui/frontend/core/ und ist noch nicht in den laufenden r11-Home-Assistant-Panel-Bootstrap geschaltet.
 
-Nächster Gate: Prüfe den detaillierten Implementierungsplan für Block 3 – Capability Registry and Action Registry auf Vollständigkeit und Widersprüche. Wenn er passt und ich ihn freigebe, setze ausschließlich Block 3 auf einem isolierten Branch um. Noch keinen Block-4-Produktcode beginnen.
+Nächster Gate: Erstelle den detaillierten Implementierungsplan für Block 4 – Home Assistant Adapter. Noch keinen Block-4-Produktcode schreiben, bevor der Plan geprüft und freigegeben ist.
 
-Block 3 darf keine rohen Home-Assistant-Zugriffe einführen. Echte HA-Actions entity.toggle, ha.service und scene.activate kommen erst in Block 4 über den HA Adapter. In Block 3 werden nur navigate und url.open real implementiert.
+Block 4 soll alle direkten Home-Assistant-Zugriffe hinter einen expliziten Adapter legen: States/Subscriptions, Registry-Abfragen, WebSocket, Services, Connection-Status und nötige Domain-/Entity-Helfer. Dazu kommt ein Fake Adapter für Tests. Die realen Action-Provider entity.toggle, ha.service und scene.activate dürfen jetzt entstehen, müssen aber ausschließlich über den Adapter arbeiten. Widgets/Layouts/Module bekommen weiterhin keinen raw hass-Zugriff. Config/Migration bleibt Block 5; kein Cutover in Block 4.
 
 Wichtig: Deutsch, kurz und technisch sauber. Repository direkt bearbeiten, wenn GitHub-Zugriff vorhanden ist. Keine manuellen Copy/Paste-Anweisungen an mich, wenn du selbst committen kannst. TDD für Verhaltensänderungen; absichtlich rote Tests niemals nach main. Keine neuen Monkey-Patches, Prototype-Overrides, Versions-Polish-Dateien, parallelen Implementierungen oder dauerhaften Legacy-Krücken. OnePlus Pad 2 Hochformat ist das primäre Ziel; Fully ist nur die Kiosk-Hülle.
 ```
