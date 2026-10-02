@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   normalizeCalendarEvents,
   resolveFavoriteScenes,
@@ -7,6 +8,10 @@ import {
   installHomeDataExperience,
 } from "../custom_components/jamesui/frontend/jamesui-home-data.js";
 
+const dataSource = readFileSync(
+  new URL("../custom_components/jamesui/frontend/jamesui-home-data.js", import.meta.url),
+  "utf8"
+);
 const NOW = new Date("2026-10-02T10:00:00+02:00");
 
 test("normalizes, filters and sorts calendar events across the next seven local days", () => {
@@ -81,12 +86,13 @@ test("activates a scene through Home Assistant and returns false on failure", as
 });
 
 test("home data installer owns calendar subscriptions and exposes Start data hooks", () => {
-  const source = installHomeDataExperience.toString();
-  assert.match(source, /calendar\./);
-  assert.match(source, /calendar\/event\/subscribe/);
-  assert.match(source, /_jamesHomeCalendarEvents/);
-  assert.match(source, /_jamesHomeScenes/);
-  assert.match(source, /_activateHomeScene/);
-  assert.match(source, /connectedCallback|render/);
-  assert.match(source, /disconnectedCallback/);
+  assert.equal(typeof installHomeDataExperience, "function");
+  assert.match(dataSource, /calendar\./);
+  assert.match(dataSource, /calendar\/event\/subscribe/);
+  assert.match(dataSource, /_jamesHomeCalendarEvents/);
+  assert.match(dataSource, /_jamesHomeScenes/);
+  assert.match(dataSource, /_activateHomeScene/);
+  assert.match(dataSource, /Panel\.prototype\.render/);
+  assert.match(dataSource, /Panel\.prototype\.disconnectedCallback/);
+  assert.match(dataSource, /unsubscribe/);
 });
