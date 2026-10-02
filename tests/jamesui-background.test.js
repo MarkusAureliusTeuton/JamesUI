@@ -78,9 +78,9 @@ test("manual scene selector updates its preview immediately before persistence",
   assert.match(backgroundSource, /addEventListener\("change"/);
 });
 
-test("r7 replaces the old near-black veil with a restrained photo overlay", () => {
-  assert.doesNotMatch(backgroundSource, /rgba\(8,10,11,\.84\)/);
-  assert.doesNotMatch(backgroundSource, /rgba\(8,9,10,\.88\)/);
-  assert.match(backgroundSource, /rgba\(8,10,11,\.46\)/);
-  assert.match(backgroundSource, /rgba\(8,9,10,\.62\)/);
+test("r8 keeps the photos visibly brighter while preserving local contrast", () => {
+  assert.doesNotMatch(backgroundSource, /rgba\(8,10,11,\.46\)/);
+  assert.doesNotMatch(backgroundSource, /rgba\(8,9,10,\.62\)/);
+  assert.match(backgroundSource, /rgba\(8,10,11,\.34\)/);
+  assert.match(backgroundSource, /rgba\(8,9,10,\.48\)/);
 });
