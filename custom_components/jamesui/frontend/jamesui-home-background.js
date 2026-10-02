@@ -19,6 +19,20 @@ export function resolveConfiguredAtmosphere(autoAtmosphere, config = {}) {
   return manual ? { ...manual } : autoAtmosphere;
 }
 
+function normalizeBackgroundSelection(root, config = {}) {
+  const mode = root?.querySelector?.("[data-config-background-mode]")?.value === "manual" ? "manual" : "auto";
+  const requestedScene = root?.querySelector?.("[data-config-background-scene]")?.value || config?.background_scene;
+  const scene = SCENES_BY_KEY.has(requestedScene) ? requestedScene : "cloudy-night";
+  return { mode, scene };
+}
+
+function previewLabel(mode, scene) {
+  const selected = SCENES_BY_KEY.get(scene);
+  return mode === "manual"
+    ? `Manuell · ${selected?.label || "Szene"}`
+    : "Automatisch · Wetter + Tageszeit";
+}
+
 export function renderBackgroundSettings(config = {}) {
   const mode = config?.background_mode === "manual" ? "manual" : "auto";
   const scene = SCENES_BY_KEY.has(config?.background_scene) ? config.background_scene : "cloudy-night";
@@ -41,7 +55,11 @@ export function renderBackgroundSettings(config = {}) {
         </select>
       </div>
       <div class="alpine-background-preview" style="--preview:url('${SCENES_BY_KEY.get(scene)?.asset || HOME_BACKGROUND_SCENES[0].asset}')">
-        <span>${mode === "manual" ? `Manuell · ${SCENES_BY_KEY.get(scene)?.label || "Szene"}` : "Automatisch · Wetter + Tageszeit"}</span>
+        <span>${previewLabel(mode, scene)}</span>
+      </div>
+      <div class="config-actions alpine-background-actions">
+        <span data-background-message></span>
+        <button data-save-background>Hintergrund speichern</button>
       </div>
     </section>
   `;
@@ -74,6 +92,67 @@ export function applyConfiguredBackground(html, config = {}) {
   return result;
 }
 
+function updateBackgroundPreview(panel) {
+  const root = panel?.shadowRoot;
+  if (!root) return;
+  const { mode, scene } = normalizeBackgroundSelection(root, panel._config || {});
+  const selected = SCENES_BY_KEY.get(scene) || HOME_BACKGROUND_SCENES[0];
+  const preview = root.querySelector(".alpine-background-preview");
+  const label = preview?.querySelector("span");
+  const sceneSelect = root.querySelector("[data-config-background-scene]");
+  if (preview) preview.style.setProperty("--preview", `url('${selected.asset}')`);
+  if (label) label.textContent = previewLabel(mode, scene);
+  if (sceneSelect) sceneSelect.disabled = mode !== "manual";
+}
+
+export async function saveBackgroundConfig(panel) {
+  const root = panel?.shadowRoot;
+  if (!root || !panel?._hass?.connection) return false;
+  const { mode, scene } = normalizeBackgroundSelection(root, panel._config || {});
+  const message = root.querySelector("[data-background-message]");
+  const button = root.querySelector("[data-save-background]");
+  if (message) message.textContent = "Speichere …";
+  if (button) button.disabled = true;
+
+  try {
+    const response = await panel._hass.connection.sendMessagePromise({
+      type: "jamesui/config/update",
+      background_mode: mode,
+      background_scene: scene,
+    });
+    panel._config = response?.result?.options || response?.options || {
+      ...(panel._config || {}),
+      background_mode: mode,
+      background_scene: scene,
+    };
+    panel._configMessage = "";
+    panel.render?.();
+    const nextMessage = panel.shadowRoot?.querySelector("[data-background-message]");
+    if (nextMessage) nextMessage.textContent = "Hintergrund gespeichert.";
+    return true;
+  } catch (error) {
+    console.error("JamesUI: background configuration save failed", error);
+    if (message) message.textContent = "Hintergrund konnte nicht gespeichert werden.";
+    if (button) button.disabled = false;
+    return false;
+  }
+}
+
+function bindBackgroundSettings(panel) {
+  const root = panel?.shadowRoot;
+  if (!root) return;
+  const mode = root.querySelector("[data-config-background-mode]");
+  const scene = root.querySelector("[data-config-background-scene]");
+  const save = root.querySelector("[data-save-background]");
+  if (!mode || !scene || !save) return;
+
+  const refreshPreview = () => updateBackgroundPreview(panel);
+  mode.addEventListener("change", refreshPreview);
+  scene.addEventListener("change", refreshPreview);
+  save.addEventListener("click", () => saveBackgroundConfig(panel));
+  updateBackgroundPreview(panel);
+}
+
 export function installHomeBackgroundExperience() {
   if (typeof customElements === "undefined") return false;
   const Panel = customElements.get("jamesui-panel");
@@ -81,8 +160,8 @@ export function installHomeBackgroundExperience() {
 
   const originalHomePage = Panel.prototype._homePage;
   const originalHomeSettingsPage = Panel.prototype._homeSettingsPage;
-  const originalSaveHomeConfig = Panel.prototype._saveHomeConfig;
   const originalStyles = Panel.prototype._styles;
+  const originalRender = Panel.prototype.render;
 
   Panel.prototype._homePage = function () {
     return applyConfiguredBackground(originalHomePage.call(this), this._config || {});
@@ -97,28 +176,11 @@ export function installHomeBackgroundExperience() {
     };
   }
 
-  if (typeof originalSaveHomeConfig === "function") {
-    Panel.prototype._saveHomeConfig = async function () {
-      const mode = this.shadowRoot?.querySelector("[data-config-background-mode]")?.value === "manual" ? "manual" : "auto";
-      const requestedScene = this.shadowRoot?.querySelector("[data-config-background-scene]")?.value;
-      const scene = SCENES_BY_KEY.has(requestedScene) ? requestedScene : "cloudy-night";
-
-      await originalSaveHomeConfig.call(this);
-      if (!this._hass?.connection) return;
-
-      try {
-        const response = await this._hass.connection.sendMessagePromise({
-          type: "jamesui/config/update",
-          background_mode: mode,
-          background_scene: scene,
-        });
-        this._config = response?.result?.options || response?.options || this._config || {};
-        this._configMessage = "Zuordnung gespeichert.";
-      } catch (error) {
-        console.error("JamesUI: background configuration save failed", error);
-        this._configMessage = "Hintergrund konnte nicht gespeichert werden.";
-      }
-      this.render?.();
+  if (typeof originalRender === "function") {
+    Panel.prototype.render = function (...args) {
+      const result = originalRender.apply(this, args);
+      bindBackgroundSettings(this);
+      return result;
     };
   }
 
@@ -130,6 +192,7 @@ export function installHomeBackgroundExperience() {
       .alpine-home.weather-fog .alpine-atmosphere{filter:saturate(.78) contrast(.96) brightness(1.04)}
       .alpine-home.tone-night .alpine-atmosphere{filter:saturate(.94) contrast(1.03) brightness(1.14)}
       .alpine-background-config{margin-top:18px}.alpine-background-preview{min-height:112px;margin-top:14px;border:1px solid rgba(255,255,255,.08);border-radius:14px;background-image:linear-gradient(0deg,rgba(7,8,9,.46),rgba(7,8,9,.06)),var(--preview);background-size:cover;background-position:center;display:flex;align-items:flex-end;padding:14px 16px;overflow:hidden}.alpine-background-preview span{font-size:10px;color:rgba(246,242,234,.88);text-shadow:0 2px 12px rgba(0,0,0,.8)}
+      .alpine-background-actions{margin-top:14px}.alpine-background-actions [data-background-message]{min-height:1em}.alpine-background-config select:disabled{opacity:.48}
       @media(orientation:portrait){.alpine-home.tone-night .alpine-atmosphere{filter:saturate(.96) contrast(1.02) brightness(1.18)}.alpine-home .alpine-surface{background:linear-gradient(180deg,rgba(7,8,9,.015) 0%,rgba(7,8,9,.025) 30%,rgba(7,8,9,.08) 46%,rgba(8,9,9,.28) 60%,rgba(8,9,9,.72) 76%,rgba(8,9,9,.94) 88%,#080909 100%),linear-gradient(90deg,rgba(7,8,9,.12),transparent 54%)}}
     `;
   };
