@@ -1,6 +1,6 @@
 # JamesUI 1.0 – Execution Roadmap
 
-_Status: written architecture spec approved; Block 0 complete and validated; next gate Block 1 detailed plan_
+_Status: written architecture spec approved; Blocks 0–1 complete and validated; next gate Block 2 detailed plan_
 _Date: 2026-10-02_
 
 This document defines the implementation order for the JamesUI 1.0 rebuild using the approved **Variant B: clean foundation + controlled cutover** strategy.
@@ -74,6 +74,10 @@ Canonical architecture spec:
 
 **Goal:** Create the new minimal runtime shell without page-specific business logic.
 
+**Detailed implementation plan:**
+
+`docs/superpowers/plans/2026-10-02-jamesui-1.0-block-1-core-shell.md`
+
 ### Scope
 - new Core entry module
 - app shell
@@ -100,6 +104,8 @@ Routes may initially render neutral placeholders.
 - bottom navigation is persistent
 - a failed placeholder page does not crash the shell
 - CI green
+
+**Completion evidence:** PR #13 validation succeeded. The new Core is parallel and intentionally unwired from the current Home Assistant panel entry; r11 remains production/reference. Whole-branch review found one read-only service-reference issue, fixed with RED → GREEN coverage before integration.
 
 ---
 
@@ -658,7 +664,7 @@ Current state:
 | Block | Status |
 | --- | --- |
 | 0 Baseline | ✅ |
-| 1 Core shell | ⬜ |
+| 1 Core shell | ✅ |
 | 2 Module registry/loader | ⬜ |
 | 3 Capability/Action registries | ⬜ |
 | 4 HA adapter | ⬜ |
@@ -680,4 +686,4 @@ Current state:
 | 20 Cutover | ⬜ |
 | 21 Legacy deletion/gate | ⬜ |
 
-Block 0 is complete and validated. The next execution step is the detailed implementation plan/review for **Block 1 – JamesUI Core shell**. Block 1 has **not** started.
+Blocks 0 and 1 are complete and validated. After Block 1 integration, the next formal gate is the detailed implementation plan/review for **Block 2 – Module manifest, registry and loader**. Block 2 has **not** started.
