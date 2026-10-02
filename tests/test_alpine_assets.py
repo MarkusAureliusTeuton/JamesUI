@@ -55,6 +55,7 @@ class AlpineAssetTest(unittest.TestCase):
             match = line_pattern.fullmatch(line)
             self.assertIsNotNone(match, f"Malformed SHA256 manifest line: {line}")
             declared_hash, name, declared_bytes = match.groups()
+            self.assertNotIn(name, entries, f"Duplicate SHA256 manifest entry: {name}")
             entries[name] = (declared_hash, int(declared_bytes))
 
         self.assertEqual(set(entries), expected_names)
