@@ -1,6 +1,6 @@
 # JamesUI 1.0 – Execution Roadmap
 
-_Status: written architecture spec approved; Blocks 0–1 complete and validated; Block 2 plan created and awaiting approval_
+_Status: written architecture spec approved; Blocks 0–2 complete and validated; next gate Block 3 detailed plan_
 _Date: 2026-10-02_
 
 This document defines the implementation order for the JamesUI 1.0 rebuild using the approved **Variant B: clean foundation + controlled cutover** strategy.
@@ -139,6 +139,8 @@ Routes may initially render neutral placeholders.
 - incompatible/missing concrete module dependencies produce an isolated module error
 - capability requirements are represented unambiguously and are ready for Block 3 runtime resolution
 - CI green
+
+**Completion evidence:** PR #14 merged green. Branch validation #196 and main validation #197 succeeded. The Module Registry/Loader remain parallel and unwired from the production r11 panel entry. Capability fields are declaration metadata/ownership only; runtime capability resolution remains Block 3.
 
 ---
 
@@ -669,7 +671,7 @@ Current state:
 | --- | --- |
 | 0 Baseline | ✅ |
 | 1 Core shell | ✅ |
-| 2 Module registry/loader | ⬜ |
+| 2 Module registry/loader | ✅ |
 | 3 Capability/Action registries | ⬜ |
 | 4 HA adapter | ⬜ |
 | 5 Config store/migrations | ⬜ |
@@ -690,4 +692,4 @@ Current state:
 | 20 Cutover | ⬜ |
 | 21 Legacy deletion/gate | ⬜ |
 
-Blocks 0 and 1 are complete and validated. The detailed implementation plan for **Block 2 – Module manifest, registry and loader** is now created and awaiting review/approval. Block 2 product-code implementation has **not** started.
+Blocks 0–2 are complete and validated. The next formal gate is the detailed implementation plan/review for **Block 3 – Capability Registry and Action Registry**. Block 3 product-code implementation has **not** started.
