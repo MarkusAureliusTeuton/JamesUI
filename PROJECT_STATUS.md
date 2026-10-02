@@ -49,21 +49,12 @@ Canonical execution roadmap:
 
 `docs/JAMESUI_1_0_EXECUTION_ROADMAP.md`
 
-Completed Block 0 implementation plan:
+Completed implementation plans:
 
-`docs/superpowers/plans/2026-10-02-jamesui-1.0-block-0-baseline.md`
-
-Completed Block 1 implementation plan:
-
-`docs/superpowers/plans/2026-10-02-jamesui-1.0-block-1-core-shell.md`
-
-Completed Block 2 implementation plan:
-
-`docs/superpowers/plans/2026-10-02-jamesui-1.0-block-2-module-system.md`
-
-Current detailed implementation plan:
-
-`docs/superpowers/plans/2026-10-02-jamesui-1.0-block-3-capability-action-registries.md`
+- `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-0-baseline.md`
+- `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-1-core-shell.md`
+- `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-2-module-system.md`
+- `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-3-capability-action-registries.md`
 
 Canonical Block 0 baseline:
 
@@ -84,16 +75,15 @@ Fresh-chat / ChatGPT-Project handover and start prompt:
 - **Block 0 – Baseline and preservation tests: complete and green.**
 - **Block 1 – JamesUI Core shell: complete, green and merged through PR #13.**
 - **Block 2 – Module manifest, registry and loader: complete, green and merged through PR #14.**
-- Block 2 adds `CORE_API_VERSION = 1.0.0`, strict manifest validation, an immutable Module Registry, a version-tokened lifecycle-safe Module Loader, isolated per-module reload and Core module-system composition.
-- Module manifests keep `depends_on`, `requires_capabilities` and `provides_capabilities` separate. Capability declarations are metadata/ownership only; the runtime Capability/Action Registry remains Block 3.
-- Module lifecycle failures are isolated through `module:<id>` health records; one module failure does not invalidate other loaded modules.
-- Module context in Block 2 contains only safe Core infrastructure (`events`, `overlays`) and does not expose raw Home Assistant host context or services.
-- The new Core/module system remains intentionally **unwired from the production Home Assistant panel entry**. Current r11 remains production/reference until the controlled cutover.
-- PR #14 branch validation #196 and `main` validation #197: **success** after whole-branch review.
-- Detailed implementation plan for **Block 3 – Capability Registry and Action Registry**: **created and awaiting review/approval**.
-- Block 3 implementation: **not started**.
-- Block 3 will add runtime capability state/subscriptions and normalized action dispatch. Only `navigate` and `url.open` become real actions; HA-backed actions remain fake/test contracts until Block 4.
-- No Block 3 product-code implementation should start before the Block 3 plan is approved.
+- **Block 3 – Capability Registry and Action Registry: implementation complete and branch validation green; integration through PR #15 is the current closure step.**
+- Block 3 adds runtime capability provider handles, explicit `available | unavailable | not_configured` snapshots and isolated consumer subscriptions tied to Block-2 manifest capability ownership.
+- Block 3 adds a generic Action Registry with normalized `success | unavailable | rejected | error` results and Health Service error isolation.
+- Only `navigate` and `url.open` are real Block-3 action providers. `entity.toggle`, `ha.service` and `scene.activate` remain fake/test contracts until Block 4.
+- Module context is now exactly `events`, `overlays`, `capabilities`, `actions`, `module`; `module` is frozen `{ id, type, version }`. Raw Home Assistant host context, Router, Health Service and Module Registry/Loader remain absent.
+- Module Loader passes `{ id, manifest }` to the context factory on both create and update.
+- The new Core/module/capability/action runtime remains intentionally **unwired from the production Home Assistant panel entry**. Current r11 remains production/reference until the controlled cutover.
+- Block 3 branch validation #212: **success** after the full RED → GREEN implementation cycle and whole-branch review.
+- **Block 4 has not started.** Next gate after Block 3 integration: detailed implementation plan/review for Block 4 – Home Assistant Adapter.
 
 ## 4. Current production/reference runtime
 
@@ -312,10 +302,6 @@ Preferences:
 
 ## 15. Next action
 
-**Review the detailed Block 3 plan:**
+Complete integration of **Block 3 – Capability Registry and Action Registry** through PR #15 and verify the resulting `main` workflow.
 
-`docs/superpowers/plans/2026-10-02-jamesui-1.0-block-3-capability-action-registries.md`
-
-If approved, execute **Block 3 – Capability Registry and Action Registry** on an isolated branch according to that plan.
-
-Do not begin Block 4 or other dependent JamesUI 1.0 product-code work before Block 3 is completed and merged green.
+After Block 3 is merged green, create and review the detailed implementation plan for **Block 4 – Home Assistant Adapter**. Do not begin Block-4 product-code work before that plan is reviewed and approved.
