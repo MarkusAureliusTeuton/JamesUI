@@ -11,6 +11,10 @@ REQUIRED = {
     "health-service.js",
     "shell.js",
     "host-context.js",
+    "core-api.js",
+    "module-manifest.js",
+    "module-registry.js",
+    "module-loader.js",
     "index.js",
 }
 
@@ -45,12 +49,14 @@ class CoreArchitectureTest(unittest.TestCase):
         for token in forbidden:
             self.assertNotIn(token, source, f"Core must not contain forbidden coupling: {token}")
 
-    def test_production_entry_remains_on_legacy_runtime_during_block_1(self):
+    def test_production_entry_remains_on_legacy_runtime_during_block_2(self):
         source = Path("custom_components/jamesui/frontend/jamesui-entry.js").read_text(encoding="utf-8")
         self.assertIn("jamesui-panel.js", source)
         self.assertIn("jamesui-home-entry.js", source)
         self.assertNotIn("frontend/core", source)
         self.assertNotRegex(source, r"(?:^|[\"'/])core/index\.js")
+        self.assertNotIn("module-loader", source)
+        self.assertNotIn("module-registry", source)
 
 
 if __name__ == "__main__":
