@@ -17,8 +17,9 @@ The repository is the source of truth. Do not reconstruct architecture from memo
 1. `PROJECT_STATUS.md`
 2. `docs/superpowers/specs/2026-10-02-jamesui-1.0-foundation-design.md`
 3. `docs/JAMESUI_1_0_EXECUTION_ROADMAP.md`
-4. `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-0-baseline.md`
-5. inspect current production files only when Block 0 execution needs them
+4. `docs/JAMESUI_1_0_BASELINE.md`
+5. `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-1-core-shell.md`
+6. inspect current production files only as required by the active block plan
 
 The r11 implementation is a design/reference runtime only. The approved strategic direction is **Variant B: clean JamesUI 1.0 foundation in parallel, controlled cutover, then delete the old implementation**.
 
@@ -26,17 +27,48 @@ The r11 implementation is a design/reference runtime only. The approved strategi
 
 The written architecture specification has been reviewed, clarified and **approved**.
 
-Approved clarifications now included in the canonical spec/roadmap:
+Approved clarifications included in the canonical spec/roadmap:
 
 - manifest module dependencies are separate from required/provided capabilities,
 - Block 3 defines the Action Registry and HA-backed action contracts with fakes; real HA-backed actions are implemented only in Block 4 through the HA Adapter,
 - Event Bus is restricted to transient technical/UI/lifecycle events and cannot bypass Capabilities or Actions.
 
-The detailed implementation plan for **Block 0 – Baseline and preservation tests** exists at:
+**Block 0 – Baseline and preservation tests is complete, green and merged to `main`.**
 
-`docs/superpowers/plans/2026-10-02-jamesui-1.0-block-0-baseline.md`
+Canonical Block 0 baseline:
 
-The next formal gate is **review/approval of that Block 0 plan**. Block 0 implementation has not started. Do not start Block 1 or normal JamesUI 1.0 product-code implementation before Block 0 is completed and merged green.
+`docs/JAMESUI_1_0_BASELINE.md`
+
+The detailed implementation plan for **Block 1 – JamesUI Core shell** now exists at:
+
+`docs/superpowers/plans/2026-10-02-jamesui-1.0-block-1-core-shell.md`
+
+The next formal gate is **review/approval of the Block 1 plan**. Block 1 product-code implementation has not started. Do not start Block 2 or other dependent JamesUI 1.0 product-code work before Block 1 is completed and merged green.
+
+## Block 1 boundary to preserve
+
+Block 1 builds the new Core in parallel under `custom_components/jamesui/frontend/core/` only. The running r11 panel/bootstrap remains unchanged during this block.
+
+Block 1 includes:
+
+- Core route model and router
+- structural app shell
+- persistent bottom navigation
+- opaque HA host-context handoff (`hass`, `narrow`, `route`, `panel`)
+- technical Event Bus
+- Overlay Service
+- generic health/error service and page-error isolation
+- Core composition entry
+
+Block 1 explicitly does **not** include:
+
+- Module Registry/Loader (Block 2)
+- Capability/Action Registries (Block 3)
+- direct Home Assistant access or HA Adapter (Block 4)
+- structured config/migrations (Block 5)
+- final design tokens/icons (Blocks 6–7)
+- weather/calendar/house/media/climate/door business logic
+- switching production HA bootstrap to the new Core
 
 ## Working preferences
 
@@ -117,12 +149,13 @@ Bitte arbeite NICHT aus Erinnerung oder alten Chat-Zusammenfassungen, sondern li
 1. PROJECT_STATUS.md
 2. docs/superpowers/specs/2026-10-02-jamesui-1.0-foundation-design.md
 3. docs/JAMESUI_1_0_EXECUTION_ROADMAP.md
-4. docs/JAMESUI_1_0_NEXT_CHAT.md
-5. docs/superpowers/plans/2026-10-02-jamesui-1.0-block-0-baseline.md
+4. docs/JAMESUI_1_0_BASELINE.md
+5. docs/JAMESUI_1_0_NEXT_CHAT.md
+6. docs/superpowers/plans/2026-10-02-jamesui-1.0-block-1-core-shell.md
 
-Wir haben Variante B verbindlich freigegeben. Die schriftliche Architektur-Spec ist geprüft und freigegeben; die drei Architekturpräzisierungen zu Manifestfeldern, Block 3/4 und Event Bus sind bereits eingearbeitet.
+Wir haben Variante B verbindlich freigegeben. Die schriftliche Architektur-Spec ist geprüft und freigegeben. Block 0 ist abgeschlossen, grün und nach main integriert.
 
-Nächster Gate: Prüfe den detaillierten Implementierungsplan für Block 0 auf Vollständigkeit und Widersprüche. Wenn er passt und ich ihn freigebe, setze ausschließlich Block 0 auf einem isolierten Branch um. Kein Block 1 vor Abschluss und grünem Merge von Block 0.
+Nächster Gate: Prüfe den detaillierten Implementierungsplan für Block 1 – JamesUI Core shell auf Vollständigkeit und Widersprüche. Wenn er passt und ich ihn freigebe, setze ausschließlich Block 1 auf einem isolierten Branch um. Der neue Core wird parallel aufgebaut und in Block 1 noch nicht in den laufenden Home-Assistant-Panel-Bootstrap geschaltet. Kein Block 2 vor Abschluss und grünem Merge von Block 1.
 
 Wichtig: Deutsch, kurz und technisch sauber. Repository direkt bearbeiten, wenn GitHub-Zugriff vorhanden ist. Keine manuellen Copy/Paste-Anweisungen an mich, wenn du selbst committen kannst. TDD für Verhaltensänderungen; absichtlich rote Tests niemals nach main. Keine neuen Monkey-Patches, Prototype-Overrides, Versions-Polish-Dateien, parallelen Implementierungen oder dauerhaften Legacy-Krücken. OnePlus Pad 2 Hochformat ist das primäre Ziel; Fully ist nur die Kiosk-Hülle.
 ```
