@@ -4,6 +4,19 @@ import assert from "node:assert/strict";
 import { createJamesUICore } from "../custom_components/jamesui/frontend/core/index.js";
 import { FakeElement, createFakeDocument } from "./helpers/fake-dom.js";
 
+function moduleManifest(id, type = "provider") {
+  return {
+    id,
+    type,
+    version: "1.0.0",
+    core_api: "1.x",
+    depends_on: [],
+    requires_capabilities: [],
+    provides_capabilities: [],
+    config_schema: `${id}.schema.json`,
+  };
+}
+
 test("stores Home Assistant host properties opaquely before mount", () => {
   const core = createJamesUICore({ document: createFakeDocument() });
   const hass = { marker: "opaque" };
@@ -91,4 +104,37 @@ test("exposes Core service references as read-only", () => {
   const router = core.router;
   assert.throws(() => { core.router = null; }, TypeError);
   assert.equal(core.router, router);
+});
+
+test("composes Module Registry and Loader as read-only Core services", () => {
+  const core = createJamesUICore({ document: createFakeDocument() });
+  const registry = core.moduleRegistry;
+  const loader = core.moduleLoader;
+  assert.ok(registry);
+  assert.ok(loader);
+  assert.throws(() => { core.moduleRegistry = null; }, TypeError);
+  assert.throws(() => { core.moduleLoader = null; }, TypeError);
+  assert.equal(core.moduleRegistry, registry);
+  assert.equal(core.moduleLoader, loader);
+});
+
+test("module context is HA-free and Core destroy cleans loaded modules exactly once", async () => {
+  const core = createJamesUICore({ document: createFakeDocument() });
+  core.hass = { states: { secret: true } };
+  core.narrow = true;
+  core.route = { path: "/jamesui" };
+  core.panel = { title: "JamesUI" };
+
+  const entryUrl = new URL("./fixtures/modules/provider-minimal.js", import.meta.url).href;
+  core.moduleRegistry.register(moduleManifest("provider.context"), { entryUrl });
+  assert.equal(await core.moduleLoader.load("provider.context", { config: { value: "safe" } }), true);
+
+  const target = { events: [] };
+  assert.equal(core.moduleLoader.mount("provider.context", target), true);
+  assert.deepEqual(target.events[0], ["provider", "mount", "safe", ["events", "overlays"]]);
+
+  core.destroy();
+  core.destroy();
+  assert.equal(target.events.filter((event) => event[1] === "destroy").length, 1);
+  assert.equal(core.moduleLoader.isLoaded("provider.context"), false);
 });
