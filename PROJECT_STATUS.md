@@ -69,9 +69,9 @@ Fresh-chat / ChatGPT-Project handover and start prompt:
   - module dependencies and capability requirements/provisions are separate manifest fields (`depends_on`, `requires_capabilities`, `provides_capabilities`),
   - Block 3 builds Action Registry contracts with non-HA actions/fakes; real HA-backed actions are wired only in Block 4 through the HA Adapter,
   - Event Bus is restricted to transient technical/UI/lifecycle events and may not bypass Capabilities or Actions.
-- **Block 0 – Baseline and preservation tests: complete, green and ready to merge.**
+- **Block 0 – Baseline and preservation tests: complete and green.**
 - Block 0 produced `docs/JAMESUI_1_0_BASELINE.md`, guarded HA bootstrap preservation tests and SHA-256-pinned Alpine asset validation.
-- PR #12 validation #165: **success**.
+- PR #12 validation: **success**.
 - No production file under `custom_components/jamesui/` was modified in Block 0.
 - **Block 1 has not started.** Next gate: detailed implementation plan/review for Block 1 – JamesUI Core shell.
 
