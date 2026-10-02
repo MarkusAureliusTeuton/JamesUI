@@ -57,7 +57,7 @@ Completed Block 1 implementation plan:
 
 `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-1-core-shell.md`
 
-Current detailed implementation plan:
+Completed Block 2 implementation plan:
 
 `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-2-module-system.md`
 
@@ -79,14 +79,14 @@ Fresh-chat / ChatGPT-Project handover and start prompt:
   - Event Bus is restricted to transient technical/UI/lifecycle events and may not bypass Capabilities or Actions.
 - **Block 0 – Baseline and preservation tests: complete and green.**
 - **Block 1 – JamesUI Core shell: complete, green and merged through PR #13.**
-- Block 1 adds the parallel Core under `custom_components/jamesui/frontend/core/`: canonical routing, structural persistent shell/navigation, transient Event Bus, Overlay Service, Health Service and opaque Home Assistant host-context handoff.
-- The new Core is intentionally **not wired into the production Home Assistant panel entry**. Current r11 remains production/reference until the controlled cutover.
-- Core architecture tests prohibit direct HA state/service access, legacy Start coupling and release-version naming in the new Core.
-- PR #13 validation and `main` validation #192: **success** after whole-branch review and the read-only Core service-reference correction.
-- Detailed implementation plan for **Block 2 – Module manifest, registry and loader**: **created and awaiting review/approval**.
-- Block 2 implementation: **not started**.
-- Block 2 keeps capability fields as declaration metadata only; actual Capability/Action Registry runtime remains Block 3.
-- No Block 2 product-code implementation should start before the Block 2 plan is approved.
+- **Block 2 – Module manifest, registry and loader: complete, green and merged through PR #14.**
+- Block 2 adds `CORE_API_VERSION = 1.0.0`, strict manifest validation, an immutable Module Registry, a version-tokened lifecycle-safe Module Loader, isolated per-module reload and Core module-system composition.
+- Module manifests keep `depends_on`, `requires_capabilities` and `provides_capabilities` separate. Capability declarations are metadata/ownership only; the runtime Capability/Action Registry remains Block 3.
+- Module lifecycle failures are isolated through `module:<id>` health records; one module failure does not invalidate other loaded modules.
+- Module context in Block 2 contains only safe Core infrastructure (`events`, `overlays`) and does not expose raw Home Assistant host context or services.
+- The new Core/module system remains intentionally **unwired from the production Home Assistant panel entry**. Current r11 remains production/reference until the controlled cutover.
+- PR #14 branch validation #196 and `main` validation #197: **success** after whole-branch review.
+- **Block 3 has not started.** Next gate: detailed implementation plan/review for Block 3 – Capability Registry and Action Registry.
 
 ## 4. Current production/reference runtime
 
@@ -305,10 +305,6 @@ Preferences:
 
 ## 15. Next action
 
-**Review the detailed Block 2 plan:**
+**Create and review the detailed implementation plan for Block 3 – Capability Registry and Action Registry.**
 
-`docs/superpowers/plans/2026-10-02-jamesui-1.0-block-2-module-system.md`
-
-If approved, execute **Block 2 – Module manifest, registry and loader** on an isolated branch according to that plan.
-
-Do not begin Block 3 or other dependent JamesUI 1.0 product-code work before Block 2 is completed and merged green.
+Do not begin Block 3 product-code implementation before that plan is reviewed and approved.
