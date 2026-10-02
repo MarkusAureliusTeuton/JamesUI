@@ -2,24 +2,68 @@
 
 _Last updated: 2026-10-02_
 
-This file is the persistent **single source of truth** for JamesUI intent, architecture, current implementation and next work. In every new JamesUI chat: read this file first, inspect only the relevant repository files, and update this file after substantive implementation/design/removal decisions.
+This file is the persistent **single source of truth** for current JamesUI direction, process state and next work. In every new JamesUI chat: read this file first, then the referenced architecture/roadmap documents, and update this file after substantive decisions or merged work.
 
 ## 1. Product goal
 
-JamesUI is a tablet-first Home Assistant interface for the KNX/Home Assistant home. It should feel like a calm, premium, bespoke architectural control surface rather than a Lovelace/card dashboard.
+JamesUI is a permanent wall-tablet interface for the KNX/Home Assistant home.
 
-Core rules:
+Primary use:
 
-- Home Assistant is backend/source of truth; KNX remains primary building automation.
-- Primary target: **OnePlus Pad 2 wall tablet in portrait**; browser/landscape remain secondary.
-- Global navigation: `Start | Haus | Klima | Medien | Tür`.
-- The fixed bottom navigation is the **only primary navigation**.
-- Prefer local operation and automatic discovery; add manual mapping only where needed.
-- Alpine-Chic / Chalet style: photorealistic outdoor atmosphere, anthracite/near-black base, restrained warm champagne accents, no generic dashboard cards, no glowing frames.
-- Start should fit the important daily information on one portrait screen whenever the target viewport allows it.
-- Approved JamesUI changes should be implemented directly in the repository and finished green work merged to `main` without repeatedly asking for permission.
+- displayed continuously on a **OnePlus Pad 2 in portrait**, normally through Fully
+- important information visible immediately while passing the tablet
+- quick access to frequent house functions
+- deeper control pages for devices and systems when needed
 
-## 2. Repository / release state
+Planned future scope includes lighting, sockets, shutters, ventilation schedules, heating modes/programs, appliance status/update actions, media, door/camera, energy and further smart-home functions.
+
+Core product rules:
+
+- Home Assistant is backend/source of truth; KNX remains the primary building-automation layer.
+- Fully is the kiosk/display shell only; JamesUI must not depend on Fully for core behavior.
+- Fixed global navigation remains `Start | Haus | Klima | Medien | Tür` unless the product direction is explicitly changed.
+- OnePlus portrait is the primary visual acceptance target.
+- Alpine-Chic / premium architectural style: near-black/anthracite, restrained warm champagne accents, strong outdoor/weather imagery, no generic Lovelace/card look, no glowing borders.
+
+## 2. Major architecture decision – JamesUI 1.0
+
+**Decision: Variant B – clean foundation + controlled cutover.**
+
+We will not keep extending the current r11 frontend architecture with normal new features.
+
+Instead:
+
+1. build a new modular JamesUI 1.0 foundation in parallel,
+2. port only the behavior/features we actually want,
+3. prove the new runtime on Home Assistant + OnePlus/Fully,
+4. perform one controlled cutover,
+5. delete the old implementation and obsolete assets/tests.
+
+Git history is the archive. Do not create permanent `legacy`, `old`, `v11-final`, etc. source trees after cutover.
+
+Canonical architecture spec:
+
+`docs/superpowers/specs/2026-10-02-jamesui-1.0-foundation-design.md`
+
+Canonical execution roadmap:
+
+`docs/JAMESUI_1_0_EXECUTION_ROADMAP.md`
+
+Fresh-chat / ChatGPT-Project handover and start prompt:
+
+`docs/JAMESUI_1_0_NEXT_CHAT.md`
+
+## 3. Current formal process state
+
+- Variant B architecture direction: **approved conversationally**.
+- Written architecture specification: **created and committed**.
+- Execution roadmap with Blocks 0–21: **created and committed**.
+- Next-chat handover/start prompt: **created and committed**.
+- Next gate: **user review/approval of the written architecture spec**.
+- After written-spec approval: create the detailed implementation plan for **Block 0 – Baseline and preservation tests**.
+- No product-code implementation of JamesUI 1.0 should start before that block plan is reviewed according to the project workflow.
+
+## 4. Current production/reference runtime
 
 Repository: `MarkusAureliusTeuton/JamesUI`
 
@@ -27,201 +71,214 @@ Default branch: `main`
 
 Integration / manifest version: **0.5.1**
 
-Frontend revision on `main`: **0.5.1-r11**
+Frontend revision: **0.5.1-r11**
 
-Latest verified implementation:
+Current r11 is still the running/reference implementation and is useful as a visual/behavioral reference until cutover.
+
+Latest verified old-runtime implementation:
 
 - PR #9 → V9 Start redesign
 - PR #10 → r10 compact portrait grid + pictogram facts
 - PR #11 → r11 visual polish toward approved mockup
-- r11 squash merge commit: `83daa861a3bcbe0aa610af7ba9d3846544ad4068`
-- PR validation #161 → success
-- final `main` validation #162 → success
+- r11 merge commit: `83daa861a3bcbe0aa610af7ba9d3846544ad4068`
+- main validation #162 → success
 
-`main` is implementation truth.
+Do not treat r11 structure as the future architecture.
 
-## 3. Critical runtime chain
+## 5. Architecture audit findings
 
-1. `custom_components/jamesui/__init__.py` registers the static path and panel.
-2. `const.py` defines `FRONTEND_FILE = "jamesui-entry.js"` and `FRONTEND_REVISION`.
-3. `jamesui-entry.js` is the guarded classic loader and restores pre-upgrade HA properties while finding nested Shadow-DOM panel instances.
-4. `jamesui-home-entry.js` imports the Start modules with the same revision token:
-   - `jamesui-home.js`
-   - `jamesui-home-data.js`
-   - `jamesui-home-background.js`
-   - `jamesui-v11-polish.js`
-5. Enhancements install and the real panel rerenders immediately.
+The current frontend accumulated exploration debt and should be replaced rather than patched indefinitely.
 
-Do not bypass this chain casually. Previous failures included blank panels from direct ES-module loading, stale cached Start code, missing `hass`, and enhancement appearing only after navigating away/back.
+Main findings:
 
-## 4. Ownership map
+- `jamesui-panel.js` is a very large monolith containing shell, navigation, old Start, weather helpers, Haus, Klima demo, Media, settings, overlays, display calibration and global styles.
+- Old Start still exists in the panel while newer Start modules replace/wrap it at runtime.
+- `jamesui-home-background.js` wraps panel methods and rewrites rendered HTML.
+- `jamesui-home-data.js` wraps render/lifecycle behavior to add calendar/scenes/runtime hooks.
+- `jamesui-v11-polish.js` is another visual override layer using `!important`, data-URL SVGs and positional rules.
+- Icons are inconsistent: Unicode + inline SVG + data-URL SVG + legacy SVG assets.
+- Config is a flat set of unrelated options and will not scale to pages/layouts/widgets/buttons/modules.
+- Klima contains hard-coded demo rooms/temperatures.
+- Doorbell demo/prototype behavior remains in production shell.
+- frontend cache revisioning is currently global instead of module-specific.
 
-| Path | Responsibility | Rule |
-| --- | --- | --- |
-| `custom_components/jamesui/const.py` | frontend revision | revision truth |
-| `custom_components/jamesui/api.py` | central config API | active |
-| `frontend/jamesui-entry.js` | classic loader + Shadow-DOM/property bridge | critical |
-| `frontend/jamesui-home-entry.js` | Start module bridge + revision propagation | critical |
-| `frontend/jamesui-panel.js` | shell/global nav/other pages/base fallback Start | active; do not duplicate shell logic |
-| `frontend/jamesui-home.js` | Start renderer, weather/status/calendar layout | active Start owner |
-| `frontend/jamesui-home-data.js` | calendar lifecycle, scene discovery/actions, overlays | active live-data owner |
-| `frontend/jamesui-home-background.js` | background mode + Start settings | active |
-| `frontend/jamesui-v11-polish.js` | r11 visual refinement layer for Start | active; visual-only override layer |
-| `frontend/assets/alpine/` | local photorealistic weather scenes | active |
-| `tests/jamesui-home.test.js` | core Start regressions | active |
-| `tests/jamesui-home-data.test.js` | calendar/scene regressions | active |
-| `tests/jamesui-background.test.js` | background/settings regressions | active |
-| `tests/jamesui-v11-style.test.js` | r11 visual-contract regressions | active |
-| `tests/test_frontend_entrypoint.py` | loader/revision propagation | critical |
-| `PROJECT_STATUS.md` | persistent handover | keep current |
+These are the reasons for the JamesUI 1.0 rebuild.
 
-## 5. Start page – current r11 direction
+## 6. JamesUI 1.0 architecture summary
 
-**Status: ⚠️ code + CI verified; practical screenshot verification still required.**
+The new system separates:
 
-### Weather hero
+- **Core** – shell, fixed navigation, routing, module loader/registry, config service, event bus, overlay service, module health
+- **Home Assistant Adapter** – all direct HA states/registry/WS/service access
+- **Capability Registry** – e.g. `weather.current`, `calendar.events`, `house.lights`
+- **Action Registry** – e.g. `entity.toggle`, `ha.service`, `scene.activate`, `navigate`, `url.open`
+- **Layouts** – pure visual slot arrangement, no Home Assistant access
+- **Widgets** – consume capabilities and configured actions
+- **Providers** – own discovery/subscriptions/normalization and publish capabilities
+- **Design System** – one shared token system and base component language
+- **Icon/Asset Registry** – one local SVG icon family and managed local assets
+- **Versioned Config Store** – structured schema + explicit migrations
 
-The upper hero remains the strongest part of the design and should not be redesigned wholesale.
+Hard rule: **no new runtime monkey-patching / `Panel.prototype` override layers.**
 
-Current behavior:
+Every module gets ID, type, version, Core API requirement, dependencies/capabilities, config schema and lifecycle.
 
-- large local Alpine weather/day/night image
-- date, clock, HA location
-- current condition + temperature
-- compact row for max/min/rain/wind/sunrise/sunset/moon
-- 3-day tendency action
-- one subtle `…` button
+## 7. Start page direction to preserve/rebuild
 
-r10 introduced icon-led weather facts. r11 moves closer to the approved mockup:
+The visible direction developed in r11 is still the target reference, but it will be rebuilt on the new architecture.
 
-- removes the horizontal divider above the weather facts
-- preserves the seven compact pictogram facts
-- replaces the simple current-weather glyph with richer local inline-SVG weather artwork for cloudy/clear/rain/snow/fog states
-- keeps everything local; no icon CDN/package dependency
+### Hero
+- weekday/date
+- large current time
+- current temperature
+- current weather condition
+- max/min
+- rain + first rain time when real granular data supports it
+- wind/storm relevance
+- snow relevance
+- sunrise/sunset
+- moon phase/illumination
+- local Alpine background according to weather/day period
+- tapping current temperature opens 3-day forecast overlay without changing the base layout
+- no visible standalone `3-Tage-Prognose` row
 
-### Calendar + Hausstatus deck
+### Lower widget deck
+- shared deck begins below/overlaps hero at approved position
+- extends all the way to bottom navigation
+- upper corners rounded, lower corners square
+- elegant dark/translucent gradient
+- warm subtle shimmer line
+- Alpine transition can continue behind the deck near the top
+- remove labels `Home`, `HEUTE & DANACH`, `ZUHAUSE`
 
-The approved mockup comparison showed that the lower widgets should feel like one intentional surface layered over the atmosphere, not two flat black sections.
+### Deck content
+- left: Calendar widget
+- right/main: House Quick widget
+- right/footer: four manually assigned Dynamic Buttons
 
-r11 therefore:
+## 8. Dynamic Buttons target
 
-- keeps Kalender and Hausstatus side-by-side on portrait tablet
-- moves the shared grid visually upward with a small overlap onto the hero
-- wraps it in one rounded semi-transparent glass/anthracite frame
-- adds a subtle champagne/white shimmer line along the upper edge
-- continues the current Alpine scene slightly behind the deck and fades it into black below, so the mountain image appears to continue down the left/right edges like in the mockup
-- removes the separate hard top borders from the child sections
+Dynamic Buttons are generic reusable configured action buttons, not hard-coded scene controls.
 
-### Hausstatus
+Configurable presentation:
 
-The previous r10 compact table was functional but visually too dry. r11 keeps the same real HA data model but restyles the individual status entries as tactile mini-surfaces:
+- text
+- icon
+- icon color
+- local background preset
+- text color
 
-- rounded 10 px surfaces
-- restrained depth/highlight rather than glow
-- larger icon treatment
-- 3-column compact grid remains so the page still fits without scrolling
-- active/alert states retain separate tone handling
+Configurable actions:
 
-Current groups remain: Licht, Steckdosen, Fenster, Türen/Tore, Lüftung, Klima, Medien.
+- entity toggle
+- Home Assistant service
+- scene
+- JamesUI navigation
+- URL
 
-### Szenen
+Initial visual presets:
 
-The four real favorite `scene.*` entities remain functional via `scene.turn_on`.
+- Ankommen
+- Abend
+- Kino
+- Alles aus
 
-r11 makes the scene controls closer to the mockup:
+Presets are visual templates only; they do not fake Home Assistant actions.
 
-- larger image-backed scene buttons
-- subtle local Alpine artwork as the visual layer
-- dark gradient for legibility
-- restrained border/highlight and momentary activated state
-- still no fake persistent scene-active state
+## 9. Current r11 live-data gaps to remember as reference
 
-If no scenes are configured/discovered, JamesUI still shows the real empty state rather than demo scenes.
+Latest screenshots showed:
 
-### Calendar
+- calendar currently has no visible real events/data
+- moon entity/mapping still not fully configured in runtime
+- Fenster/Türen/Klima may show `–` where current detection finds no suitable entities
+- favorite scenes were not configured/discovered in the live screenshot
 
-Calendar still uses real `calendar.*` entities via Home Assistant subscriptions. Start shows up to three compact events; `Weitere Termine` opens the full overlay.
+Do not solve these by faking data. The new providers/configuration must handle them explicitly.
 
-The most recent real screenshot still showed `Keine Kalenderdaten`. That remains a data/integration question to verify separately from the visual layout.
+## 10. Code/behavior likely worth porting conceptually
 
-## 6. Known live-data gaps from the latest screenshot
+Potentially retain/port:
 
-- Moon entity is still not fully configured/mapped in the real runtime.
-- Calendar currently returns no events/data.
-- Fenster/Türen/Klima show `–` where suitable entities are not being detected.
-- Favorite scenes were not yet configured/discovered in the screenshot.
+- guarded HA panel bootstrap / Shadow-DOM property handling that solved real HA loading issues
+- Alpine WebP asset family
+- useful weather normalization/calculation logic
+- useful calendar normalization logic
+- proven entity classification rules
+- display calibration concept as a separate device-settings module
+- WebP integrity tests
+- useful knowledge from current Media integration
 
-These are data/configuration issues; do not fake them in the UI.
+Do not automatically copy old implementations. Port behavior into the new module contracts.
 
-## 7. Important bug-history lessons
+## 11. Old code expected to disappear at cutover
 
-- frontend revision tokens are mandatory to defeat stale cached Start code
-- panel instances are nested in Shadow DOM; use the existing recursive finder
-- pre-upgrade HA properties must be restored after custom-element definition
-- enhanced Start must force initial rerender
-- local WebP assets are validated for real RIFF/WEBP integrity
-- keep the base Start fallback until the enhanced Start is proven stable in browser + OnePlus/Fully
+Once JamesUI 1.0 satisfies the cutover gate, remove/supersede:
 
-## 8. Other pages
+- monolithic old `jamesui-panel.js`
+- old `_homePage()` implementation
+- `jamesui-home-entry.js`
+- `jamesui-home.js`
+- `jamesui-home-data.js`
+- `jamesui-home-background.js`
+- `jamesui-v11-polish.js`
+- unused legacy weather SVG family
+- Klima demo rooms/temperatures
+- doorbell demo
+- release-patch-specific tests replaced by architecture/behavior contracts
+- obsolete config compatibility keys after migration
 
-### Haus
-**Status: ⚠️ functional, not final.** Registry discovery, light/socket/fan classification, availability/low-battery summary, area grouping and toggles exist. Next direction: room-first presentation.
+## 12. Execution roadmap
 
-### Klima
-**Status: 🚧 demo only.** Replace hardcoded demo rooms with real `climate.*` entities and remove demo code in the same change.
+Implementation is divided into numbered blocks in `docs/JAMESUI_1_0_EXECUTION_ROADMAP.md`.
 
-### Medien
-**Status: ⚠️ substantial implementation exists; practical E2E verification still needed.** Spotify, Music Assistant, Onkyo preparation, source/transport/volume/now-playing and playlist normalization exist.
+High-level sequence:
 
-### Tür
-**Status: 🚧 groundwork only.** Camera/doorbell/open-action flow exists but depends on reliable backend entities/events.
+- Blocks 0–5: baseline, Core, module system, capabilities/actions, HA adapter, config/migrations
+- Blocks 6–7: design system + icon/asset system
+- Blocks 8–14: rebuild complete Start page and its configuration
+- Blocks 15–18: migrate Haus, Media, Climate, Door
+- Blocks 19–21: cutover, legacy deletion, architecture CI gate
 
-## 9. Validation / workflow
+After cleanup, future modules such as WC ventilation scheduling, heating programs, shutter groups, appliance status/update actions and energy are built on the new platform.
 
-`.github/workflows/validate.yml` covers Python/JSON/JS syntax, loader contracts, asset integrity, Start layout/data tests, background settings, calendar/scenes, and the r11 visual-contract test.
+## 13. Development rules from now on
 
-Current verified `main` validation: **#162 → success** on `83daa861a3bcbe0aa610af7ba9d3846544ad4068`.
+1. Read architecture spec + roadmap before JamesUI 1.0 work.
+2. One roadmap block at a time.
+3. Every block gets a detailed implementation plan before product code.
+4. Work on isolated branches for implementation blocks.
+5. TDD for behavior changes.
+6. Intentionally red tests never go to `main`.
+7. Finished green approved work is merged to `main` without repeatedly asking whether repository changes are desired.
+8. Update this file and roadmap status after substantive merged work.
+9. No new monkey-patches, version-specific polish modules, parallel duplicate implementations or permanent compatibility shims.
+10. Practical OnePlus/Fully screenshot testing remains required at major UI milestones.
 
-Development rules:
+## 14. Working style
 
-1. inspect existing code/assets first
-2. use small cohesive branches for risky visual/runtime changes
-3. TDD red states stay off `main`
-4. no duplicate implementations without a removal plan
-5. update this file after substantive work
-6. practical screenshot confirmation is required before declaring tablet UX final
-7. approved green JamesUI repository work goes to `main` without re-asking
+JamesUI replies should start with one of:
 
-## 10. Current priorities
+- `✅ Fertig:`
+- `⚠️ Test nötig:`
+- `🚧 Nicht fertig:`
 
-1. Reload/update JamesUI so **`0.5.1-r11`** is served.
-2. Send a fresh portrait screenshot.
-3. Verify the r11 goals visually:
-   - no line above weather facts
-   - richer current weather/cloud artwork
-   - framed lower widget deck with shimmer edge
-   - Alpine image visibly continuing/fading behind the deck edges
-   - house status surfaces closer to mockup
-   - scene buttons closer to mockup
-   - no normal scrolling
-4. Then address real data/configuration gaps: calendar, moon, Fenster/Türen/Klima and favorite scenes.
-5. Continue Haus room-first, then real Klima, Media verification and Tür backend integration.
+Preferences:
 
-## 11. Working style
-
-JamesUI replies start with `✅ Fertig:`, `⚠️ Test nötig:` or `🚧 Nicht fertig:`.
-
-- concise technical collaboration
-- direct repository edits when available
+- German
+- concise, technical, direct
+- repository edits directly through GitHub when available
+- no unnecessary user copy/paste
 - one useful troubleshooting action at a time
-- no unnecessary copy/paste for the user
-- preserve fallback paths until replacements are practically verified
-- portrait wall-tablet behavior is primary
 
-## 12. Next-chat instruction
+## 15. Next action
 
-1. Read `PROJECT_STATUS.md` first.
-2. Treat `main` as implementation truth.
-3. Inspect relevant existing files before editing.
-4. Continue directly without asking the user to repeat documented decisions.
-5. Update this file after substantive work.
+**Review the written spec:**
+
+`docs/superpowers/specs/2026-10-02-jamesui-1.0-foundation-design.md`
+
+If approved, the next chat should create the detailed implementation plan for:
+
+**Block 0 – Baseline and preservation tests**
+
+Do not begin JamesUI 1.0 product-code implementation before that plan is ready and reviewed.
