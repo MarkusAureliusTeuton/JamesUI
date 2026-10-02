@@ -85,3 +85,10 @@ test("event listener failures are recorded in Core health without aborting dispa
   assert.equal(record.status, "error");
   assert.equal(record.error, boom);
 });
+
+test("exposes Core service references as read-only", () => {
+  const core = createJamesUICore({ document: createFakeDocument() });
+  const router = core.router;
+  assert.throws(() => { core.router = null; }, TypeError);
+  assert.equal(core.router, router);
+});
