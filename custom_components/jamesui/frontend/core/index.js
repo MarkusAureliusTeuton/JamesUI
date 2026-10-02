@@ -4,6 +4,8 @@ import { createOverlayService } from "./overlay-service.js";
 import { createHealthService } from "./health-service.js";
 import { createHostContext } from "./host-context.js";
 import { createAppShell } from "./shell.js";
+import { createModuleRegistry } from "./module-registry.js";
+import { createModuleLoader } from "./module-loader.js";
 
 export function createJamesUICore({ document = globalThis.document, renderPage } = {}) {
   const health = createHealthService();
@@ -18,6 +20,12 @@ export function createJamesUICore({ document = globalThis.document, renderPage }
   });
   const router = createRouter();
   const overlays = createOverlayService();
+  const moduleRegistry = createModuleRegistry();
+  const moduleLoader = createModuleLoader({
+    registry: moduleRegistry,
+    health,
+    getContext: () => Object.freeze({ events, overlays }),
+  });
   const hostContext = createHostContext({ events });
   const shell = createAppShell({
     document,
@@ -33,6 +41,7 @@ export function createJamesUICore({ document = globalThis.document, renderPage }
       return shell.mount(target);
     },
     destroy() {
+      moduleLoader.destroyAll();
       shell.destroy();
     },
     navigate(routeId) {
@@ -56,6 +65,8 @@ export function createJamesUICore({ document = globalThis.document, renderPage }
     events: { value: events, enumerable: true },
     overlays: { value: overlays, enumerable: true },
     health: { value: health, enumerable: true },
+    moduleRegistry: { value: moduleRegistry, enumerable: true },
+    moduleLoader: { value: moduleLoader, enumerable: true },
   });
 
   return core;
