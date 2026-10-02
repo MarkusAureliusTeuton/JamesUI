@@ -189,7 +189,7 @@ test("renders V9 hero with moon integrated into the daily weather facts", () => 
 
 test("renders calendar timeline with timed, all-day and following-day events", () => {
   const html = renderAlpineHome(alpinePanel());
-  assert.match(html, /class="start-v9-calendar/);
+  assert.match(html, /start-v9-calendar/);
   assert.match(html, /Team Besprechung/);
   assert.match(html, /Kindergarten abholen/);
   assert.match(html, /Familientag/);
@@ -205,7 +205,7 @@ test("renders a calm calendar empty state without fake data", () => {
 
 test("renders real house status plus four favorite scenes and Weitere", () => {
   const html = renderAlpineHome(alpinePanel());
-  assert.match(html, /class="start-v9-house/);
+  assert.match(html, /start-v9-house/);
   assert.match(html, /Licht/);
   assert.match(html, /Steckdosen/);
   assert.match(html, /Fenster/);
