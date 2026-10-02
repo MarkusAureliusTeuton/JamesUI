@@ -53,6 +53,10 @@ Completed Block 0 implementation plan:
 
 `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-0-baseline.md`
 
+Current detailed implementation plan:
+
+`docs/superpowers/plans/2026-10-02-jamesui-1.0-block-1-core-shell.md`
+
 Canonical Block 0 baseline:
 
 `docs/JAMESUI_1_0_BASELINE.md`
@@ -73,7 +77,9 @@ Fresh-chat / ChatGPT-Project handover and start prompt:
 - Block 0 produced `docs/JAMESUI_1_0_BASELINE.md`, guarded HA bootstrap preservation tests and SHA-256-pinned Alpine asset validation.
 - PR #12 validation: **success**.
 - No production file under `custom_components/jamesui/` was modified in Block 0.
-- **Block 1 has not started.** Next gate: detailed implementation plan/review for Block 1 – JamesUI Core shell.
+- Detailed implementation plan for **Block 1 – JamesUI Core shell**: **created and awaiting review/approval**.
+- Block 1 implementation: **not started**.
+- No Block 1 product-code implementation should start before the Block 1 plan is approved.
 
 ## 4. Current production/reference runtime
 
@@ -292,6 +298,10 @@ Preferences:
 
 ## 15. Next action
 
-**Create and review the detailed implementation plan for Block 1 – JamesUI Core shell.**
+**Review the detailed Block 1 plan:**
 
-Block 1 product-code implementation must not start before that plan is reviewed according to the project workflow.
+`docs/superpowers/plans/2026-10-02-jamesui-1.0-block-1-core-shell.md`
+
+If approved, execute **Block 1 – JamesUI Core shell** on an isolated branch according to that plan.
+
+Do not begin Block 2 or other dependent JamesUI 1.0 product-code work before Block 1 is completed and merged green.
