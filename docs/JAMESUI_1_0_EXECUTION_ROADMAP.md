@@ -1,6 +1,6 @@
 # JamesUI 1.0 – Execution Roadmap
 
-_Status: written architecture spec approved; Blocks 0–2 complete and validated; next gate Block 3 detailed plan_
+_Status: written architecture spec approved; Blocks 0–2 complete and validated; Block 3 plan created and awaiting approval_
 _Date: 2026-10-02_
 
 This document defines the implementation order for the JamesUI 1.0 rebuild using the approved **Variant B: clean foundation + controlled cutover** strategy.
@@ -147,6 +147,10 @@ Routes may initially render neutral placeholders.
 ## Block 3 – Capability Registry and Action Registry
 
 **Goal:** Define how modules exchange functionality without knowing each other’s internals.
+
+**Detailed implementation plan:**
+
+`docs/superpowers/plans/2026-10-02-jamesui-1.0-block-3-capability-action-registries.md`
 
 ### Scope
 - Capability Registry
@@ -692,4 +696,4 @@ Current state:
 | 20 Cutover | ⬜ |
 | 21 Legacy deletion/gate | ⬜ |
 
-Blocks 0–2 are complete and validated. The next formal gate is the detailed implementation plan/review for **Block 3 – Capability Registry and Action Registry**. Block 3 product-code implementation has **not** started.
+Blocks 0–2 are complete and validated. The detailed implementation plan for **Block 3 – Capability Registry and Action Registry** is now created and awaiting review/approval. Block 3 product-code implementation has **not** started.
