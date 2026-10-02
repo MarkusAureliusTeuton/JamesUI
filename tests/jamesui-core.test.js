@@ -130,7 +130,7 @@ test("composes Module Registry and Loader as read-only Core services", () => {
   assert.equal(core.moduleLoader, loader);
 });
 
-test("module context is HA-free and Core destroy cleans loaded modules exactly once", async () => {
+test("provider module context contains only safe services plus HA adapter and Core destroy cleans once", async () => {
   const core = createJamesUICore({ document: createFakeDocument() });
   core.hass = { states: { secret: true } };
   core.narrow = true;
@@ -144,7 +144,7 @@ test("module context is HA-free and Core destroy cleans loaded modules exactly o
   const target = { events: [] };
   assert.equal(core.moduleLoader.mount("provider.context", target), true);
   assert.deepEqual(target.events[0], [
-    "provider", "mount", "safe", ["actions", "capabilities", "events", "module", "overlays"],
+    "provider", "mount", "safe", ["actions", "capabilities", "events", "homeAssistant", "module", "overlays"],
   ]);
 
   core.destroy();
@@ -216,9 +216,10 @@ test("provider and consumer modules exchange capabilities and actions through th
   assert.equal(core.moduleLoader.mount("widget.demo", consumerTarget), true);
   await consumerTarget.actionPromise;
 
-  const expectedKeys = ["actions", "capabilities", "events", "module", "overlays"];
-  assert.deepEqual(providerTarget.keys, expectedKeys);
-  assert.deepEqual(consumerTarget.keys, expectedKeys);
+  const providerKeys = ["actions", "capabilities", "events", "homeAssistant", "module", "overlays"];
+  const consumerKeys = ["actions", "capabilities", "events", "module", "overlays"];
+  assert.deepEqual(providerTarget.keys, providerKeys);
+  assert.deepEqual(consumerTarget.keys, consumerKeys);
   assert.deepEqual(providerTarget.module, { id: "provider.demo", type: "provider", version: "1.2.0" });
   assert.deepEqual(consumerTarget.module, { id: "widget.demo", type: "widget", version: "2.3.0" });
   assert.equal(providerTarget.moduleFrozen, true);
