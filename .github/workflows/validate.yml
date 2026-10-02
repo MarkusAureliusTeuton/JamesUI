@@ -43,6 +43,9 @@ jobs:
       - name: Test home status model
         run: node --experimental-default-type=module --test tests/jamesui-home.test.js
 
+      - name: Test V11 Start visual polish
+        run: node --experimental-default-type=module --test tests/jamesui-v11-style.test.js
+
       - name: Test Start background settings
         run: node --experimental-default-type=module --test tests/jamesui-background.test.js
 

@@ -27,7 +27,7 @@ class FrontendEntrypointTest(unittest.TestCase):
         version = version_match.group(1)
         revision = revision_match.group(1)
         self.assertNotEqual(version, "")
-        self.assertEqual(revision, "0.5.1-r10")
+        self.assertEqual(revision, "0.5.1-r11")
 
         manifest = json.loads(Path("custom_components/jamesui/manifest.json").read_text(encoding="utf-8"))
         self.assertEqual(manifest["version"], version)
@@ -44,7 +44,9 @@ class FrontendEntrypointTest(unittest.TestCase):
         self.assertIn('homeModuleUrl.searchParams.set("v", revision)', home_entry)
         self.assertIn('dataModuleUrl.searchParams.set("v", revision)', home_entry)
         self.assertIn('backgroundModuleUrl.searchParams.set("v", revision)', home_entry)
+        self.assertIn('polishModuleUrl.searchParams.set("v", revision)', home_entry)
         self.assertIn('jamesui-home-data.js', home_entry)
+        self.assertIn('jamesui-v11-polish.js', home_entry)
         self.assertNotRegex(entry, r'jamesui-(?:panel|home|home-entry)\.js\?v=\d')
         self.assertNotRegex(home_entry, r'jamesui-home(?:-data)?\.js\?v=\d')
 
