@@ -1,6 +1,6 @@
 # JamesUI 1.0 – Execution Roadmap
 
-_Status: architecture roadmap; each block receives a detailed implementation plan before code changes_
+_Status: written architecture spec approved; Block 0 detailed plan created and awaiting review_
 _Date: 2026-10-02_
 
 This document defines the implementation order for the JamesUI 1.0 rebuild using the approved **Variant B: clean foundation + controlled cutover** strategy.
@@ -33,6 +33,10 @@ Canonical architecture spec:
 ## Block 0 – Baseline and preservation tests
 
 **Goal:** Capture only the existing behavior/assets we intentionally want to preserve before restructuring anything.
+
+**Detailed implementation plan:**
+
+`docs/superpowers/plans/2026-10-02-jamesui-1.0-block-0-baseline.md`
 
 ### Scope
 - inventory current production frontend files/assets and their references
@@ -98,12 +102,13 @@ Routes may initially render neutral placeholders.
 **Goal:** Introduce the modular runtime contract.
 
 ### Scope
-- module manifest schema
+- module manifest schema with separate `depends_on`, `requires_capabilities` and `provides_capabilities`
 - module registry
 - module loader
 - module lifecycle: create/mount/update/destroy
-- dependency validation
+- module dependency validation
 - Core API compatibility validation
+- declared capability-requirement metadata validation without implementing the Capability Registry yet
 - module health reporting
 - module-specific version tokens
 - basic isolated reload mechanism for frontend modules
@@ -115,7 +120,8 @@ Routes may initially render neutral placeholders.
 
 ### Exit criteria
 - a module can be registered, loaded, mounted, updated, destroyed and reloaded without monkey-patching the Core
-- incompatible/missing dependencies produce an isolated module error
+- incompatible/missing concrete module dependencies produce an isolated module error
+- capability requirements are represented unambiguously and are ready for Block 3 runtime resolution
 - CI green
 
 ---
@@ -131,17 +137,22 @@ Routes may initially render neutral placeholders.
 - consumer subscription/update mechanism
 - Action Registry
 - normalized action results
-- initial action providers:
+- real non-HA action providers:
+  - `navigate`
+  - `url.open`
+- define and test the action contracts/identifiers for HA-backed actions using fakes/test providers only:
   - `entity.toggle`
   - `ha.service`
   - `scene.activate`
-  - `navigate`
-  - `url.open`
+
+### Hard boundary
+Block 3 must not introduce raw Home Assistant service access merely to complete HA-backed actions. Their real implementations belong to Block 4 after the HA Adapter exists.
 
 ### Exit criteria
 - a widget can consume a capability without direct provider import
 - a widget can execute a configured action without direct HA service code
 - provider removal updates consumers safely
+- HA-backed action contracts are covered by test doubles but do not bypass the future adapter
 - CI green
 
 ---
@@ -158,10 +169,15 @@ Routes may initially render neutral placeholders.
 - connection status
 - domain/entity helpers
 - fake adapter for tests
+- real Action Registry providers using the adapter for:
+  - `entity.toggle`
+  - `ha.service`
+  - `scene.activate`
 
 ### Exit criteria
 - new providers use the adapter rather than raw `hass` access
 - layouts and visual-only modules cannot require raw Home Assistant APIs
+- HA-backed action providers use the adapter only
 - tests run with fake adapter
 - CI green
 
@@ -631,7 +647,7 @@ Use these symbols in this document and `PROJECT_STATUS.md`:
 - `⚠️` code complete, practical validation needed
 - `✅` complete and merged
 
-Initial state:
+Current state:
 
 | Block | Status |
 | --- | --- |
@@ -658,4 +674,4 @@ Initial state:
 | 20 Cutover | ⬜ |
 | 21 Legacy deletion/gate | ⬜ |
 
-The next execution step after written-spec approval is **Block 0**. Before coding Block 0, create its detailed implementation plan according to the project workflow.
+The detailed plan for Block 0 exists and is awaiting user review/approval. Block 0 implementation has **not** started.
