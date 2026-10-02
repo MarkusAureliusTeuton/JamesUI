@@ -49,6 +49,7 @@ export function createHomeAssistantAdapter({ onSubscriberError = null } = {}) {
   const entityListeners = new Map();
   const domainListeners = new Map();
   const connectionListeners = new Set();
+  const remoteSubscriptions = new Set();
 
   const reportSubscriberError = (kind, key, error) => {
     onSubscriberError?.({ kind, key, error });
@@ -81,6 +82,13 @@ export function createHomeAssistantAdapter({ onSubscriberError = null } = {}) {
       if (current?.size === 0) collection.delete(key);
       return true;
     };
+  };
+
+  const requireConnectedHass = () => {
+    if (destroyed || connectionStateFor(currentHass) !== "connected") {
+      throw new HomeAssistantUnavailableError();
+    }
+    return currentHass;
   };
 
   const adapter = {
@@ -161,6 +169,59 @@ export function createHomeAssistantAdapter({ onSubscriberError = null } = {}) {
       };
     },
 
+    async callService(domain, service, data = {}, target = undefined) {
+      nonEmptyString(domain, "domain");
+      nonEmptyString(service, "service");
+      const hass = requireConnectedHass();
+      if (typeof hass.callService !== "function") throw new HomeAssistantUnavailableError("Home Assistant service API is unavailable");
+      return hass.callService(domain, service, data, target);
+    },
+
+    async callWS(message) {
+      if (!message || typeof message !== "object" || Array.isArray(message)) {
+        throw new TypeError("message must be an object");
+      }
+      const hass = requireConnectedHass();
+      if (typeof hass.callWS !== "function") throw new HomeAssistantUnavailableError("Home Assistant WebSocket API is unavailable");
+      return hass.callWS(message);
+    },
+
+    async subscribeMessage(listener, message, options = undefined) {
+      if (typeof listener !== "function") throw new TypeError("listener must be a function");
+      if (!message || typeof message !== "object" || Array.isArray(message)) {
+        throw new TypeError("message must be an object");
+      }
+      const hass = requireConnectedHass();
+      const subscribe = hass.connection?.subscribeMessage;
+      if (typeof subscribe !== "function") throw new HomeAssistantUnavailableError("Home Assistant subscription API is unavailable");
+      const rawUnsubscribe = await subscribe.call(hass.connection, listener, message, options);
+      if (typeof rawUnsubscribe !== "function") {
+        throw new TypeError("Home Assistant subscribeMessage must return an unsubscribe function");
+      }
+
+      const record = { active: true, rawUnsubscribe };
+      remoteSubscriptions.add(record);
+      return async () => {
+        if (!record.active) return false;
+        record.active = false;
+        remoteSubscriptions.delete(record);
+        await rawUnsubscribe();
+        return true;
+      };
+    },
+
+    listAreas() {
+      return adapter.callWS({ type: "config/area_registry/list" });
+    },
+
+    listDevices() {
+      return adapter.callWS({ type: "config/device_registry/list" });
+    },
+
+    listEntities() {
+      return adapter.callWS({ type: "config/entity_registry/list" });
+    },
+
     destroy() {
       if (destroyed) return false;
       destroyed = true;
@@ -168,6 +229,16 @@ export function createHomeAssistantAdapter({ onSubscriberError = null } = {}) {
       entityListeners.clear();
       domainListeners.clear();
       connectionListeners.clear();
+      for (const record of [...remoteSubscriptions]) {
+        if (!record.active) continue;
+        record.active = false;
+        remoteSubscriptions.delete(record);
+        try {
+          Promise.resolve(record.rawUnsubscribe()).catch(() => {});
+        } catch (_) {
+          // Cleanup is best-effort; one failed HA unsubscribe must not block others.
+        }
+      }
       return true;
     },
   };
