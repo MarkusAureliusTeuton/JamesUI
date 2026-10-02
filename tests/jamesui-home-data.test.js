@@ -14,10 +14,6 @@ const dataSource = readFileSync(
   new URL("../custom_components/jamesui/frontend/jamesui-home-data.js", import.meta.url),
   "utf8"
 );
-const homeSource = readFileSync(
-  new URL("../custom_components/jamesui/frontend/jamesui-home.js", import.meta.url),
-  "utf8"
-);
 const NOW = new Date("2026-10-02T10:00:00+02:00");
 
 test("normalizes, filters and sorts calendar events across the next seven local days", () => {
@@ -103,15 +99,15 @@ test("Start runtime reuses existing shell controls and hides only the normal Sta
   assert.match(dataSource, /data-home-scenes-more/);
   assert.match(dataSource, /data-home-calendar-more/);
   assert.match(dataSource, /start-v9-shell/);
-  assert.match(homeSource, /\.app-shell\.start-v9-shell/);
-  assert.match(homeSource, />\.topbar\{display:none/);
+  assert.match(dataSource, /\.app-shell\.start-v9-shell/);
+  assert.match(dataSource, />\.topbar\{display:none/);
 });
 
-test("V9 styles refine the global bottom navigation without changing its destinations", () => {
-  assert.match(homeSource, /\.bottom-nav/);
-  assert.match(homeSource, /\.bottom-nav button\.active \.nav-icon/);
-  assert.match(homeSource, /backdrop-filter:blur/);
-  assert.doesNotMatch(homeSource, /box-shadow:0 0 \d+px var\(--start-accent\)/);
+test("V9 runtime styles refine the global bottom navigation without glowing frames", () => {
+  assert.match(dataSource, /\.bottom-nav/);
+  assert.match(dataSource, /\.bottom-nav button\.active \.nav-icon/);
+  assert.match(dataSource, /backdrop-filter:blur/);
+  assert.doesNotMatch(dataSource, /box-shadow:0 0 \d+px var\(--start-accent\)/);
 });
 
 test("home data installer owns calendar subscriptions and exposes Start data hooks", () => {
