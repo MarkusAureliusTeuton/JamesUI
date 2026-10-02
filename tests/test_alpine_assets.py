@@ -1,4 +1,6 @@
 from pathlib import Path
+import hashlib
+import re
 import unittest
 
 
@@ -27,6 +29,48 @@ class AlpineAssetTest(unittest.TestCase):
                 declared_size,
                 len(data),
                 f"Truncated or malformed WebP asset: {name}",
+            )
+
+    def test_alpine_assets_match_committed_sha256_manifest(self):
+        root = Path("custom_components/jamesui/frontend/assets/alpine")
+        expected_names = {
+            "clear-day.webp",
+            "cloudy-day.webp",
+            "rain-day.webp",
+            "snow-day.webp",
+            "fog.webp",
+            "dusk.webp",
+            "clear-night.webp",
+            "cloudy-night.webp",
+        }
+        line_pattern = re.compile(
+            r"^([0-9a-f]{64})\s+(\S+)\s+\((\d+) bytes\)$"
+        )
+        entries = {}
+        manifest = (root / "SHA256.txt").read_text(encoding="utf-8")
+        for raw_line in manifest.splitlines():
+            line = raw_line.strip()
+            if not line or line == "SHA256":
+                continue
+            match = line_pattern.fullmatch(line)
+            self.assertIsNotNone(match, f"Malformed SHA256 manifest line: {line}")
+            declared_hash, name, declared_bytes = match.groups()
+            self.assertNotIn(name, entries, f"Duplicate SHA256 manifest entry: {name}")
+            entries[name] = (declared_hash, int(declared_bytes))
+
+        self.assertEqual(set(entries), expected_names)
+        for name, (declared_hash, declared_bytes) in entries.items():
+            path = root / name
+            self.assertTrue(path.exists(), f"Missing Alpine asset: {name}")
+            self.assertEqual(
+                path.stat().st_size,
+                declared_bytes,
+                f"Alpine asset size does not match manifest: {name}",
+            )
+            self.assertEqual(
+                hashlib.sha256(path.read_bytes()).hexdigest(),
+                declared_hash,
+                f"Alpine asset hash does not match manifest: {name}",
             )
 
     def test_r7_night_assets_have_photographic_detail(self):

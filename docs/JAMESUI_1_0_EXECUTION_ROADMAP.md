@@ -1,6 +1,6 @@
 # JamesUI 1.0 – Execution Roadmap
 
-_Status: written architecture spec approved; Block 0 detailed plan created and awaiting review_
+_Status: written architecture spec approved; Block 0 complete and validated; next gate Block 1 detailed plan_
 _Date: 2026-10-02_
 
 This document defines the implementation order for the JamesUI 1.0 rebuild using the approved **Variant B: clean foundation + controlled cutover** strategy.
@@ -38,6 +38,10 @@ Canonical architecture spec:
 
 `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-0-baseline.md`
 
+**Completed baseline:**
+
+`docs/JAMESUI_1_0_BASELINE.md`
+
 ### Scope
 - inventory current production frontend files/assets and their references
 - identify behavior that must survive the rebuild
@@ -61,6 +65,8 @@ Canonical architecture spec:
 ### Exit criteria
 - we can later delete the old implementation without guessing what behavior mattered
 - CI green
+
+**Completion evidence:** PR #12 validation succeeded; no production file under `custom_components/jamesui/` was modified.
 
 ---
 
@@ -651,7 +657,7 @@ Current state:
 
 | Block | Status |
 | --- | --- |
-| 0 Baseline | ⬜ |
+| 0 Baseline | ✅ |
 | 1 Core shell | ⬜ |
 | 2 Module registry/loader | ⬜ |
 | 3 Capability/Action registries | ⬜ |
@@ -674,4 +680,4 @@ Current state:
 | 20 Cutover | ⬜ |
 | 21 Legacy deletion/gate | ⬜ |
 
-The detailed plan for Block 0 exists and is awaiting user review/approval. Block 0 implementation has **not** started.
+Block 0 is complete and validated. The next execution step is the detailed implementation plan/review for **Block 1 – JamesUI Core shell**. Block 1 has **not** started.
