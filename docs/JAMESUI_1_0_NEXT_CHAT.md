@@ -20,7 +20,8 @@ The repository is the source of truth. Do not reconstruct architecture from memo
 4. `docs/JAMESUI_1_0_BASELINE.md`
 5. `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-1-core-shell.md`
 6. `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-2-module-system.md`
-7. inspect current Core/module-system files only as required by the active block plan
+7. `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-3-capability-action-registries.md`
+8. inspect current Core/module-system files only as required by the active block plan
 
 The r11 implementation remains the running design/reference runtime. The approved strategic direction is **Variant B: clean JamesUI 1.0 foundation in parallel, controlled cutover, then delete the old implementation**.
 
@@ -40,7 +41,11 @@ Approved clarifications included in the canonical spec/roadmap:
 
 **Block 2 – Module manifest, registry and loader is complete, green and merged through PR #14.** Branch validation #196 and main validation #197 succeeded.
 
-The next formal gate is the detailed implementation plan/review for **Block 3 – Capability Registry and Action Registry**. Block 3 product code has not started.
+The detailed implementation plan for **Block 3 – Capability Registry and Action Registry** now exists at:
+
+`docs/superpowers/plans/2026-10-02-jamesui-1.0-block-3-capability-action-registries.md`
+
+The next formal gate is **review/approval of the Block 3 plan**. Block 3 product-code implementation has not started. Do not start Block 4 or other dependent JamesUI 1.0 product-code work before Block 3 is completed and merged green.
 
 ## Block 1 result to preserve
 
@@ -76,30 +81,41 @@ Block 2 added the modular runtime contract:
 
 The new Core/module system remains **unwired from `jamesui-entry.js`**. The running panel stays r11 until the controlled cutover.
 
-## Block 3 boundary
+## Block 3 planned boundary
 
 Block 3 introduces runtime exchange contracts without Home Assistant access.
 
 ### Capability Registry
 
-- provider registration/unregistration
-- named capability values/state
-- explicit unavailable/not-configured state
-- consumer subscription/update mechanism
-- safe provider removal/update behavior
-- modules consume capabilities without importing provider internals
+- provider runtime registration is tied to Module Registry capability declaration ownership
+- explicit states: `available | unavailable | not_configured`
+- consumer subscriptions receive an explicit current state immediately by default
+- provider removal publishes explicit `unavailable` rather than stale/missing data
+- subscriber failures are isolated without using Event Bus as the data channel
 
 ### Action Registry
 
-- action provider registration/dispatch
+- generic action provider registration/dispatch
 - normalized results: `success | unavailable | rejected | error`
-- real non-HA actions:
+- real non-HA actions only:
   - `navigate`
   - `url.open`
-- define/test identifiers and contracts for HA-backed actions using fakes/test providers only:
+- HA-backed action identifiers/contracts are tested with fake providers only:
   - `entity.toggle`
   - `ha.service`
   - `scene.activate`
+
+### Module context change
+
+Block 3 plans to widen module context from `events` / `overlays` to the exact safe set:
+
+- `events`
+- `overlays`
+- `capabilities`
+- `actions`
+- immutable `module` identity (`id`, `type`, `version`)
+
+Raw `hass`, host `route`, `panel`, raw Router, Module Registry/Loader and Home Assistant APIs remain absent.
 
 ### Hard boundary
 
@@ -157,10 +173,13 @@ Bitte arbeite NICHT aus Erinnerung oder alten Chat-Zusammenfassungen, sondern li
 5. docs/JAMESUI_1_0_NEXT_CHAT.md
 6. docs/superpowers/plans/2026-10-02-jamesui-1.0-block-1-core-shell.md
 7. docs/superpowers/plans/2026-10-02-jamesui-1.0-block-2-module-system.md
+8. docs/superpowers/plans/2026-10-02-jamesui-1.0-block-3-capability-action-registries.md
 
 Variante B und die schriftliche Architektur-Spec sind verbindlich freigegeben. Blocks 0, 1 und 2 sind abgeschlossen, grün und nach main integriert. Der neue Core inklusive Module Registry/Loader liegt parallel unter custom_components/jamesui/frontend/core/ und ist noch nicht in den laufenden r11-Home-Assistant-Panel-Bootstrap geschaltet.
 
-Nächster Gate: Erstelle den detaillierten Implementierungsplan für Block 3 – Capability Registry and Action Registry. Noch keinen Block-3-Produktcode schreiben, bevor der Plan geprüft und freigegeben ist. Block 3 darf keine rohen Home-Assistant-Zugriffe einführen; echte HA-Actions kommen erst in Block 4 über den HA Adapter.
+Nächster Gate: Prüfe den detaillierten Implementierungsplan für Block 3 – Capability Registry and Action Registry auf Vollständigkeit und Widersprüche. Wenn er passt und ich ihn freigebe, setze ausschließlich Block 3 auf einem isolierten Branch um. Noch keinen Block-4-Produktcode beginnen.
+
+Block 3 darf keine rohen Home-Assistant-Zugriffe einführen. Echte HA-Actions entity.toggle, ha.service und scene.activate kommen erst in Block 4 über den HA Adapter. In Block 3 werden nur navigate und url.open real implementiert.
 
 Wichtig: Deutsch, kurz und technisch sauber. Repository direkt bearbeiten, wenn GitHub-Zugriff vorhanden ist. Keine manuellen Copy/Paste-Anweisungen an mich, wenn du selbst committen kannst. TDD für Verhaltensänderungen; absichtlich rote Tests niemals nach main. Keine neuen Monkey-Patches, Prototype-Overrides, Versions-Polish-Dateien, parallelen Implementierungen oder dauerhaften Legacy-Krücken. OnePlus Pad 2 Hochformat ist das primäre Ziel; Fully ist nur die Kiosk-Hülle.
 ```
