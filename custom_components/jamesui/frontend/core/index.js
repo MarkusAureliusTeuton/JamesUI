@@ -6,8 +6,16 @@ import { createHostContext } from "./host-context.js";
 import { createAppShell } from "./shell.js";
 import { createModuleRegistry } from "./module-registry.js";
 import { createModuleLoader } from "./module-loader.js";
+import { createCapabilityRegistry } from "./capability-registry.js";
+import { createActionRegistry } from "./action-registry.js";
+import { registerCoreActionProviders } from "./core-action-providers.js";
 
-export function createJamesUICore({ document = globalThis.document, renderPage } = {}) {
+function defaultOpenUrl(url) {
+  if (typeof globalThis.open !== "function") return false;
+  return globalThis.open(url, "_blank", "noopener,noreferrer") !== null;
+}
+
+export function createJamesUICore({ document = globalThis.document, renderPage, openUrl = defaultOpenUrl } = {}) {
   const health = createHealthService();
   const events = createEventBus({
     onError: ({ type, error }) => {
@@ -21,10 +29,19 @@ export function createJamesUICore({ document = globalThis.document, renderPage }
   const router = createRouter();
   const overlays = createOverlayService();
   const moduleRegistry = createModuleRegistry();
+  const capabilities = createCapabilityRegistry({ moduleRegistry });
+  const actions = createActionRegistry({ health });
+  const unregisterCoreActions = registerCoreActionProviders({ actions, router, openUrl });
   const moduleLoader = createModuleLoader({
     registry: moduleRegistry,
     health,
-    getContext: () => Object.freeze({ events, overlays }),
+    getContext: ({ id, manifest }) => Object.freeze({
+      events,
+      overlays,
+      capabilities,
+      actions,
+      module: Object.freeze({ id, type: manifest.type, version: manifest.version }),
+    }),
   });
   const hostContext = createHostContext({ events });
   const shell = createAppShell({
@@ -42,6 +59,9 @@ export function createJamesUICore({ document = globalThis.document, renderPage }
     },
     destroy() {
       moduleLoader.destroyAll();
+      unregisterCoreActions();
+      capabilities.destroy();
+      actions.destroy();
       shell.destroy();
     },
     navigate(routeId) {
@@ -67,6 +87,8 @@ export function createJamesUICore({ document = globalThis.document, renderPage }
     health: { value: health, enumerable: true },
     moduleRegistry: { value: moduleRegistry, enumerable: true },
     moduleLoader: { value: moduleLoader, enumerable: true },
+    capabilities: { value: capabilities, enumerable: true },
+    actions: { value: actions, enumerable: true },
   });
 
   return core;
