@@ -1,5 +1,4 @@
 from pathlib import Path
-import re
 import unittest
 
 
@@ -32,7 +31,7 @@ class ConfigStorageArchitectureTest(unittest.TestCase):
         source = Path("custom_components/jamesui/__init__.py").read_text(encoding="utf-8")
         self.assertRegex(source, r"for\s+key\s+in\s+LEGACY_OPTION_KEYS")
         self.assertRegex(source, r"options\.pop\(key,\s*None\)")
-        self.assertIn("options=dict(entry.options)", source)
+        self.assertRegex(source, r"options\s*=\s*dict\(entry\.options\)")
         self.assertNotRegex(source, r"options\s*=\s*\{\}\s*$")
 
 
