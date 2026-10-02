@@ -18,7 +18,7 @@ function moduleManifest(id, type = "provider", { provides = [], requires = [], v
 }
 
 function dataModuleUrl(source) {
-  return `data:text/javascript,${encodeURIComponent(source)}`;
+  return `data:text/javascript,${encodeURIComponent(source)}%0A//`;
 }
 
 test("stores Home Assistant host properties opaquely before mount", () => {
