@@ -70,6 +70,9 @@ jobs:
             tests/jamesui-ha-actions.test.js \
             tests/jamesui-core-ha-integration.test.js
 
+      - name: Test JamesUI Block 5 configuration
+        run: python -m unittest tests/test_config_schema.py
+
       - name: Validate Alpine atmosphere assets
         run: python -m unittest tests/test_alpine_assets.py
 
