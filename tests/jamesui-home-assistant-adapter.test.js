@@ -124,3 +124,95 @@ test("exports the unavailable error type for command tasks", () => {
   const error = new HomeAssistantUnavailableError();
   assert.equal(error.name, "HomeAssistantUnavailableError");
 });
+
+test("commands reject with HomeAssistantUnavailableError while unavailable or disconnected", async () => {
+  const adapter = createHomeAssistantAdapter();
+  for (const operation of [
+    () => adapter.callService("light", "turn_on"),
+    () => adapter.callWS({ type: "test" }),
+    () => adapter.subscribeMessage(() => {}, { type: "test/subscribe" }),
+  ]) {
+    await assert.rejects(operation, HomeAssistantUnavailableError);
+  }
+
+  adapter.setHass(hass({}, { connected: false }));
+  await assert.rejects(() => adapter.callWS({ type: "test" }), HomeAssistantUnavailableError);
+});
+
+test("service and websocket commands delegate exactly through current hass", async () => {
+  const calls = [];
+  const current = hass();
+  current.callService = async (...args) => { calls.push(["service", ...args]); return "service-result"; };
+  current.callWS = async (message) => { calls.push(["ws", message]); return { ok: true }; };
+  const adapter = createHomeAssistantAdapter();
+  adapter.setHass(current);
+
+  const data = { brightness: 120 };
+  const target = { entity_id: "light.kitchen" };
+  assert.equal(await adapter.callService("light", "turn_on", data, target), "service-result");
+  assert.deepEqual(await adapter.callWS({ type: "test/command", value: 1 }), { ok: true });
+  assert.deepEqual(calls, [
+    ["service", "light", "turn_on", data, target],
+    ["ws", { type: "test/command", value: 1 }],
+  ]);
+});
+
+test("registry helpers use canonical websocket commands", async () => {
+  const messages = [];
+  const current = hass();
+  current.callWS = async (message) => { messages.push(message); return [message.type]; };
+  const adapter = createHomeAssistantAdapter();
+  adapter.setHass(current);
+
+  assert.deepEqual(await adapter.listAreas(), ["config/area_registry/list"]);
+  assert.deepEqual(await adapter.listDevices(), ["config/device_registry/list"]);
+  assert.deepEqual(await adapter.listEntities(), ["config/entity_registry/list"]);
+  assert.deepEqual(messages, [
+    { type: "config/area_registry/list" },
+    { type: "config/device_registry/list" },
+    { type: "config/entity_registry/list" },
+  ]);
+});
+
+test("subscribeMessage forwards arguments and returns idempotent async unsubscribe", async () => {
+  const calls = [];
+  let rawUnsubscribes = 0;
+  const current = hass();
+  current.connection.subscribeMessage = async (...args) => {
+    calls.push(args);
+    return async () => { rawUnsubscribes += 1; };
+  };
+  const adapter = createHomeAssistantAdapter();
+  adapter.setHass(current);
+  const listener = () => {};
+  const message = { type: "weather/subscribe_forecast", entity_id: "weather.home" };
+  const options = { resubscribe: true };
+
+  const unsubscribe = await adapter.subscribeMessage(listener, message, options);
+  assert.deepEqual(calls, [[listener, message, options]]);
+  assert.equal(await unsubscribe(), true);
+  assert.equal(await unsubscribe(), false);
+  assert.equal(rawUnsubscribes, 1);
+});
+
+test("destroy drains all remote subscriptions despite one unsubscribe rejection", async () => {
+  const attempts = [];
+  const current = hass();
+  let index = 0;
+  current.connection.subscribeMessage = async () => {
+    const id = index++;
+    return async () => {
+      attempts.push(id);
+      if (id === 0) throw new Error("unsubscribe boom");
+    };
+  };
+  const adapter = createHomeAssistantAdapter();
+  adapter.setHass(current);
+  await adapter.subscribeMessage(() => {}, { type: "sub/one" });
+  await adapter.subscribeMessage(() => {}, { type: "sub/two" });
+
+  assert.equal(adapter.destroy(), true);
+  assert.equal(adapter.destroy(), false);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.deepEqual(attempts.sort(), [0, 1]);
+});
