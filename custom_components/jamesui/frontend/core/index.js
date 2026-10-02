@@ -9,6 +9,7 @@ import { createModuleLoader } from "./module-loader.js";
 import { createCapabilityRegistry } from "./capability-registry.js";
 import { createActionRegistry } from "./action-registry.js";
 import { registerCoreActionProviders } from "./core-action-providers.js";
+import { createConfigService } from "./config-service.js";
 import { createHomeAssistantAdapter } from "../ha/home-assistant-adapter.js";
 import { registerHomeAssistantActionProviders } from "../ha/ha-action-providers.js";
 
@@ -42,6 +43,7 @@ export function createJamesUICore({ document = globalThis.document, renderPage, 
       });
     },
   });
+  const config = createConfigService({ homeAssistant });
   const unregisterCoreActions = registerCoreActionProviders({ actions, router, openUrl });
   const unregisterHomeAssistantActions = registerHomeAssistantActionProviders({ actions, homeAssistant });
   const moduleLoader = createModuleLoader({
@@ -79,6 +81,7 @@ export function createJamesUICore({ document = globalThis.document, renderPage, 
       moduleLoader.destroyAll();
       unregisterCoreActions();
       unregisterHomeAssistantActions();
+      config.destroy();
       homeAssistant.destroy();
       capabilities.destroy();
       actions.destroy();
@@ -113,6 +116,7 @@ export function createJamesUICore({ document = globalThis.document, renderPage, 
     capabilities: { value: capabilities, enumerable: true },
     actions: { value: actions, enumerable: true },
     homeAssistant: { value: homeAssistant, enumerable: true },
+    config: { value: config, enumerable: true },
   });
 
   return core;

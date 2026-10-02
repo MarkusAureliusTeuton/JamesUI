@@ -65,6 +65,7 @@ test("provider and action modules receive adapter while layout and widget remain
           target.hasHomeAssistant = "homeAssistant" in context;
           target.hasHass = "hass" in context;
           target.hasRouter = "router" in context;
+          target.hasConfig = "config" in context;
           target.module = context.module;
         },
         update() {},
@@ -86,6 +87,7 @@ test("provider and action modules receive adapter while layout and widget remain
     assert.equal(target.hasHomeAssistant, type === "provider" || type === "action");
     assert.equal(target.hasHass, false);
     assert.equal(target.hasRouter, false);
+    assert.equal(target.hasConfig, false);
     assert.deepEqual(target.module, { id, type, version: "1.0.0" });
   }
 });
@@ -119,4 +121,34 @@ test("loaded provider cleanup runs before Home Assistant adapter teardown", asyn
   for (const type of ["entity.toggle", "ha.service", "scene.activate", "navigate", "url.open"]) {
     assert.equal((await core.actions.execute({ type })).status, "unavailable");
   }
+});
+
+test("Core exposes read-only Config Service through the HA adapter without leaking it to modules", async () => {
+  const calls = [];
+  const expected = {
+    schema_version: 1,
+    pages: {},
+    layouts: {},
+    widget_instances: {},
+    dynamic_buttons: {},
+    data_sources: {},
+    module_settings: {},
+  };
+  const core = createJamesUICore({ document: createFakeDocument() });
+  assert.ok(core.config);
+  assert.throws(() => { core.config = null; }, TypeError);
+  core.hass = {
+    connected: true,
+    states: {},
+    connection: {},
+    callWS: async (message) => {
+      calls.push(message);
+      return { config: expected };
+    },
+  };
+
+  assert.deepEqual(await core.config.load(), expected);
+  assert.deepEqual(calls, [{ type: "jamesui/config/get" }]);
+  core.destroy();
+  await assert.rejects(() => core.config.load(), /destroyed/i);
 });

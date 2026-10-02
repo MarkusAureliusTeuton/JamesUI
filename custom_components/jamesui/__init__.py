@@ -13,6 +13,9 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
 from .api import async_register_websocket_commands
+from .config_migrations import LEGACY_OPTION_KEYS, migrate_legacy_options
+from .config_service import JamesUIConfigService
+from .config_store import JamesUIConfigStore
 from .const import (
     DOMAIN,
     FRONTEND_FILE,
@@ -36,7 +39,19 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up JamesUI from a config entry."""
-    hass.data.setdefault(DOMAIN, {})
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    domain_data[entry.entry_id] = {"version": VERSION}
+
+    config_store = JamesUIConfigStore(hass)
+    config_service = JamesUIConfigService(config_store)
+    await config_service.async_initialize(migrate_legacy_options(entry.options))
+    domain_data[entry.entry_id]["config"] = config_service
+
+    options = dict(entry.options)
+    for key in LEGACY_OPTION_KEYS:
+        options.pop(key, None)
+    if options != dict(entry.options):
+        hass.config_entries.async_update_entry(entry, options=options)
 
     try:
         await hass.http.async_register_static_paths(
@@ -65,7 +80,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             require_admin=False,
         )
 
-    hass.data[DOMAIN][entry.entry_id] = {"version": VERSION}
     return True
 
 

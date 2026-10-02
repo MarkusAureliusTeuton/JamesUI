@@ -20,6 +20,7 @@ CORE_REQUIRED = {
     "capability-registry.js",
     "action-registry.js",
     "core-action-providers.js",
+    "config-service.js",
     "index.js",
 }
 HA_REQUIRED = {
@@ -74,7 +75,6 @@ class CoreArchitectureTest(unittest.TestCase):
 
     def test_new_runtime_direct_ha_access_is_confined_to_ha_boundary(self):
         # r11 remains production until cutover and intentionally still contains direct HA access.
-        # Add future JamesUI 1.0 non-HA runtime roots here as they are introduced.
         new_runtime_non_ha_roots = (CORE_ROOT,)
         for root in new_runtime_non_ha_roots:
             for path in root.rglob("*.js"):
@@ -86,7 +86,30 @@ class CoreArchitectureTest(unittest.TestCase):
                         f"Direct HA access outside frontend/ha is forbidden: {path} contains {token}",
                     )
 
-    def test_production_entry_remains_on_legacy_runtime_during_block_4(self):
+    def test_block_5_config_service_uses_adapter_and_local_calibration_stays_out_of_shared_config(self):
+        config_service = (CORE_ROOT / "config-service.js").read_text(encoding="utf-8")
+        self.assertIn("homeAssistant.callWS", config_service)
+        for token in DIRECT_HA_TOKENS:
+            self.assertNotIn(token, config_service)
+
+        backend_files = (
+            "config_schema.py",
+            "config_migrations.py",
+            "config_service.py",
+            "config_store.py",
+        )
+        backend_source = "\n".join(
+            Path("custom_components/jamesui", name).read_text(encoding="utf-8")
+            for name in backend_files
+        )
+        self.assertNotIn("jamesui-display-calibration", backend_source)
+
+        core_index = (CORE_ROOT / "index.js").read_text(encoding="utf-8")
+        self.assertIn("createConfigService", core_index)
+        self.assertIn("config.destroy()", core_index)
+        self.assertLess(core_index.index("config.destroy()"), core_index.index("homeAssistant.destroy()"))
+
+    def test_production_entry_remains_on_legacy_runtime_during_block_5(self):
         source = Path("custom_components/jamesui/frontend/jamesui-entry.js").read_text(encoding="utf-8")
         self.assertIn("jamesui-panel.js", source)
         self.assertIn("jamesui-home-entry.js", source)
@@ -98,6 +121,7 @@ class CoreArchitectureTest(unittest.TestCase):
         self.assertNotIn("capability-registry", source)
         self.assertNotIn("action-registry", source)
         self.assertNotIn("home-assistant-adapter", source)
+        self.assertNotIn("config-service", source)
 
 
 if __name__ == "__main__":

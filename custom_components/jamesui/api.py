@@ -2,12 +2,22 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import voluptuous as vol
 
 from homeassistant.components import websocket_api
 from homeassistant.core import HomeAssistant, callback
 
+from .config_migrations import (
+    LEGACY_OPTION_KEYS,
+    apply_legacy_changes,
+    project_legacy_options,
+)
+from .config_schema import ConfigValidationError
+from .config_service import JamesUIConfigService
 from .const import DOMAIN
+
 
 ENTITY_CONFIG_KEYS = {
     "weather_entity",
@@ -41,11 +51,21 @@ VALUE_CONFIG_KEYS = {
 }
 
 
-def _entry(hass: HomeAssistant):
-    entries = hass.config_entries.async_entries(DOMAIN)
-    return entries[0] if entries else None
+def _config_service(hass: HomeAssistant) -> JamesUIConfigService | None:
+    domain_data = hass.data.get(DOMAIN, {})
+    for entry in hass.config_entries.async_entries(DOMAIN):
+        entry_data = domain_data.get(entry.entry_id, {})
+        service = entry_data.get("config")
+        if isinstance(service, JamesUIConfigService) or service is not None:
+            return service
+    return None
 
 
+def _send_not_configured(connection: websocket_api.ActiveConnection, msg_id: int) -> None:
+    connection.send_error(msg_id, "not_configured", "JamesUI is not configured")
+
+
+# Temporary r11 compatibility API. Remove with the old runtime in Block 20/21.
 @websocket_api.websocket_command({vol.Required("type"): "jamesui/config"})
 @callback
 def websocket_get_config(
@@ -53,13 +73,14 @@ def websocket_get_config(
     connection: websocket_api.ActiveConnection,
     msg: dict,
 ) -> None:
-    """Return JamesUI configuration."""
-    entry = _entry(hass)
+    """Return the legacy flat projection of canonical JamesUI configuration."""
+    service = _config_service(hass)
+    if service is None:
+        _send_not_configured(connection, msg["id"])
+        return
     connection.send_result(
         msg["id"],
-        {
-            "options": dict(entry.options) if entry else {},
-        },
+        {"options": project_legacy_options(service.snapshot())},
     )
 
 
@@ -88,37 +109,39 @@ def websocket_get_config(
         vol.Optional("media_playlist_uri"): vol.Any(str, None),
     }
 )
-@callback
-def websocket_update_config(
+async def websocket_update_config(
     hass: HomeAssistant,
     connection: websocket_api.ActiveConnection,
     msg: dict,
 ) -> None:
-    """Update JamesUI configuration."""
-    entry = _entry(hass)
-    if entry is None:
-        connection.send_error(msg["id"], "not_configured", "JamesUI is not configured")
+    """Apply a legacy r11 patch to canonical JamesUI configuration."""
+    service = _config_service(hass)
+    if service is None:
+        _send_not_configured(connection, msg["id"])
         return
 
-    options = dict(entry.options)
-    for key in ENTITY_CONFIG_KEYS:
-        if key not in msg:
-            continue
-        value = msg[key]
-        if value:
-            if value not in hass.states:
-                connection.send_error(
-                    msg["id"], "entity_not_found", f"Entity {value} was not found"
-                )
-                return
-            options[key] = value
-        else:
-            options.pop(key, None)
+    changes: dict[str, Any] = {}
+    for key in LEGACY_OPTION_KEYS:
+        if key in msg:
+            changes[key] = msg[key]
 
-    if "home_scene_entities" in msg:
-        scene_entities = []
-        seen = set()
-        for raw_value in msg.get("home_scene_entities") or []:
+    for key in ENTITY_CONFIG_KEYS:
+        if key not in changes:
+            continue
+        value = changes[key]
+        if isinstance(value, str):
+            value = value.strip()
+            changes[key] = value
+        if value and value not in hass.states:
+            connection.send_error(
+                msg["id"], "entity_not_found", f"Entity {value} was not found"
+            )
+            return
+
+    if "home_scene_entities" in changes:
+        scene_entities: list[str] = []
+        seen: set[str] = set()
+        for raw_value in changes.get("home_scene_entities") or []:
             entity_id = raw_value.strip()
             if not entity_id or entity_id in seen:
                 continue
@@ -134,27 +157,62 @@ def websocket_update_config(
                 return
             scene_entities.append(entity_id)
             seen.add(entity_id)
-        if scene_entities:
-            options["home_scene_entities"] = scene_entities[:4]
-        else:
-            options.pop("home_scene_entities", None)
+        changes["home_scene_entities"] = scene_entities[:4]
 
-    for key in VALUE_CONFIG_KEYS:
-        if key not in msg:
-            continue
-        value = msg[key]
-        if isinstance(value, str):
-            value = value.strip()
-        if value:
-            options[key] = value
-        else:
-            options.pop(key, None)
+    try:
+        config = await service.async_update(
+            lambda current: apply_legacy_changes(current, changes)
+        )
+    except ConfigValidationError as error:
+        connection.send_error(msg["id"], "invalid_config", str(error))
+        return
 
-    hass.config_entries.async_update_entry(entry, options=options)
-    connection.send_result(msg["id"], {"options": options})
+    connection.send_result(msg["id"], {"options": project_legacy_options(config)})
+
+
+@websocket_api.websocket_command({vol.Required("type"): "jamesui/config/get"})
+@callback
+def websocket_get_structured_config(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict,
+) -> None:
+    """Return the canonical structured JamesUI configuration."""
+    service = _config_service(hass)
+    if service is None:
+        _send_not_configured(connection, msg["id"])
+        return
+    connection.send_result(msg["id"], {"config": service.snapshot()})
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "jamesui/config/replace",
+        vol.Required("config"): dict,
+    }
+)
+async def websocket_replace_structured_config(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict,
+) -> None:
+    """Validate and replace canonical structured JamesUI configuration."""
+    service = _config_service(hass)
+    if service is None:
+        _send_not_configured(connection, msg["id"])
+        return
+    try:
+        config = await service.async_replace(msg["config"])
+    except ConfigValidationError as error:
+        connection.send_error(msg["id"], "invalid_config", str(error))
+        return
+    connection.send_result(msg["id"], {"config": config})
 
 
 def async_register_websocket_commands(hass: HomeAssistant) -> None:
     """Register JamesUI WebSocket commands."""
     websocket_api.async_register_command(hass, websocket_get_config)
     websocket_api.async_register_command(hass, websocket_update_config)
+    websocket_api.async_register_command(hass, websocket_get_structured_config)
+    websocket_api.async_register_command(hass, websocket_replace_structured_config)
