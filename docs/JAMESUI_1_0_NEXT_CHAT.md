@@ -35,7 +35,7 @@ Approved clarifications included in the canonical spec/roadmap:
 
 **Block 0 – Baseline and preservation tests is complete and merged.**
 
-**Block 1 – JamesUI Core shell is complete and green in PR #13 and ready for integration.** After integration, the next formal gate is the detailed implementation plan/review for **Block 2 – Module manifest, registry and loader**. Block 2 product code has not started.
+**Block 1 – JamesUI Core shell is complete, green and merged through PR #13.** Main validation #192 succeeded. The next formal gate is the detailed implementation plan/review for **Block 2 – Module manifest, registry and loader**. Block 2 product code has not started.
 
 Block 1 produced a parallel Core under `custom_components/jamesui/frontend/core/` with:
 
@@ -125,7 +125,7 @@ Bitte arbeite NICHT aus Erinnerung oder alten Chat-Zusammenfassungen, sondern li
 5. docs/JAMESUI_1_0_NEXT_CHAT.md
 6. docs/superpowers/plans/2026-10-02-jamesui-1.0-block-1-core-shell.md
 
-Variante B und die schriftliche Architektur-Spec sind verbindlich freigegeben. Block 0 und Block 1 sind abgeschlossen. Der neue Core liegt parallel unter custom_components/jamesui/frontend/core/ und ist noch nicht in den laufenden r11-Home-Assistant-Panel-Bootstrap geschaltet.
+Variante B und die schriftliche Architektur-Spec sind verbindlich freigegeben. Block 0 und Block 1 sind abgeschlossen und nach main integriert. Der neue Core liegt parallel unter custom_components/jamesui/frontend/core/ und ist noch nicht in den laufenden r11-Home-Assistant-Panel-Bootstrap geschaltet.
 
 Nächster Gate: Erstelle den detaillierten Implementierungsplan für Block 2 – Module manifest, registry and loader. Noch keinen Block-2-Produktcode schreiben, bevor der Plan geprüft und freigegeben ist.
 
