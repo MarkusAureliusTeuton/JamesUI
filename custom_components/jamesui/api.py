@@ -73,6 +73,9 @@ def websocket_get_config(
         vol.Optional("illuminance_entity"): vol.Any(str, None),
         vol.Optional("background_mode"): vol.Any(vol.In(["auto", "manual"]), None),
         vol.Optional("background_scene"): vol.Any(vol.In(BACKGROUND_SCENES), None),
+        vol.Optional("home_scene_entities"): vol.Any(
+            vol.All([str], vol.Length(max=4)), None
+        ),
         vol.Optional("media_spotify_entity"): vol.Any(str, None),
         vol.Optional("media_onkyo_entity"): vol.Any(str, None),
         vol.Optional("media_ma_player_entity"): vol.Any(str, None),
@@ -111,6 +114,30 @@ def websocket_update_config(
             options[key] = value
         else:
             options.pop(key, None)
+
+    if "home_scene_entities" in msg:
+        scene_entities = []
+        seen = set()
+        for raw_value in msg.get("home_scene_entities") or []:
+            entity_id = raw_value.strip()
+            if not entity_id or entity_id in seen:
+                continue
+            if not entity_id.startswith("scene."):
+                connection.send_error(
+                    msg["id"], "invalid_scene", f"Entity {entity_id} is not a scene"
+                )
+                return
+            if entity_id not in hass.states:
+                connection.send_error(
+                    msg["id"], "entity_not_found", f"Entity {entity_id} was not found"
+                )
+                return
+            scene_entities.append(entity_id)
+            seen.add(entity_id)
+        if scene_entities:
+            options["home_scene_entities"] = scene_entities[:4]
+        else:
+            options.pop("home_scene_entities", None)
 
     for key in VALUE_CONFIG_KEYS:
         if key not in msg:
