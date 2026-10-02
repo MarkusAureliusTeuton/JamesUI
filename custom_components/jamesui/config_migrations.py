@@ -98,6 +98,8 @@ def _remove_path(config: dict[str, Any], path: tuple[str, ...]) -> None:
         current = child
     current.pop(path[-1], None)
     for parent, key in reversed(stack):
+        if parent is config:
+            break
         child = parent.get(key)
         if isinstance(child, dict) and not child:
             parent.pop(key, None)
