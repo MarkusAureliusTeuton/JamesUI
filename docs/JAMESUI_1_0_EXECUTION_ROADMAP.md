@@ -66,7 +66,7 @@ Canonical architecture spec:
 - we can later delete the old implementation without guessing what behavior mattered
 - CI green
 
-**Completion evidence:** PR #12 validation #165 succeeded; no production file under `custom_components/jamesui/` was modified.
+**Completion evidence:** PR #12 validation succeeded; no production file under `custom_components/jamesui/` was modified.
 
 ---
 
