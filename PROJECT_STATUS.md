@@ -55,10 +55,7 @@ Completed implementation plans:
 - `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-1-core-shell.md`
 - `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-2-module-system.md`
 - `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-3-capability-action-registries.md`
-
-Current detailed implementation plan:
-
-`docs/superpowers/plans/2026-10-02-jamesui-1.0-block-4-home-assistant-adapter.md`
+- `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-4-home-assistant-adapter.md`
 
 Canonical Block 0 baseline:
 
@@ -80,18 +77,15 @@ Fresh-chat / ChatGPT-Project handover and start prompt:
 - **Block 1 – JamesUI Core shell: complete, green and merged through PR #13.**
 - **Block 2 – Module manifest, registry and loader: complete, green and merged through PR #14.**
 - **Block 3 – Capability Registry and Action Registry: complete, green and merged through PR #15.**
-- Block 3 adds runtime capability provider handles, explicit `available | unavailable | not_configured` snapshots and isolated consumer subscriptions tied to Block-2 manifest capability ownership.
-- Block 3 adds a generic Action Registry with normalized `success | unavailable | rejected | error` results and Health Service error isolation.
-- Only `navigate` and `url.open` are real Block-3 action providers. `entity.toggle`, `ha.service` and `scene.activate` remain fake/test contracts until Block 4.
-- Module context is now exactly `events`, `overlays`, `capabilities`, `actions`, `module`; `module` is frozen `{ id, type, version }`. Raw Home Assistant host context, Router, Health Service and Module Registry/Loader remain absent.
-- Module Loader passes `{ id, manifest }` to the context factory on both create and update.
-- The new Core/module/capability/action runtime remains intentionally **unwired from the production Home Assistant panel entry**. Current r11 remains production/reference until the controlled cutover.
-- Block 3 branch validation #212 and `main` validation #214: **success** after the full RED → GREEN implementation cycle and whole-branch review.
-- Detailed implementation plan for **Block 4 – Home Assistant Adapter**: **created and awaiting review/approval**.
-- Block 4 plan introduces a dedicated `frontend/ha/` boundary for state/entity/domain access, connection state, registry queries, generic WebSocket commands/subscriptions and service calls.
-- The planned real HA-backed actions are `entity.toggle`, `ha.service` and `scene.activate`, all exclusively through the adapter; existing `navigate` and `url.open` stay unchanged.
-- Planned module-context rule: only `provider` and `action` modules receive `homeAssistant`; `layout` and `widget` remain HA-free and keep the five-key Block-3 context.
-- **Block 4 product-code implementation has not started.** Do not begin Block 5 before Block 4 is completed and merged green.
+- **Block 4 – Home Assistant Adapter: complete, green and merged through PR #16.**
+- Block 4 adds the dedicated `frontend/ha/` boundary for state/entity/domain access, connection state, registry queries, generic WebSocket commands/subscriptions and service calls.
+- Disconnected/unavailable Home Assistant state is explicit: state reads expose `null`/empty collections and command paths normalize through `HomeAssistantUnavailableError`; stale cached HA state is not exposed while disconnected.
+- Real HA-backed actions `entity.toggle`, `ha.service` and `scene.activate` are now registered exclusively through the adapter. Existing `navigate` and `url.open` remain Core actions.
+- Module-context rule after Block 4: `provider` and `action` receive `events`, `overlays`, `capabilities`, `actions`, `module`, `homeAssistant`; `layout` and `widget` receive only the original five HA-free keys. Raw `hass`, Router, Health Service and Module Registry/Loader remain absent.
+- Direct new-runtime HA access is architecture-guarded to `frontend/ha/`; the production `jamesui-entry.js` remains on r11.
+- Block 4 branch validation #229 and `main` validation #230: **success** after the full RED → GREEN implementation cycle and whole-branch review. One Important review finding (stale state reads while disconnected) was fixed with dedicated RED → GREEN coverage before integration.
+- The new Core/module/capability/action/HA runtime remains intentionally **unwired from the production Home Assistant panel entry**. Current r11 remains production/reference until the controlled cutover.
+- **Block 5 – Versioned configuration store and migrations has not started.** Next gate: detailed implementation plan/review for Block 5.
 
 ## 4. Current production/reference runtime
 
@@ -310,10 +304,6 @@ Preferences:
 
 ## 15. Next action
 
-Review the detailed Block 4 plan:
+Create and review the detailed implementation plan for **Block 5 – Versioned configuration store and migrations**.
 
-`docs/superpowers/plans/2026-10-02-jamesui-1.0-block-4-home-assistant-adapter.md`
-
-If approved, execute **Block 4 – Home Assistant Adapter** on an isolated branch according to that plan.
-
-Do not begin Block 5 or other dependent JamesUI 1.0 product-code work before Block 4 is completed and merged green.
+Do not begin Block-5 product-code work before that plan is reviewed and approved.
