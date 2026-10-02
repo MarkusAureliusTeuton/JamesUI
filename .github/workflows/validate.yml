@@ -45,3 +45,6 @@ jobs:
 
       - name: Test Start background settings
         run: node --experimental-default-type=module --test tests/jamesui-background.test.js
+
+      - name: Test Start calendar and scene data
+        run: node --experimental-default-type=module --test tests/jamesui-home-data.test.js
