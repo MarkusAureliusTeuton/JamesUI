@@ -94,7 +94,7 @@ test("Start runtime reuses existing shell controls and hides only the normal Sta
   assert.match(dataSource, /data-start-settings/);
   assert.match(dataSource, /_toggleSettings/);
   assert.match(dataSource, /data-home-house-more/);
-  assert.match(dataSource, /_setPage\("house"\)/);
+  assert.match(dataSource, /_setPage\?\.\("house"\)/);
   assert.match(dataSource, /data-home-scene/);
   assert.match(dataSource, /data-home-scenes-more/);
   assert.match(dataSource, /data-home-calendar-more/);
