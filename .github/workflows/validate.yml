@@ -56,6 +56,13 @@ jobs:
             tests/jamesui-module-registry.test.js \
             tests/jamesui-module-loader.test.js
 
+      - name: Test JamesUI Block 3 registries and Core actions
+        run: |
+          node --experimental-default-type=module --test \
+            tests/jamesui-capability-registry.test.js \
+            tests/jamesui-action-registry.test.js \
+            tests/jamesui-core-actions.test.js
+
       - name: Validate Alpine atmosphere assets
         run: python -m unittest tests/test_alpine_assets.py
 

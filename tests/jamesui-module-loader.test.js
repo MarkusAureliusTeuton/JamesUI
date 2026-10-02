@@ -39,6 +39,51 @@ test("buildModuleImportUrl preserves query/hash and replaces version/reload toke
   assert.equal(buildModuleImportUrl("/module.js?v=old&r=9", "2.0.0"), "/module.js?v=2.0.0");
 });
 
+test("requests module-specific context for create and update", async () => {
+  const contextRequests = [];
+  const received = [];
+  const importer = async () => ({
+    create(context) {
+      received.push(["create", context.request]);
+      return {
+        mount() {},
+        update(nextContext) { received.push(["update", nextContext.request]); },
+        destroy() {},
+      };
+    },
+  });
+  const { registry, loader } = setup({
+    importer,
+    getContext: (request) => {
+      contextRequests.push(request);
+      return Object.freeze({ request });
+    },
+  });
+  const layoutManifest = manifest("layout.context", "layout", "1.4.0");
+  const widgetManifest = manifest("widget.context", "widget", "2.1.0");
+  registry.register(layoutManifest, { entryUrl: "https://example.test/layout-context.js" });
+  registry.register(widgetManifest, { entryUrl: "https://example.test/widget-context.js" });
+
+  assert.equal(await loader.load("layout.context"), true);
+  assert.equal(await loader.load("widget.context"), true);
+  assert.equal(loader.update("layout.context", { changed: "layout" }), true);
+  assert.equal(loader.update("widget.context", { changed: "widget" }), true);
+
+  assert.deepEqual(contextRequests.map((request) => request?.id), [
+    "layout.context", "widget.context", "layout.context", "widget.context",
+  ]);
+  assert.equal(contextRequests[0].manifest, registry.get("layout.context").manifest);
+  assert.equal(contextRequests[1].manifest, registry.get("widget.context").manifest);
+  assert.equal(contextRequests[2].manifest, contextRequests[0].manifest);
+  assert.equal(contextRequests[3].manifest, contextRequests[1].manifest);
+  assert.deepEqual(received.map(([phase, request]) => [phase, request?.id]), [
+    ["create", "layout.context"],
+    ["create", "widget.context"],
+    ["update", "layout.context"],
+    ["update", "widget.context"],
+  ]);
+});
+
 test("loads a real fixture with its module version and runs the lifecycle", async () => {
   const imported = [];
   let marker = "ctx-1";

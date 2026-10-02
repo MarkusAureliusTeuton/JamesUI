@@ -68,11 +68,12 @@ export function createModuleLoader({
         if (!definition || typeof definition.create !== "function") {
           throw new TypeError(`Module ${id} must export create(context, config)`);
         }
-        const instance = definition.create(getContext(), config);
+        const contextRequest = Object.freeze({ id, manifest: record.manifest });
+        const instance = definition.create(getContext(contextRequest), config);
         if (!validateLifecycle(instance)) {
           throw new TypeError(`Module ${id} must return synchronous mount/update/destroy lifecycle methods`);
         }
-        runtimes.set(id, { instance, config, target: null });
+        runtimes.set(id, { instance, config, target: null, manifest: record.manifest });
         clearError(id);
         return true;
       } catch (error) {
@@ -100,7 +101,8 @@ export function createModuleLoader({
       const runtime = runtimes.get(id);
       if (!runtime) return false;
       try {
-        runtime.instance.update(getContext(), nextConfig);
+        const contextRequest = Object.freeze({ id, manifest: runtime.manifest });
+        runtime.instance.update(getContext(contextRequest), nextConfig);
         runtime.config = nextConfig;
         clearError(id);
         return true;
