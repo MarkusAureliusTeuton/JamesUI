@@ -56,6 +56,10 @@ Completed implementation plans:
 - `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-2-module-system.md`
 - `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-3-capability-action-registries.md`
 
+Current detailed implementation plan:
+
+`docs/superpowers/plans/2026-10-02-jamesui-1.0-block-4-home-assistant-adapter.md`
+
 Canonical Block 0 baseline:
 
 `docs/JAMESUI_1_0_BASELINE.md`
@@ -83,7 +87,11 @@ Fresh-chat / ChatGPT-Project handover and start prompt:
 - Module Loader passes `{ id, manifest }` to the context factory on both create and update.
 - The new Core/module/capability/action runtime remains intentionally **unwired from the production Home Assistant panel entry**. Current r11 remains production/reference until the controlled cutover.
 - Block 3 branch validation #212 and `main` validation #214: **success** after the full RED → GREEN implementation cycle and whole-branch review.
-- **Block 4 has not started.** Next gate: detailed implementation plan/review for Block 4 – Home Assistant Adapter.
+- Detailed implementation plan for **Block 4 – Home Assistant Adapter**: **created and awaiting review/approval**.
+- Block 4 plan introduces a dedicated `frontend/ha/` boundary for state/entity/domain access, connection state, registry queries, generic WebSocket commands/subscriptions and service calls.
+- The planned real HA-backed actions are `entity.toggle`, `ha.service` and `scene.activate`, all exclusively through the adapter; existing `navigate` and `url.open` stay unchanged.
+- Planned module-context rule: only `provider` and `action` modules receive `homeAssistant`; `layout` and `widget` remain HA-free and keep the five-key Block-3 context.
+- **Block 4 product-code implementation has not started.** Do not begin Block 5 before Block 4 is completed and merged green.
 
 ## 4. Current production/reference runtime
 
@@ -302,6 +310,10 @@ Preferences:
 
 ## 15. Next action
 
-Create and review the detailed implementation plan for **Block 4 – Home Assistant Adapter**.
+Review the detailed Block 4 plan:
 
-Do not begin Block-4 product-code work before that plan is reviewed and approved.
+`docs/superpowers/plans/2026-10-02-jamesui-1.0-block-4-home-assistant-adapter.md`
+
+If approved, execute **Block 4 – Home Assistant Adapter** on an isolated branch according to that plan.
+
+Do not begin Block 5 or other dependent JamesUI 1.0 product-code work before Block 4 is completed and merged green.
