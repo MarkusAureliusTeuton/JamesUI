@@ -57,6 +57,10 @@ Completed Block 1 implementation plan:
 
 `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-1-core-shell.md`
 
+Current detailed implementation plan:
+
+`docs/superpowers/plans/2026-10-02-jamesui-1.0-block-2-module-system.md`
+
 Canonical Block 0 baseline:
 
 `docs/JAMESUI_1_0_BASELINE.md`
@@ -79,7 +83,10 @@ Fresh-chat / ChatGPT-Project handover and start prompt:
 - The new Core is intentionally **not wired into the production Home Assistant panel entry**. Current r11 remains production/reference until the controlled cutover.
 - Core architecture tests prohibit direct HA state/service access, legacy Start coupling and release-version naming in the new Core.
 - PR #13 validation and `main` validation #192: **success** after whole-branch review and the read-only Core service-reference correction.
-- **Block 2 has not started.** Next gate: detailed implementation plan/review for Block 2 – Module manifest, registry and loader.
+- Detailed implementation plan for **Block 2 – Module manifest, registry and loader**: **created and awaiting review/approval**.
+- Block 2 implementation: **not started**.
+- Block 2 keeps capability fields as declaration metadata only; actual Capability/Action Registry runtime remains Block 3.
+- No Block 2 product-code implementation should start before the Block 2 plan is approved.
 
 ## 4. Current production/reference runtime
 
@@ -298,6 +305,10 @@ Preferences:
 
 ## 15. Next action
 
-**Create and review the detailed implementation plan for Block 2 – Module manifest, registry and loader.**
+**Review the detailed Block 2 plan:**
 
-Do not begin Block 2 product-code implementation before that plan is reviewed and approved.
+`docs/superpowers/plans/2026-10-02-jamesui-1.0-block-2-module-system.md`
+
+If approved, execute **Block 2 – Module manifest, registry and loader** on an isolated branch according to that plan.
+
+Do not begin Block 3 or other dependent JamesUI 1.0 product-code work before Block 2 is completed and merged green.
