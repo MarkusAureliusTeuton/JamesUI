@@ -49,19 +49,26 @@ Canonical execution roadmap:
 
 `docs/JAMESUI_1_0_EXECUTION_ROADMAP.md`
 
+Current detailed implementation plan:
+
+`docs/superpowers/plans/2026-10-02-jamesui-1.0-block-0-baseline.md`
+
 Fresh-chat / ChatGPT-Project handover and start prompt:
 
 `docs/JAMESUI_1_0_NEXT_CHAT.md`
 
 ## 3. Current formal process state
 
-- Variant B architecture direction: **approved conversationally**.
-- Written architecture specification: **created and committed**.
-- Execution roadmap with Blocks 0–21: **created and committed**.
-- Next-chat handover/start prompt: **created and committed**.
-- Next gate: **user review/approval of the written architecture spec**.
-- After written-spec approval: create the detailed implementation plan for **Block 0 – Baseline and preservation tests**.
-- No product-code implementation of JamesUI 1.0 should start before that block plan is reviewed according to the project workflow.
+- Variant B architecture direction: **approved**.
+- Written architecture specification: **reviewed, clarified and approved on 2026-10-02**.
+- Approved clarifications are now canonical:
+  - module dependencies and capability requirements/provisions are separate manifest fields (`depends_on`, `requires_capabilities`, `provides_capabilities`),
+  - Block 3 builds Action Registry contracts with non-HA actions/fakes; real HA-backed actions are wired only in Block 4 through the HA Adapter,
+  - Event Bus is restricted to transient technical/UI/lifecycle events and may not bypass Capabilities or Actions.
+- Execution roadmap with Blocks 0–21: **created and aligned with the approved clarifications**.
+- Detailed implementation plan for **Block 0 – Baseline and preservation tests**: **created and awaiting user review/approval**.
+- Block 0 implementation: **not started**.
+- No JamesUI 1.0 product-code implementation should start before the Block 0 plan is approved.
 
 ## 4. Current production/reference runtime
 
@@ -119,9 +126,14 @@ The new system separates:
 - **Icon/Asset Registry** – one local SVG icon family and managed local assets
 - **Versioned Config Store** – structured schema + explicit migrations
 
-Hard rule: **no new runtime monkey-patching / `Panel.prototype` override layers.**
+Hard rules:
 
-Every module gets ID, type, version, Core API requirement, dependencies/capabilities, config schema and lifecycle.
+- **no new runtime monkey-patching / `Panel.prototype` override layers**
+- module dependency metadata and capability contracts stay separate
+- the Event Bus is not a second state/action channel
+- real HA-backed actions go through the HA Adapter
+
+Every module gets ID, type, version, Core API requirement, module dependencies, required/provided capabilities, config schema and lifecycle.
 
 ## 7. Start page direction to preserve/rebuild
 
@@ -273,12 +285,10 @@ Preferences:
 
 ## 15. Next action
 
-**Review the written spec:**
+**Review the detailed Block 0 plan:**
 
-`docs/superpowers/specs/2026-10-02-jamesui-1.0-foundation-design.md`
+`docs/superpowers/plans/2026-10-02-jamesui-1.0-block-0-baseline.md`
 
-If approved, the next chat should create the detailed implementation plan for:
+If approved, execute **Block 0 – Baseline and preservation tests** on an isolated branch according to that plan.
 
-**Block 0 – Baseline and preservation tests**
-
-Do not begin JamesUI 1.0 product-code implementation before that plan is ready and reviewed.
+Do not begin Block 1 or other JamesUI 1.0 product-code implementation before Block 0 is completed and merged green.
