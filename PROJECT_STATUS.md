@@ -53,7 +53,7 @@ Completed Block 0 implementation plan:
 
 `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-0-baseline.md`
 
-Current detailed implementation plan:
+Completed Block 1 implementation plan:
 
 `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-1-core-shell.md`
 
@@ -74,12 +74,12 @@ Fresh-chat / ChatGPT-Project handover and start prompt:
   - Block 3 builds Action Registry contracts with non-HA actions/fakes; real HA-backed actions are wired only in Block 4 through the HA Adapter,
   - Event Bus is restricted to transient technical/UI/lifecycle events and may not bypass Capabilities or Actions.
 - **Block 0 – Baseline and preservation tests: complete and green.**
-- Block 0 produced `docs/JAMESUI_1_0_BASELINE.md`, guarded HA bootstrap preservation tests and SHA-256-pinned Alpine asset validation.
-- PR #12 validation: **success**.
-- No production file under `custom_components/jamesui/` was modified in Block 0.
-- Detailed implementation plan for **Block 1 – JamesUI Core shell**: **created and awaiting review/approval**.
-- Block 1 implementation: **not started**.
-- No Block 1 product-code implementation should start before the Block 1 plan is approved.
+- **Block 1 – JamesUI Core shell: complete and green in PR #13, ready for integration.**
+- Block 1 adds the parallel Core under `custom_components/jamesui/frontend/core/`: canonical routing, structural persistent shell/navigation, transient Event Bus, Overlay Service, Health Service and opaque Home Assistant host-context handoff.
+- The new Core is intentionally **not wired into the production Home Assistant panel entry**. Current r11 remains production/reference until the controlled cutover.
+- Core architecture tests prohibit direct HA state/service access, legacy Start coupling and release-version naming in the new Core.
+- PR #13 validation: **success** after whole-branch review and the read-only Core service-reference correction.
+- **Block 2 has not started.** Next gate after Block 1 integration: detailed implementation plan/review for Block 2 – Module manifest, registry and loader.
 
 ## 4. Current production/reference runtime
 
@@ -298,10 +298,6 @@ Preferences:
 
 ## 15. Next action
 
-**Review the detailed Block 1 plan:**
+After Block 1 is merged green, **create and review the detailed implementation plan for Block 2 – Module manifest, registry and loader**.
 
-`docs/superpowers/plans/2026-10-02-jamesui-1.0-block-1-core-shell.md`
-
-If approved, execute **Block 1 – JamesUI Core shell** on an isolated branch according to that plan.
-
-Do not begin Block 2 or other dependent JamesUI 1.0 product-code work before Block 1 is completed and merged green.
+Do not begin Block 2 product-code implementation before that plan is reviewed and approved.
