@@ -74,7 +74,7 @@ function automaticAtmosphereFromMarkup(html) {
 }
 
 function photoOverlay(asset) {
-  return `background-image:linear-gradient(90deg,rgba(8,10,11,.46) 0%,rgba(8,10,11,.30) 38%,rgba(8,10,11,.06) 68%,rgba(8,10,11,.12) 100%),linear-gradient(0deg,rgba(8,9,10,.62) 0%,rgba(8,9,10,.04) 50%,rgba(8,9,10,.06) 100%),url('${asset}')`;
+  return `background-image:linear-gradient(90deg,rgba(8,10,11,.34) 0%,rgba(8,10,11,.18) 38%,rgba(8,10,11,.03) 68%,rgba(8,10,11,.07) 100%),linear-gradient(0deg,rgba(8,9,10,.48) 0%,rgba(8,9,10,.03) 50%,rgba(8,9,10,.04) 100%),url('${asset}')`;
 }
 
 export function applyConfiguredBackground(html, config = {}) {
@@ -186,14 +186,14 @@ export function installHomeBackgroundExperience() {
 
   Panel.prototype._styles = function () {
     return `${originalStyles.call(this)}
-      .alpine-home .alpine-atmosphere{filter:saturate(.98) contrast(1.02) brightness(1.04)}
-      .alpine-home.weather-rain .alpine-atmosphere{filter:saturate(.88) contrast(1.04) brightness(1.02)}
-      .alpine-home.weather-snow .alpine-atmosphere{filter:saturate(.90) contrast(1.00) brightness(1.05)}
-      .alpine-home.weather-fog .alpine-atmosphere{filter:saturate(.78) contrast(.96) brightness(1.04)}
-      .alpine-home.tone-night .alpine-atmosphere{filter:saturate(.94) contrast(1.03) brightness(1.14)}
-      .alpine-background-config{margin-top:18px}.alpine-background-preview{min-height:112px;margin-top:14px;border:1px solid rgba(255,255,255,.08);border-radius:14px;background-image:linear-gradient(0deg,rgba(7,8,9,.46),rgba(7,8,9,.06)),var(--preview);background-size:cover;background-position:center;display:flex;align-items:flex-end;padding:14px 16px;overflow:hidden}.alpine-background-preview span{font-size:10px;color:rgba(246,242,234,.88);text-shadow:0 2px 12px rgba(0,0,0,.8)}
+      .alpine-home .alpine-atmosphere{filter:saturate(1.02) contrast(1.01) brightness(1.08)}
+      .alpine-home.weather-rain .alpine-atmosphere{filter:saturate(.92) contrast(1.03) brightness(1.06)}
+      .alpine-home.weather-snow .alpine-atmosphere{filter:saturate(.94) contrast(1.00) brightness(1.08)}
+      .alpine-home.weather-fog .alpine-atmosphere{filter:saturate(.82) contrast(.96) brightness(1.07)}
+      .alpine-home.tone-night .alpine-atmosphere{filter:saturate(.98) contrast(1.02) brightness(1.18)}
+      .alpine-background-config{margin-top:18px}.alpine-background-preview{min-height:112px;margin-top:14px;border:1px solid rgba(255,255,255,.08);border-radius:14px;background-image:linear-gradient(0deg,rgba(7,8,9,.36),rgba(7,8,9,.03)),var(--preview);background-size:cover;background-position:center;display:flex;align-items:flex-end;padding:14px 16px;overflow:hidden}.alpine-background-preview span{font-size:10px;color:rgba(246,242,234,.92);text-shadow:0 2px 12px rgba(0,0,0,.8)}
       .alpine-background-actions{margin-top:14px}.alpine-background-actions [data-background-message]{min-height:1em}.alpine-background-config select:disabled{opacity:.48}
-      @media(orientation:portrait){.alpine-home.tone-night .alpine-atmosphere{filter:saturate(.96) contrast(1.02) brightness(1.18)}.alpine-home .alpine-surface{background:linear-gradient(180deg,rgba(7,8,9,.015) 0%,rgba(7,8,9,.025) 30%,rgba(7,8,9,.08) 46%,rgba(8,9,9,.28) 60%,rgba(8,9,9,.72) 76%,rgba(8,9,9,.94) 88%,#080909 100%),linear-gradient(90deg,rgba(7,8,9,.12),transparent 54%)}}
+      @media(orientation:portrait){.alpine-home.tone-night .alpine-atmosphere{filter:saturate(1) contrast(1.02) brightness(1.22)}.alpine-home .alpine-surface{background:linear-gradient(180deg,rgba(7,8,9,.01) 0%,rgba(7,8,9,.02) 30%,rgba(7,8,9,.06) 46%,rgba(8,9,9,.22) 60%,rgba(8,9,9,.58) 76%,rgba(8,9,9,.86) 90%,#080909 100%),linear-gradient(90deg,rgba(7,8,9,.08),transparent 56%)}}
     `;
   };
 
