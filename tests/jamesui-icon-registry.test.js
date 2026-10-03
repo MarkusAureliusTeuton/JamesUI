@@ -1,9 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import {
   ICON_ID_PATTERN,
+  ICON_REGISTRY,
   createIconRegistry,
+  getIconDefinition,
+  hasIcon,
+  listIconIds,
 } from "../custom_components/jamesui/frontend/icons/icon-registry.js";
 
 function sampleDefinitions() {
@@ -27,6 +32,49 @@ function sampleDefinitions() {
     },
   ];
 }
+
+const EXPECTED_CATALOG = Object.freeze({
+  "nav.start": ["tabler", "home"],
+  "nav.house": ["tabler", "building-cottage"],
+  "nav.climate": ["tabler", "temperature"],
+  "nav.media": ["tabler", "player-play"],
+  "nav.door": ["tabler", "door"],
+  "shell.settings": ["tabler", "settings"],
+  "shell.more": ["tabler", "dots"],
+  "shell.back": ["tabler", "arrow-left"],
+  "shell.close": ["tabler", "x"],
+  "weather.sunny": ["tabler", "sun"],
+  "weather.partly-cloudy": ["jamesui", null],
+  "weather.cloudy": ["tabler", "cloud"],
+  "weather.rain": ["tabler", "cloud-rain"],
+  "weather.heavy-rain": ["jamesui", null],
+  "weather.snow": ["tabler", "snowflake"],
+  "weather.storm": ["tabler", "cloud-storm"],
+  "weather.wind": ["tabler", "wind"],
+  "weather.fog": ["tabler", "mist"],
+  "weather.temperature-high": ["tabler", "temperature-sun"],
+  "weather.temperature-low": ["tabler", "temperature-snow"],
+  "weather.sunrise": ["tabler", "sunrise"],
+  "weather.sunset": ["tabler", "sunset"],
+  "home.light": ["tabler", "bulb"],
+  "home.outlet": ["tabler", "plug"],
+  "home.window": ["tabler", "window"],
+  "home.door": ["tabler", "door"],
+  "home.shutter": ["jamesui", null],
+  "home.ventilation": ["tabler", "propeller"],
+  "home.climate": ["tabler", "temperature"],
+  "home.media": ["tabler", "device-speaker"],
+  "home.device": ["tabler", "device-desktop"],
+  "home.energy": ["tabler", "bolt"],
+  "moon.new": ["jamesui", null],
+  "moon.waxing-crescent": ["jamesui", null],
+  "moon.first-quarter": ["jamesui", null],
+  "moon.waxing-gibbous": ["jamesui", null],
+  "moon.full": ["jamesui", null],
+  "moon.waning-gibbous": ["jamesui", null],
+  "moon.last-quarter": ["jamesui", null],
+  "moon.waning-crescent": ["jamesui", null],
+});
 
 test("creates a stable semantic icon registry", () => {
   const registry = createIconRegistry(sampleDefinitions());
@@ -80,4 +128,30 @@ test("returns false/null for syntactically valid unknown IDs", () => {
   const registry = createIconRegistry(sampleDefinitions());
   assert.equal(registry.hasIcon("home.window"), false);
   assert.equal(registry.getIconDefinition("home.window"), null);
+});
+
+test("exports the exact curated 40-icon production catalog", () => {
+  const expectedIds = Object.keys(EXPECTED_CATALOG).sort();
+  assert.equal(Object.isFrozen(ICON_REGISTRY), true);
+  assert.deepEqual([...listIconIds()].sort(), expectedIds);
+  assert.equal(listIconIds().length, 40);
+  for (const id of expectedIds) {
+    assert.equal(hasIcon(id), true);
+    const definition = getIconDefinition(id);
+    const [source, sourceName] = EXPECTED_CATALOG[id];
+    assert.equal(definition.source, source, id);
+    assert.equal(definition.sourceName, sourceName, id);
+    assert.equal(definition.sourceVersion, source === "tabler" ? "3.48.0" : null, id);
+    assert.ok(definition.nodes.length > 0, id);
+  }
+});
+
+test("checks in pinned Tabler attribution for the vendored catalog", () => {
+  const license = readFileSync(
+    new URL("../custom_components/jamesui/frontend/icons/ICONS_LICENSE.md", import.meta.url),
+    "utf8",
+  );
+  assert.match(license, /Tabler Icons/);
+  assert.match(license, /3\.48\.0/);
+  assert.match(license, /MIT License/);
 });
