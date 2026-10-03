@@ -7,6 +7,7 @@ FRONTEND_ROOT = Path("custom_components/jamesui/frontend")
 CORE_ROOT = FRONTEND_ROOT / "core"
 HA_ROOT = FRONTEND_ROOT / "ha"
 DESIGN_ROOT = FRONTEND_ROOT / "design"
+ICON_ROOT = FRONTEND_ROOT / "icons"
 CORE_REQUIRED = {
     "routes.js",
     "router.js",
@@ -35,6 +36,12 @@ DESIGN_REQUIRED = {
     "design-system.js",
     "primitives.js",
 }
+ICON_REQUIRED = {
+    "icon-definitions.js",
+    "icon-registry.js",
+    "icon.js",
+    "ICONS_LICENSE.md",
+}
 DIRECT_HA_TOKENS = (
     "hass.states",
     "hass.callService",
@@ -50,10 +57,12 @@ class CoreArchitectureTest(unittest.TestCase):
         core_present = {path.name for path in CORE_ROOT.glob("*.js")}
         ha_present = {path.name for path in HA_ROOT.glob("*.js")}
         design_present = {path.name for path in DESIGN_ROOT.glob("*.js")}
+        icon_present = {path.name for path in ICON_ROOT.iterdir() if path.is_file()}
         self.assertTrue(CORE_REQUIRED.issubset(core_present))
         self.assertTrue(HA_REQUIRED.issubset(ha_present))
         self.assertTrue(DESIGN_REQUIRED.issubset(design_present))
-        for root in (CORE_ROOT, HA_ROOT, DESIGN_ROOT):
+        self.assertEqual(icon_present, ICON_REQUIRED)
+        for root in (CORE_ROOT, HA_ROOT, DESIGN_ROOT, ICON_ROOT):
             for path in root.rglob("*"):
                 if path.is_file():
                     self.assertNotRegex(str(path), r"(?:^|[-_/])v(?:9|10|11)(?:[-_.\\/]|$)")
@@ -85,7 +94,7 @@ class CoreArchitectureTest(unittest.TestCase):
 
     def test_new_runtime_direct_ha_access_is_confined_to_ha_boundary(self):
         # r11 remains production until cutover and intentionally still contains direct HA access.
-        new_runtime_non_ha_roots = (CORE_ROOT, DESIGN_ROOT)
+        new_runtime_non_ha_roots = (CORE_ROOT, DESIGN_ROOT, ICON_ROOT)
         for root in new_runtime_non_ha_roots:
             for path in root.rglob("*.js"):
                 source = path.read_text(encoding="utf-8")
@@ -148,13 +157,59 @@ class CoreArchitectureTest(unittest.TestCase):
             if "const context =" in line or "context." in line
         ))
 
-    def test_production_entry_remains_on_legacy_runtime_during_block_6(self):
+    def test_block_7_icon_boundary_is_local_safe_and_dependency_free(self):
+        icon_js = tuple(ICON_ROOT.glob("*.js"))
+        source = "\n".join(path.read_text(encoding="utf-8") for path in icon_js)
+        forbidden = (
+            "Panel.prototype",
+            "jamesui-home",
+            "jamesui-v11-polish",
+            "jamesui-panel.js",
+            "fetch(",
+            "XMLHttpRequest",
+            "DOMParser",
+            "innerHTML",
+            "outerHTML",
+            "data:image",
+            "<svg",
+            "@tabler/",
+            "cdn.jsdelivr",
+            "unpkg",
+            "config-service",
+            "capability-registry",
+            "action-registry",
+            "home-assistant-adapter",
+            "hass.",
+            "callService",
+            "callWS",
+        )
+        for token in (*DIRECT_HA_TOKENS, *forbidden):
+            self.assertNotIn(token, source, f"Icon boundary must not contain coupling/runtime loader: {token}")
+
+        urls = re.findall(r"https?://[^\"'\s)]+", source)
+        self.assertEqual(urls, ["http://www.w3.org/2000/svg"])
+        self.assertIn("createElementNS", (ICON_ROOT / "icon.js").read_text(encoding="utf-8"))
+        self.assertIn('stroke", "currentColor"', (ICON_ROOT / "icon.js").read_text(encoding="utf-8"))
+        self.assertIn('stroke-width", "2"', (ICON_ROOT / "icon.js").read_text(encoding="utf-8"))
+
+    def test_block_7_core_navigation_uses_semantic_icons_without_legacy_glyphs(self):
+        shell = (CORE_ROOT / "shell.js").read_text(encoding="utf-8")
+        self.assertIn("createIcon", shell)
+        for icon_id in ("nav.start", "nav.house", "nav.climate", "nav.media", "nav.door"):
+            self.assertIn(icon_id, shell)
+        for glyph in ("✦", "⌁", "▱", "▥", "≋", "▶", "◌"):
+            self.assertNotIn(glyph, shell)
+        self.assertNotIn("data:image", shell)
+        self.assertNotIn("<svg", shell)
+
+    def test_production_entry_remains_on_legacy_runtime_during_block_7(self):
         source = Path("custom_components/jamesui/frontend/jamesui-entry.js").read_text(encoding="utf-8")
         self.assertIn("jamesui-panel.js", source)
         self.assertIn("jamesui-home-entry.js", source)
         self.assertNotIn("frontend/core", source)
         self.assertNotIn("frontend/ha", source)
         self.assertNotIn("frontend/design", source)
+        self.assertNotIn("frontend/icons", source)
         self.assertNotRegex(source, r"(?:^|[\"'/])core/index\.js")
         self.assertNotIn("module-loader", source)
         self.assertNotIn("module-registry", source)
@@ -163,6 +218,8 @@ class CoreArchitectureTest(unittest.TestCase):
         self.assertNotIn("home-assistant-adapter", source)
         self.assertNotIn("config-service", source)
         self.assertNotIn("design-system", source)
+        self.assertNotIn("icon-registry", source)
+        self.assertNotRegex(source, r"(?:^|[\"'/])icon\.js")
 
 
 if __name__ == "__main__":
