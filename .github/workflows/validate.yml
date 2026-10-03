@@ -110,7 +110,8 @@ jobs:
             tests/jamesui-weather-atmosphere.test.js \
             tests/jamesui-weather-moon.test.js \
             tests/jamesui-weather-provider.test.js \
-            tests/jamesui-weather-loader.test.js
+            tests/jamesui-weather-loader.test.js \
+            tests/jamesui-weather-review-regressions.test.js
 
       - name: Validate Alpine atmosphere assets
         run: python -m unittest tests/test_alpine_assets.py
