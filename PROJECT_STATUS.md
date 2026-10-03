@@ -29,9 +29,8 @@ Canonical documents:
 - Baseline: `docs/JAMESUI_1_0_BASELINE.md`
 - Fresh-chat handover: `docs/JAMESUI_1_0_NEXT_CHAT.md`
 - Block 7 icon spec: `docs/superpowers/specs/2026-10-03-jamesui-1.0-block-7-icon-asset-system-design.md`
-
-Completed implementation plans now cover Blocks 0–7. The latest is:
-`docs/superpowers/plans/2026-10-03-jamesui-1.0-block-7-icon-asset-system.md`
+- Block 8 layout spec: `docs/superpowers/specs/2026-10-03-jamesui-1.0-block-8-home-hero-deck-design.md`
+- Block 8 plan: `docs/superpowers/plans/2026-10-03-jamesui-1.0-block-8-home-hero-deck.md`
 
 ## 3. Current formal state
 
@@ -43,20 +42,20 @@ Completed implementation plans now cover Blocks 0–7. The latest is:
 - Block 5 – Versioned Config Store + migrations: ✅ PR #17
 - Block 6 – Design System + base components: ✅ PR #18
 - Block 7 – Icon Library + Asset Registry: ✅ PR #19
-- Block 8 – `layout.home-hero-deck`: ⬜ not started
+- Block 8 – `layout.home-hero-deck`: ✅ PR #20
+- Block 9 – Weather provider: ⬜ not started
 
-Block 7 merge commit: `3b1142d9d0491605775f998c1dfe2b39f9791d63`.
+Block 8 merge commit: `e13d8e386ee3bbbc5d86bd88c068315018fc4647`.
 
 Validation evidence:
-- Block 7 branch validation #285: success
-- Block 7 main validation #286: success
-- Whole-branch review: no open Critical/Important findings
+- Block 8 final branch validation #301: success
+- Block 8 main validation #302: success
+- Whole-branch review found one Important content-growth issue; RED #300 proved it, the fix made the deck/right-main tracks content-growing, and #301 verified the final branch
+- no open Critical/Important findings remain
 
-Implementation ruling recorded during Block 7: the approved plan named Tabler `fan` for `home.ventilation`, but that icon does not exist in pinned Tabler v3.48.0. The implemented and source-verified mapping is `home.ventilation -> propeller`.
+**Next formal gate:** Block 9 – Weather provider. Complete the required architectural design/spec and implementation-plan stages before product code.
 
-**Next formal gate:** Block 8 – `layout.home-hero-deck`. Review the existing foundation/layout requirements and create the detailed Block-8 design/implementation plan before product code.
-
-## 4. Platform completed through Block 7
+## 4. Platform completed through Block 8
 
 ### Core
 `custom_components/jamesui/frontend/core/` provides:
@@ -82,7 +81,7 @@ Lifecycle:
 - `update(nextContext, nextConfig)`
 - `destroy()`
 
-Module context remains unchanged after Block 7:
+Module context after Block 8 is unchanged:
 - layout/widget: `events`, `overlays`, `capabilities`, `actions`, `module`
 - provider/action: same five plus `homeAssistant`
 - no module receives Design System, Config Service, raw `hass`, Router, Health, Module Registry or Module Loader
@@ -112,50 +111,62 @@ The Config Service is transactional and migratable. All 15 retained r11 values h
 
 Device-local display calibration remains browser-local under `jamesui-display-calibration`.
 
-## 6. Design System
+## 6. Visual foundation
 
+### Design System
 Boundary: `custom_components/jamesui/frontend/design/`
 
-- one frozen 62-token `--jui-*` contract
+- frozen 62-token `--jui-*` contract
 - shared Surface/Button/Overlay/Dialog primitives
 - root-scoped CSS only
 - reduced-motion support
-- icon size tokens: 16 / 20 / 24 / 32 / 48 px via semantic names
+- semantic icon sizes 16 / 20 / 24 / 32 / 48 px
 - no `!important`, data-image hacks, direct HA access or scattered palette constants
 
-## 7. Block 7 icon system
-
+### Icon system
 Boundary: `custom_components/jamesui/frontend/icons/`
 
+- exactly 40 initial semantic IDs
+- Tabler Icons v3.48.0 pinned source/style baseline with checked-in MIT attribution
+- JamesUI-specific weather/shutter/moon definitions in the same 24×24 / 2px / `currentColor` contract
+- SVG DOM creation only through `createElementNS()`
+- no runtime npm/CDN/fetch/icon-font/SVG-string dependency
+- fixed Core navigation uses `nav.start`, `nav.house`, `nav.climate`, `nav.media`, `nav.door`
+- `home.ventilation` uses source icon `propeller`; Tabler `fan` does not exist in pinned v3.48.0
+
+Existing large `assets/weather/*.svg` and Alpine assets remain untouched.
+
+## 7. Block 8 – `layout.home-hero-deck`
+
+Boundary:
+`custom_components/jamesui/frontend/modules/layout.home-hero-deck/`
+
 Files:
-- `icon-definitions.js` – curated local vector/provenance catalog
-- `icon-registry.js` – validation, immutable semantic registry and lookup
-- `icon.js` – SVG DOM factory
-- `ICONS_LICENSE.md` – pinned Tabler attribution/MIT notice
+- `manifest.js`
+- `index.js`
+- `styles.js`
 
 Contract:
-- exactly **40** initial semantic IDs
-- namespaces `nav.*`, `shell.*`, `weather.*`, `home.*`, `moon.*`
-- Tabler Icons **v3.48.0** is the pinned source/style baseline for standard icons
-- JamesUI-specific icons share the same line contract
-- `24×24`, `2.0 px`, `fill="none"`, `stroke="currentColor"`, round caps/joins
-- no runtime Tabler/npm/CDN/fetch/icon-font dependency
-- no SVG strings/XML parser/data URLs
-- real SVG DOM nodes created only through `createElementNS()`
-- semantic sizes `sm | md | lg | xl | hero` reuse Block-6 tokens
-- decorative icons are hidden from accessibility by default; standalone meaningful icons require an accessible label
-- malformed definitions and unknown IDs fail predictably; no silent fallback glyph
-
-The fixed new-Core navigation now uses:
-- Start → `nav.start`
-- Haus → `nav.house`
-- Klima → `nav.climate`
-- Medien → `nav.media`
-- Tür → `nav.door`
-
-Visible labels, routing, `aria-current`, persistent-nav identity and shell lifecycle remain unchanged.
-
-Existing large `assets/weather/*.svg` and Alpine assets are **not** part of the icon family and remain untouched.
+- module ID `layout.home-hero-deck`, type `layout`, version `1.0.0`
+- no module dependencies or capabilities
+- exactly four stable slots:
+  - `hero`
+  - `widget-left`
+  - `widget-right-main`
+  - `widget-right-footer`
+- explicit `getSlot()` / frozen `listSlots()` API
+- slot element identity and mounted children survive `update()`
+- strict config: optional `hero_ratio` only; default `0.42`, accepted `0.35–0.50`
+- invalid config update is atomic
+- DOM is created from `target.ownerDocument`; module context was not expanded
+- one continuous lower deck surface, not three layout-level cards
+- two-column primary deck; right side stacks main + footer
+- CSS container fallback at `44rem`, preserving semantic order
+- deck/right-main grid minima allow tall future widget content to grow the surface and page scroll instead of overflowing outside a fixed background
+- styling consumes Block-6 tokens only
+- no HA, Config Service, capability/action/provider/widget business logic
+- no automatic Start route composition yet
+- real Module Registry/Loader load/mount/update/reload/destroy compatibility is tested
 
 ## 8. Production/reference runtime
 
@@ -164,7 +175,7 @@ Default branch: `main`
 Integration version: `0.5.1`
 Frontend revision: `0.5.1-r11`
 
-**r11 is still the running production/reference implementation.** `jamesui-entry.js` still loads the old panel/start bridge. The new Core/Design/Icon runtime is intentionally not wired into production yet. No cutover has occurred.
+**r11 is still the running production/reference implementation.** `jamesui-entry.js` still loads the old panel/start bridge. The new Core/Design/Icon/Layout runtime is intentionally not wired into production yet. No cutover has occurred.
 
 ## 9. Start direction to preserve/rebuild
 
@@ -197,4 +208,4 @@ Frontend revision: `0.5.1-r11`
 
 ## 11. Next action
 
-Start **Block 8 – `layout.home-hero-deck`** planning only. Do not implement weather/calendar/house providers or widgets, dynamic buttons, final Start content, or production cutover inside Block 8.
+Start **Block 9 – Weather provider** design/planning only. It must publish normalized weather capabilities behind the existing provider/HA-adapter boundary. Do not implement the Weather Today widget/overlay (Block 10), Calendar/House/Dynamic Buttons, final Start composition, or production cutover inside Block 9.
