@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { resolveAtmosphere } from "../custom_components/jamesui/frontend/modules/provider.weather/atmosphere.js";
+import { normalizeSun, resolveAtmosphere } from "../custom_components/jamesui/frontend/modules/provider.weather/atmosphere.js";
+import { normalizeHourlyForecast } from "../custom_components/jamesui/frontend/modules/provider.weather/forecast.js";
 import { resolveMoon } from "../custom_components/jamesui/frontend/modules/provider.weather/moon.js";
 import { createWeatherProvider } from "../custom_components/jamesui/frontend/modules/provider.weather/provider.js";
 
@@ -16,6 +17,30 @@ test("fog scene remains semantically resolvable when sun period is unavailable",
     scene_key: "fog",
     ambient_lux: null,
   });
+});
+
+test("sun timestamps accept ISO instants only and otherwise normalize to null", () => {
+  const value = normalizeSun(entity("sun.sun", "above_horizon", {
+    elevation: 20,
+    next_rising: "October 4, 2026 07:15:00 GMT+0200",
+    next_setting: "2026-10-03T18:42:00+02:00",
+  }));
+  assert.equal(value.next_rising, null);
+  assert.equal(value.next_setting, "2026-10-03T18:42:00+02:00");
+});
+
+test("forecast rejects parseable non-ISO datetimes instead of publishing ambiguous timestamps", () => {
+  const result = normalizeHourlyForecast({
+    sourceEntityId: "weather.home",
+    units: {},
+    forecast: [
+      { datetime: "October 3, 2026 14:00:00 GMT+0200", temperature: 18 },
+      { datetime: "2026-10-03T15:00:00+02:00", temperature: 17 },
+    ],
+  });
+  assert.equal(result.reason, null);
+  assert.equal(result.value.items.length, 1);
+  assert.equal(result.value.items[0].datetime, "2026-10-03T15:00:00+02:00");
 });
 
 test("explicit configured moon entity may use any domain when its phase state is canonical", () => {
