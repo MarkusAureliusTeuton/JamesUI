@@ -1,6 +1,6 @@
 # JamesUI 1.0 – Execution Roadmap
 
-_Status: written foundation architecture approved; Blocks 0–7 complete and validated; next gate Block 8 planning_
+_Status: written foundation architecture approved; Blocks 0–8 complete and validated; next gate Block 9 design/planning_
 _Date: 2026-10-03_
 
 This document defines the implementation order for JamesUI 1.0 using **Variant B: clean foundation + controlled cutover**. r11 remains the running design/reference runtime until the cutover gate.
@@ -68,13 +68,33 @@ Implementation ruling: `home.ventilation` maps to Tabler `propeller`; `fan` does
 
 ## Phase C – Rebuild Start on the new architecture
 
-### Block 8 – `layout.home-hero-deck` ⬜
-Goal: reusable Start layout with `hero`, `widget-left`, `widget-right-main`, `widget-right-footer` slots and no HA/business logic.
+### Block 8 – `layout.home-hero-deck` ✅
+Spec: `docs/superpowers/specs/2026-10-03-jamesui-1.0-block-8-home-hero-deck-design.md`
 
-**Next gate:** inspect the approved foundation/layout direction, complete the required Block-8 design/planning stage, and obtain approval before product code.
+Plan: `docs/superpowers/plans/2026-10-03-jamesui-1.0-block-8-home-hero-deck.md`
+
+Result: PR #20, merge `e13d8e386ee3bbbc5d86bd88c068315018fc4647`. Final branch #301 and main #302 green.
+
+Delivered:
+- reusable `layout.home-hero-deck` module outside Core
+- exact stable slots `hero`, `widget-left`, `widget-right-main`, `widget-right-footer`
+- strict optional `hero_ratio` config, default `0.42`, range `0.35–0.50`
+- atomic updates preserve slot identity and mounted children
+- target-owned DOM via `ownerDocument`; module context unchanged
+- one continuous token-driven lower deck surface
+- two-column primary layout with right-main/right-footer stack
+- CSS-only `44rem` container fallback with deterministic semantic order
+- tall future widget content grows the deck/scroll area rather than escaping a fixed surface
+- real Module Registry/Loader lifecycle compatibility proven
+- architecture gates prevent HA/config/domain/Core/legacy coupling
+- r11 production remains untouched and no Start route composition/cutover occurred
+
+Review note: one Important content-growth issue was found during whole-branch review. RED #300 captured it; the corrected auto-minimum grid tracks passed final branch #301.
 
 ### Block 9 – Weather provider ⬜
-Normalized `weather.current`, `weather.daily`, optional hourly, sun, moon and atmosphere capabilities.
+Goal: normalized `weather.current`, `weather.daily`, optional hourly, sun, moon and atmosphere capabilities behind the existing provider/Home Assistant Adapter boundary.
+
+**Next gate:** complete Block-9 architectural design/spec, user review, detailed implementation plan and approval before product code.
 
 ### Block 10 – Weather Today widget + forecast overlay ⬜
 Rebuild accepted hero using capabilities/design/icons; temperature opens overlay without layout shift.
@@ -128,7 +148,7 @@ Delete old monolith/patch/demo/compatibility paths and enforce permanent archite
 | 5 Config store/migrations | ✅ |
 | 6 Design system | ✅ |
 | 7 Icon library | ✅ |
-| 8 Start layout | ⬜ |
+| 8 Start layout | ✅ |
 | 9 Weather provider | ⬜ |
 | 10 Weather widget | ⬜ |
 | 11 Calendar | ⬜ |
@@ -143,4 +163,4 @@ Delete old monolith/patch/demo/compatibility paths and enforce permanent archite
 | 20 Cutover | ⬜ |
 | 21 Legacy deletion/gate | ⬜ |
 
-**Current summary:** Blocks 0–7 are complete, reviewed, green and merged. Block 8 has not started. r11 remains production/reference; no cutover has occurred.
+**Current summary:** Blocks 0–8 are complete, reviewed, green and merged. Block 9 has not started. r11 remains production/reference; no cutover has occurred.
