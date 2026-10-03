@@ -16,8 +16,9 @@ function matchesSelector(node, selector) {
 }
 
 export class FakeElement {
-  constructor(tagName) {
+  constructor(tagName, namespaceURI = null) {
     this.tagName = tagName.toUpperCase();
+    this.namespaceURI = namespaceURI;
     this.children = [];
     this.parentNode = null;
     this.attributes = new Map();
@@ -96,5 +97,8 @@ export class FakeElement {
 }
 
 export function createFakeDocument() {
-  return { createElement: (tagName) => new FakeElement(tagName) };
+  return {
+    createElement: (tagName) => new FakeElement(tagName),
+    createElementNS: (namespaceURI, tagName) => new FakeElement(tagName, namespaceURI),
+  };
 }
