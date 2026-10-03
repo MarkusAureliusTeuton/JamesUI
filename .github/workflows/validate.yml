@@ -94,7 +94,10 @@ jobs:
             tests/jamesui-icon.test.js
 
       - name: Test JamesUI Block 8 home hero deck
-        run: node --experimental-default-type=module --test tests/jamesui-home-hero-deck-manifest.test.js
+        run: |
+          node --experimental-default-type=module --test \
+            tests/jamesui-home-hero-deck-manifest.test.js \
+            tests/jamesui-home-hero-deck.test.js
 
       - name: Validate Alpine atmosphere assets
         run: python -m unittest tests/test_alpine_assets.py
