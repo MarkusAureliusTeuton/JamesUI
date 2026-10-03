@@ -61,8 +61,9 @@ export function weatherClass(condition) {
 }
 
 function sceneKeyFor(weather, period) {
-  if (!weather || !period) return null;
+  if (!weather) return null;
   if (weather === "fog") return "fog";
+  if (!period) return null;
   if (period === "golden" || period === "twilight") return "dusk";
   if (period === "night") return weather === "clear" ? "clear-night" : "cloudy-night";
   if (period !== "day") return null;
@@ -75,10 +76,11 @@ function sceneKeyFor(weather, period) {
 
 export function resolveAtmosphere({ condition, period, ambientLux = null }) {
   const weather = weatherClass(condition);
+  const normalizedPeriod = ["day", "golden", "twilight", "night"].includes(period) ? period : null;
   return deepFreeze({
     weather_class: weather,
-    period: ["day", "golden", "twilight", "night"].includes(period) ? period : null,
-    scene_key: sceneKeyFor(weather, period),
+    period: normalizedPeriod,
+    scene_key: sceneKeyFor(weather, normalizedPeriod),
     ambient_lux: finiteOrNull(ambientLux),
   });
 }
