@@ -13,6 +13,36 @@ export const BASE_DESIGN_STYLES = `
   box-sizing: border-box;
 }
 
+[data-jui-design-root] [data-jui-icon] {
+  display: block;
+  flex: 0 0 auto;
+}
+
+[data-jui-design-root] [data-jui-icon-size="sm"] {
+  width: var(--jui-icon-sm);
+  height: var(--jui-icon-sm);
+}
+
+[data-jui-design-root] [data-jui-icon-size="md"] {
+  width: var(--jui-icon-md);
+  height: var(--jui-icon-md);
+}
+
+[data-jui-design-root] [data-jui-icon-size="lg"] {
+  width: var(--jui-icon-lg);
+  height: var(--jui-icon-lg);
+}
+
+[data-jui-design-root] [data-jui-icon-size="xl"] {
+  width: var(--jui-icon-xl);
+  height: var(--jui-icon-xl);
+}
+
+[data-jui-design-root] [data-jui-icon-size="hero"] {
+  width: var(--jui-icon-hero);
+  height: var(--jui-icon-hero);
+}
+
 [data-jui-design-root] [data-jui-surface] {
   background: var(--jui-color-surface);
   color: var(--jui-color-text-primary);
