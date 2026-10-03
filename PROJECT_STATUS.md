@@ -2,7 +2,7 @@
 
 _Last updated: 2026-10-03_
 
-This file is the persistent **single source of truth for the current execution state**. Architecture details live in the approved spec, retained behavior in the baseline, and task-level decisions in the individual block plans.
+This file is the persistent **single source of truth for the current execution state**. Architecture details live in the approved specs, retained behavior in the baseline, and task-level decisions in the individual block plans.
 
 ## 1. Product goal
 
@@ -17,79 +17,64 @@ Primary target:
 
 Home Assistant is the backend/source of truth; KNX remains the primary building-automation layer. Fully is the kiosk shell only.
 
-## 2. Binding architecture decision
+## 2. Binding architecture
 
 **Variant B – clean JamesUI 1.0 foundation + controlled cutover.**
 
-The new modular runtime is built in parallel. r11 remains the running design/reference implementation until the cutover gate. Normal new functionality is not added to the r11 architecture. After cutover, obsolete runtime code is deleted; Git history is the archive.
+The new modular runtime is built in parallel. r11 remains the running design/reference implementation until the cutover gate. New functionality belongs on the 1.0 architecture. After cutover, obsolete runtime code is deleted; Git history is the archive.
 
 Canonical documents:
-- Architecture spec: `docs/superpowers/specs/2026-10-02-jamesui-1.0-foundation-design.md`
+- Foundation spec: `docs/superpowers/specs/2026-10-02-jamesui-1.0-foundation-design.md`
 - Roadmap: `docs/JAMESUI_1_0_EXECUTION_ROADMAP.md`
 - Baseline: `docs/JAMESUI_1_0_BASELINE.md`
 - Fresh-chat handover: `docs/JAMESUI_1_0_NEXT_CHAT.md`
+- Block 7 icon spec: `docs/superpowers/specs/2026-10-03-jamesui-1.0-block-7-icon-asset-system-design.md`
 
-Completed block plans:
-- `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-0-baseline.md`
-- `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-1-core-shell.md`
-- `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-2-module-system.md`
-- `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-3-capability-action-registries.md`
-- `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-4-home-assistant-adapter.md`
-- `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-5-config-store-migrations.md`
-- `docs/superpowers/plans/2026-10-03-jamesui-1.0-block-6-design-system.md`
+Completed implementation plans now cover Blocks 0–7. The latest is:
+`docs/superpowers/plans/2026-10-03-jamesui-1.0-block-7-icon-asset-system.md`
 
 ## 3. Current formal state
 
-- **Block 0 – Baseline and preservation tests: ✅ complete**
-- **Block 1 – Core shell: ✅ merged through PR #13**
-- **Block 2 – Module manifest/registry/loader: ✅ merged through PR #14**
-- **Block 3 – Capability Registry + Action Registry: ✅ merged through PR #15**
-- **Block 4 – Home Assistant Adapter: ✅ merged through PR #16**
-- **Block 5 – Versioned Config Store + migrations: ✅ merged through PR #17**
-- **Block 6 – Design System + base components: ✅ merged through PR #18**
-- **Block 7 – Icon library + asset registry: ⬜ not started**
+- Block 0 – Baseline and preservation tests: ✅
+- Block 1 – Core shell: ✅ PR #13
+- Block 2 – Module manifest/registry/loader: ✅ PR #14
+- Block 3 – Capability Registry + Action Registry: ✅ PR #15
+- Block 4 – Home Assistant Adapter: ✅ PR #16
+- Block 5 – Versioned Config Store + migrations: ✅ PR #17
+- Block 6 – Design System + base components: ✅ PR #18
+- Block 7 – Icon Library + Asset Registry: ✅ PR #19
+- Block 8 – `layout.home-hero-deck`: ⬜ not started
 
-Block 6 merge commit: `869a8b28e34750479b5d458d5c498c335b472002`.
+Block 7 merge commit: `3b1142d9d0491605775f998c1dfe2b39f9791d63`.
 
 Validation evidence:
-- Block 6 branch validation #269: success
-- Block 6 main validation #270: success
+- Block 7 branch validation #285: success
+- Block 7 main validation #286: success
+- Whole-branch review: no open Critical/Important findings
 
-Block 6 whole-branch review found no open Critical/Important findings. During implementation one pre-existing date-dependent r11 rain-time test became stale on 2026-10-03; only its forecast fixture was made relative to the current day. No r11 production file was changed.
+Implementation ruling recorded during Block 7: the approved plan named Tabler `fan` for `home.ventilation`, but that icon does not exist in pinned Tabler v3.48.0. The implemented and source-verified mapping is `home.ventilation -> propeller`.
 
-Next formal gate: **create and review the detailed implementation plan for Block 7 – Icon library and asset registry.** No Block-7 product code before that plan is reviewed and approved.
+**Next formal gate:** Block 8 – `layout.home-hero-deck`. Review the existing foundation/layout requirements and create the detailed Block-8 design/implementation plan before product code.
 
-## 4. Platform completed through Block 6
+## 4. Platform completed through Block 7
 
 ### Core
-The parallel Core under `custom_components/jamesui/frontend/core/` provides:
+`custom_components/jamesui/frontend/core/` provides:
 - routes `home | house | climate | media | door`
 - persistent bottom navigation
-- router and structural shell
-- Event Bus restricted to transient technical/UI/lifecycle events
+- Router
+- Event Bus for transient technical/UI/lifecycle events only
 - Overlay Service
 - Health Service
-- opaque HA host-context handoff
 - Module Registry + versioned Module Loader
 - Capability Registry
 - Action Registry
-- read-only Home Assistant Adapter service
-- read-only Config Service
-- internally composed Design System mounted below the JamesUI Core root
-
-The Design System is **not** exposed through Core service properties or module contexts.
+- Home Assistant Adapter reference
+- Config Service reference
+- internally composed root-scoped Design System
 
 ### Module contract
-Supported initial types:
-- `layout`
-- `widget`
-- `provider`
-- `action`
-
-Manifest concepts remain separate:
-- `depends_on`
-- `requires_capabilities`
-- `provides_capabilities`
+Types: `layout`, `widget`, `provider`, `action`.
 
 Lifecycle:
 - `create(context, config)`
@@ -97,181 +82,119 @@ Lifecycle:
 - `update(nextContext, nextConfig)`
 - `destroy()`
 
-Module context after Block 6 remains unchanged:
-- `layout` / `widget`: `events`, `overlays`, `capabilities`, `actions`, `module`
-- `provider` / `action`: same five plus `homeAssistant`
-- **no module receives Design System, Config Service, raw `hass`, Router, Health Service, Module Registry or Module Loader**
-- module configuration continues through lifecycle `config` arguments
-- visual modules consume the shared `--jui-*` CSS variables and may statically import generic primitives where appropriate
+Module context remains unchanged after Block 7:
+- layout/widget: `events`, `overlays`, `capabilities`, `actions`, `module`
+- provider/action: same five plus `homeAssistant`
+- no module receives Design System, Config Service, raw `hass`, Router, Health, Module Registry or Module Loader
+- configuration enters modules through lifecycle config arguments
 
-### Capabilities and actions
-Capability states:
-- `available`
-- `unavailable`
-- `not_configured`
-
-Normalized action results:
-- `success`
-- `unavailable`
-- `rejected`
-- `error`
-
-Real actions now available:
+### Actions and HA boundary
+Real actions:
 - `navigate`
 - `url.open`
 - `entity.toggle`
 - `ha.service`
 - `scene.activate`
 
-HA-backed actions use the Home Assistant Adapter only.
+All direct new-runtime HA access remains under `frontend/ha/`. Disconnected/unavailable state views deliberately expose no stale entity values.
 
-### Home Assistant boundary
-Direct new-runtime HA access is confined to `custom_components/jamesui/frontend/ha/`.
+## 5. Structured configuration
 
-Adapter responsibilities include:
-- state/entity/domain access
-- connection state
-- local state subscriptions
-- service calls
-- WebSocket calls/subscriptions
-- area/device/entity registry helpers
-- cleanup of subscriptions
-
-Disconnected/unavailable state views are deliberately empty so stale cached HA values are not exposed.
-
-## 5. Structured configuration result
-
-JamesUI has one canonical shared configuration persistence source:
-
-- Home Assistant `.storage`
-- Store key `jamesui.config`
+Canonical persistence is one Home Assistant `.storage` Store:
+- key `jamesui.config`
 - schema version `1`
-- atomic writes enabled
+- atomic writes
 
-Canonical schema:
+Top-level sections:
+`pages`, `layouts`, `widget_instances`, `dynamic_buttons`, `data_sources`, `module_settings`.
 
-```json
-{
-  "schema_version": 1,
-  "pages": {},
-  "layouts": {},
-  "widget_instances": {},
-  "dynamic_buttons": {},
-  "data_sources": {},
-  "module_settings": {}
-}
-```
+The Config Service is transactional and migratable. All 15 retained r11 values have deterministic mappings. Temporary r11 config GET/UPDATE compatibility points at the same Store, not a second persistence source.
 
-Properties:
-- exact schema/container validation
-- JSON-safe nested values only
-- transactional Config Service
-- concurrent transforms serialized against latest committed snapshot
-- failed validation/storage writes do not partially replace active config
-- unsupported Store/schema versions are not silently downgraded
-- explicit migration framework for future schema revisions
-- all 15 retained r11 options have deterministic mappings into `data_sources` / `module_settings`
+Device-local display calibration remains browser-local under `jamesui-display-calibration`.
 
-Temporary r11 compatibility remains until Block 20/21:
-- `jamesui/config`
-- `jamesui/config/update`
+## 6. Design System
 
-Structured API:
-- `jamesui/config/get`
-- `jamesui/config/replace`
+Boundary: `custom_components/jamesui/frontend/design/`
 
-Frontend `core.config` communicates through the Home Assistant Adapter only. Device-local display calibration remains browser-local under `jamesui-display-calibration`.
+- one frozen 62-token `--jui-*` contract
+- shared Surface/Button/Overlay/Dialog primitives
+- root-scoped CSS only
+- reduced-motion support
+- icon size tokens: 16 / 20 / 24 / 32 / 48 px via semantic names
+- no `!important`, data-image hacks, direct HA access or scattered palette constants
 
-## 6. Block 6 design-system result
+## 7. Block 7 icon system
 
-New design boundary:
-`custom_components/jamesui/frontend/design/`
+Boundary: `custom_components/jamesui/frontend/icons/`
 
 Files:
-- `tokens.js` – one frozen 62-token `--jui-*` contract
-- `base-styles.js` – root-scoped shared base styling
-- `design-system.js` – root-local style lifecycle and token serialization
-- `primitives.js` – reusable semantic DOM factories
+- `icon-definitions.js` – curated local vector/provenance catalog
+- `icon-registry.js` – validation, immutable semantic registry and lookup
+- `icon.js` – SVG DOM factory
+- `ICONS_LICENSE.md` – pinned Tabler attribution/MIT notice
 
-The token system centrally owns:
-- canvas/surface/accent/status/text colors
-- system typography scale and weights
-- spacing scale
-- radii
-- blur
-- shadows/highlights
-- motion durations/easing
-- icon-size tokens ready for Block 7
+Contract:
+- exactly **40** initial semantic IDs
+- namespaces `nav.*`, `shell.*`, `weather.*`, `home.*`, `moon.*`
+- Tabler Icons **v3.48.0** is the pinned source/style baseline for standard icons
+- JamesUI-specific icons share the same line contract
+- `24×24`, `2.0 px`, `fill="none"`, `stroke="currentColor"`, round caps/joins
+- no runtime Tabler/npm/CDN/fetch/icon-font dependency
+- no SVG strings/XML parser/data URLs
+- real SVG DOM nodes created only through `createElementNS()`
+- semantic sizes `sm | md | lg | xl | hero` reuse Block-6 tokens
+- decorative icons are hidden from accessibility by default; standalone meaningful icons require an accessible label
+- malformed definitions and unknown IDs fail predictably; no silent fallback glyph
 
-Shared primitives now exist for:
-- `surface`: `default | raised | glass`
-- `button`: `default | ghost | accent`, sizes `sm | md | lg`
-- overlay frame
-- accessible dialog frame/title/body/actions
+The fixed new-Core navigation now uses:
+- Start → `nav.start`
+- Haus → `nav.house`
+- Klima → `nav.climate`
+- Medien → `nav.media`
+- Tür → `nav.door`
 
-Hard design rules now guarded by tests/CI:
-- design CSS is scoped below `[data-jui-design-root]`
-- no Home Assistant global-document style mutation
-- no raw palette literals outside `tokens.js`
-- no `!important`
-- no `url(...)`, data-image, inline SVG asset hacks in the new design boundary
-- no direct Home Assistant access in the design boundary
-- reduced-motion sets shared motion durations to `0ms`
-- repeated mount/remount/destroy does not duplicate or leak design styles
-- Core navigation uses the shared ghost-button primitive without changing routing behavior
+Visible labels, routing, `aria-current`, persistent-nav identity and shell lifecycle remain unchanged.
 
-Block 6 deliberately did **not** introduce icons or final page/layout styling.
+Existing large `assets/weather/*.svg` and Alpine assets are **not** part of the icon family and remain untouched.
 
-## 7. Production/reference runtime
+## 8. Production/reference runtime
 
 Repository: `MarkusAureliusTeuton/JamesUI`
-
 Default branch: `main`
+Integration version: `0.5.1`
+Frontend revision: `0.5.1-r11`
 
-Current integration version: `0.5.1`
+**r11 is still the running production/reference implementation.** `jamesui-entry.js` still loads the old panel/start bridge. The new Core/Design/Icon runtime is intentionally not wired into production yet. No cutover has occurred.
 
-Current frontend revision: `0.5.1-r11`
+## 9. Start direction to preserve/rebuild
 
-**r11 is still the running production/reference implementation.** The new Core is intentionally not wired into `jamesui-entry.js` yet. No cutover has occurred.
-
-Do not use r11 structure as the future architecture.
-
-## 8. Start direction to preserve/rebuild
-
-The accepted visual/behavioral direction remains:
+- persistent bottom nav `Start | Haus | Klima | Medien | Tür`
 - Alpine/weather hero
 - weekday/date + large time
-- current temperature/weather
-- high/low
-- real rain/time when available
-- wind/storm/snow relevance
-- sunrise/sunset
-- moon phase/illumination
+- current temperature/weather, high/low, real rain/time where supported
+- wind/storm/snow relevance, sunrise/sunset, moon
 - temperature tap opens forecast overlay without layout shift
 - no standalone 3-day row
-- lower dark/translucent deck extending to bottom navigation
+- one lower dark/translucent deck extending to navigation
 - Calendar left
 - House Quick right/main
 - four Dynamic Buttons right/footer
 - no `Home`, `HEUTE & DANACH`, `ZUHAUSE` labels
+- never fake unavailable backend data
 
-Do not fake missing backend data.
+## 10. Development rules
 
-## 9. Development rules
-
-1. Read spec + roadmap before work.
+1. Repository is source of truth.
 2. One roadmap block at a time.
-3. Detailed implementation plan before product code.
+3. Detailed design/spec when architecture requires it, then detailed implementation plan before product code.
 4. Isolated implementation branch.
-5. TDD for behavior changes.
-6. Intentionally red tests never go to `main`.
-7. Green approved blocks merge to `main` without repeated repository confirmation.
+5. TDD for behavior changes; intentionally red tests never go to `main`.
+6. Approved green work merges to `main` without repeated repository confirmation.
+7. Whole-branch review and main-CI verification before completion claims.
 8. Update status/roadmap/handover after merged work.
-9. No new monkey-patches, Prototype overrides, version-polish layers, duplicate implementations or permanent legacy shims.
-10. OnePlus/Fully screenshot testing remains required at major UI milestones; Block 6 itself is infrastructure and does not claim screenshot acceptance.
+9. No monkey-patches, Prototype overrides, version-polish layers, duplicate implementations or permanent legacy shims.
+10. OnePlus/Fully portrait screenshot acceptance is required at major composed-UI milestones, not for infrastructure-only blocks.
 
-## 10. Next action
+## 11. Next action
 
-Create and review the detailed implementation plan for **Block 7 – Icon library and asset registry**.
-
-Block 7 should create one local SVG/currentColor icon system and stable asset IDs. Do not pull forward Block 8 Start layout or domain/provider work.
+Start **Block 8 – `layout.home-hero-deck`** planning only. Do not implement weather/calendar/house providers or widgets, dynamic buttons, final Start content, or production cutover inside Block 8.
