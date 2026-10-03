@@ -1,7 +1,7 @@
 # JamesUI 1.0 – Execution Roadmap
 
-_Status: written architecture spec approved; Blocks 0–5 complete and validated; next gate Block 6 detailed plan_
-_Date: 2026-10-02_
+_Status: written architecture spec approved; Blocks 0–6 complete and validated; next gate Block 7 detailed plan_
+_Date: 2026-10-03_
 
 This document defines the implementation order for the JamesUI 1.0 rebuild using **Variant B: clean foundation + controlled cutover**.
 
@@ -83,35 +83,52 @@ Delivered:
 - module contexts unchanged; config still enters modules through lifecycle config args
 - local display calibration remains browser-local
 
-### Block 6 – Design system and base components ⬜
+### Block 6 – Design system and base components ✅
 Goal: establish one stable visual language for all new UI.
 
-Planned scope:
-- color tokens
-- typography tokens
-- spacing scale
-- radii
-- borders/highlights
-- shadows/blur
-- motion tokens
-- icon-size tokens
-- common surface/button primitives
-- common overlay/dialog primitives
+Plan: `docs/superpowers/plans/2026-10-03-jamesui-1.0-block-6-design-system.md`
 
-Exit criteria:
-- new modules do not invent application-wide palette/type systems
-- accepted mockup styling can be expressed through shared tokens/primitives
-- no Block-7 icon registry or Block-8 Start layout implementation is pulled forward
-- CI green
+Result: PR #18 merged. Branch validation #269 and main validation #270 succeeded.
 
-**Next gate:** create/review the detailed Block-6 implementation plan before product code.
+Delivered:
+- dedicated `frontend/design/` boundary
+- frozen 62-token `--jui-*` contract for palette, typography, spacing, radii, blur, shadows, motion and icon sizes
+- root-scoped Design System runtime that mounts one style below the Core root and cleans up idempotently
+- shared surface variants `default | raised | glass`
+- shared button variants `default | ghost | accent` with sizes `sm | md | lg`
+- reusable overlay/dialog presentation primitives
+- centralized reduced-motion behavior
+- Core navigation migrated to the shared ghost-button primitive without route-behavior changes
+- architecture guards preventing raw palette drift, asset/data-URL hacks, `!important`, direct HA access and legacy coupling in the new design boundary
+- module contexts remain unchanged; Design System is not exposed as a runtime service to modules
+- r11 product frontend/bootstrap remain untouched
+
+Implementation note: a pre-existing r11 rain-time regression fixture was date-dependent and expired on 2026-10-03. Its test data was made relative to the current day; no r11 product code changed.
 
 ## Phase B – Establish the visual system
 
 ### Block 7 – Icon library and asset registry ⬜
 Goal: replace mixed Unicode/inline/data-URL icon approaches with one local SVG system.
 
-Key scope: icon registry, consistent line style/currentColor, navigation/weather/house/moon icons, asset validation.
+Planned scope:
+- local SVG asset structure
+- stable icon/asset registry IDs
+- consistent line weight and `currentColor`
+- navigation icons
+- weather icons
+- house/control icons
+- moon-phase icons
+- asset integrity/registry validation tests
+- integration with the Block-6 icon-size/token system and visual primitives where appropriate
+
+Exit criteria:
+- new production UI does not rely on Unicode glyphs for normal controls
+- icons are referenced by stable IDs rather than copied SVG fragments
+- icon rendering remains local/offline and themeable through `currentColor`
+- no Start layout/domain implementation is pulled forward
+- CI green
+
+**Next gate:** create/review the detailed Block-7 implementation plan before product code.
 
 ## Phase C – Rebuild Start on the new architecture
 
@@ -171,7 +188,7 @@ Goal: remove old monolith/Start patch layers/demo data/obsolete compatibility pa
 | 3 Capability/Action registries | ✅ |
 | 4 HA adapter | ✅ |
 | 5 Config store/migrations | ✅ |
-| 6 Design system | ⬜ |
+| 6 Design system | ✅ |
 | 7 Icon library | ⬜ |
 | 8 Start layout | ⬜ |
 | 9 Weather provider | ⬜ |
@@ -188,4 +205,4 @@ Goal: remove old monolith/Start patch layers/demo data/obsolete compatibility pa
 | 20 Cutover | ⬜ |
 | 21 Legacy deletion/gate | ⬜ |
 
-**Current summary:** Blocks 0–5 are complete, green and merged. The next task is the detailed implementation plan for Block 6. r11 remains production/reference; no cutover has occurred.
+**Current summary:** Blocks 0–6 are complete, green and merged. The next task is the detailed implementation plan for Block 7. r11 remains production/reference; no cutover has occurred.
