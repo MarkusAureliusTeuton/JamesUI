@@ -10,8 +10,8 @@ function state(entityId, value) {
   return Object.freeze({ entity_id: entityId, state: value, attributes: {} });
 }
 
-function hass(states = {}, { connected = true, connection = {} } = {}) {
-  return { states, connected, connection };
+function hass(states = {}, { connected = true, connection = {}, config = undefined } = {}) {
+  return { states, connected, connection, ...(config === undefined ? {} : { config }) };
 }
 
 test("starts unavailable and exposes empty state queries", () => {
@@ -32,6 +32,25 @@ test("setHass exposes state by id and exact domain", () => {
   assert.equal(adapter.getState("light.kitchen"), kitchen);
   assert.deepEqual(adapter.entities("light"), [kitchen]);
   assert.deepEqual(adapter.entities("switch"), [socket]);
+});
+
+test("timeZone returns connected Home Assistant IANA timezone", () => {
+  const adapter = createHomeAssistantAdapter();
+  adapter.setHass(hass({}, { config: { time_zone: "Europe/Berlin" } }));
+  assert.equal(adapter.timeZone(), "Europe/Berlin");
+});
+
+test("timeZone rejects blank invalid and disconnected values", () => {
+  const adapter = createHomeAssistantAdapter();
+
+  assert.equal(adapter.timeZone(), null);
+  for (const value of ["", "   ", 42, "Mars/Olympus"]) {
+    adapter.setHass(hass({}, { config: { time_zone: value } }));
+    assert.equal(adapter.timeZone(), null);
+  }
+
+  adapter.setHass(hass({}, { connected: false, config: { time_zone: "Europe/Berlin" } }));
+  assert.equal(adapter.timeZone(), null);
 });
 
 test("legacy hass with connection but no connected flag is treated as connected", () => {
