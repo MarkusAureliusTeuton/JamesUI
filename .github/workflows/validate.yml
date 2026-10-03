@@ -106,7 +106,8 @@ jobs:
           node --experimental-default-type=module --test \
             tests/jamesui-weather-manifest-config.test.js \
             tests/jamesui-weather-normalize.test.js \
-            tests/jamesui-weather-forecast.test.js
+            tests/jamesui-weather-forecast.test.js \
+            tests/jamesui-weather-atmosphere.test.js
 
       - name: Validate Alpine atmosphere assets
         run: python -m unittest tests/test_alpine_assets.py
