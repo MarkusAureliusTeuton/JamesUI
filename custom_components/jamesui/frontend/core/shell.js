@@ -1,5 +1,14 @@
 import { createButton } from "../design/primitives.js";
+import { createIcon } from "../icons/icon.js";
 import { CORE_ROUTES } from "./routes.js";
+
+const NAV_ICON_IDS = Object.freeze({
+  home: "nav.start",
+  house: "nav.house",
+  climate: "nav.climate",
+  media: "nav.media",
+  door: "nav.door",
+});
 
 function requireDependency(value, name) {
   if (!value) throw new TypeError(`createAppShell requires ${name}`);
@@ -136,6 +145,9 @@ export function createAppShell({ document, router, overlays, health, getContext,
 
     for (const route of CORE_ROUTES) {
       const button = createButton(document, { label: route.label, variant: "ghost", size: "md" });
+      const iconId = NAV_ICON_IDS[route.id];
+      if (!iconId) throw new Error(`Missing navigation icon for route: ${route.id}`);
+      button.prepend(createIcon(document, iconId, { size: "md" }));
       button.dataset.routeId = route.id;
       const listener = () => router.navigate(route.id);
       button.addEventListener("click", listener);
