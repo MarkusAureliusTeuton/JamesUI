@@ -84,7 +84,8 @@ jobs:
         run: |
           node --experimental-default-type=module --test \
             tests/jamesui-design-tokens.test.js \
-            tests/jamesui-design-system.test.js
+            tests/jamesui-design-system.test.js \
+            tests/jamesui-design-primitives.test.js
 
       - name: Validate Alpine atmosphere assets
         run: python -m unittest tests/test_alpine_assets.py
