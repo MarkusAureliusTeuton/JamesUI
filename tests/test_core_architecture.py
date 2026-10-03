@@ -10,6 +10,7 @@ DESIGN_ROOT = FRONTEND_ROOT / "design"
 ICON_ROOT = FRONTEND_ROOT / "icons"
 MODULES_ROOT = FRONTEND_ROOT / "modules"
 HOME_HERO_DECK_ROOT = MODULES_ROOT / "layout.home-hero-deck"
+WEATHER_PROVIDER_ROOT = MODULES_ROOT / "provider.weather"
 CORE_REQUIRED = {
     "routes.js",
     "router.js",
@@ -49,6 +50,17 @@ HOME_HERO_DECK_REQUIRED = {
     "index.js",
     "styles.js",
 }
+WEATHER_PROVIDER_REQUIRED = {
+    "manifest.js",
+    "config.js",
+    "normalize.js",
+    "forecast.js",
+    "atmosphere.js",
+    "moon.js",
+    "provider.js",
+    "index.js",
+    "ASTRONOMY_LICENSE.md",
+}
 DIRECT_HA_TOKENS = (
     "hass.states",
     "hass.callService",
@@ -66,12 +78,14 @@ class CoreArchitectureTest(unittest.TestCase):
         design_present = {path.name for path in DESIGN_ROOT.glob("*.js")}
         icon_present = {path.name for path in ICON_ROOT.iterdir() if path.is_file()}
         home_hero_deck_present = {path.name for path in HOME_HERO_DECK_ROOT.iterdir() if path.is_file()}
+        weather_provider_present = {path.name for path in WEATHER_PROVIDER_ROOT.iterdir() if path.is_file()}
         self.assertTrue(CORE_REQUIRED.issubset(core_present))
         self.assertTrue(HA_REQUIRED.issubset(ha_present))
         self.assertTrue(DESIGN_REQUIRED.issubset(design_present))
         self.assertEqual(icon_present, ICON_REQUIRED)
         self.assertEqual(home_hero_deck_present, HOME_HERO_DECK_REQUIRED)
-        for root in (CORE_ROOT, HA_ROOT, DESIGN_ROOT, ICON_ROOT, HOME_HERO_DECK_ROOT):
+        self.assertEqual(weather_provider_present, WEATHER_PROVIDER_REQUIRED)
+        for root in (CORE_ROOT, HA_ROOT, DESIGN_ROOT, ICON_ROOT, HOME_HERO_DECK_ROOT, WEATHER_PROVIDER_ROOT):
             for path in root.rglob("*"):
                 if path.is_file():
                     self.assertNotRegex(str(path), r"(?:^|[-_/])v(?:9|10|11)(?:[-_.\\/]|$)")
@@ -103,7 +117,7 @@ class CoreArchitectureTest(unittest.TestCase):
 
     def test_new_runtime_direct_ha_access_is_confined_to_ha_boundary(self):
         # r11 remains production until cutover and intentionally still contains direct HA access.
-        new_runtime_non_ha_roots = (CORE_ROOT, DESIGN_ROOT, ICON_ROOT, HOME_HERO_DECK_ROOT)
+        new_runtime_non_ha_roots = (CORE_ROOT, DESIGN_ROOT, ICON_ROOT, HOME_HERO_DECK_ROOT, WEATHER_PROVIDER_ROOT)
         for root in new_runtime_non_ha_roots:
             for path in root.rglob("*.js"):
                 source = path.read_text(encoding="utf-8")
@@ -281,7 +295,46 @@ class CoreArchitectureTest(unittest.TestCase):
         ):
             self.assertNotIn(token, core_source, f"Core must not own Block 8 Start layout markup: {token}")
 
-    def test_production_entry_remains_on_legacy_runtime_during_block_8(self):
+    def test_block_9_weather_provider_is_data_only_adapter_based_and_asset_free(self):
+        js_files = tuple(WEATHER_PROVIDER_ROOT.glob("*.js"))
+        source = "\n".join(path.read_text(encoding="utf-8") for path in js_files)
+        forbidden = (
+            "Panel.prototype",
+            "jamesui-panel",
+            "jamesui-v11",
+            "jamesui-home-entry",
+            "config-service",
+            "config_service",
+            "createConfigService",
+            "window.",
+            "document.",
+            "createElement",
+            "innerHTML",
+            "outerHTML",
+            "<svg",
+            "<style",
+            ".webp",
+            "/assets/alpine",
+            "/assets/weather",
+            "fetch(",
+            "XMLHttpRequest",
+            "toLocaleDateString",
+            "toLocaleTimeString",
+            ".getFullYear(",
+            ".getMonth(",
+            ".getDate(",
+        )
+        for token in (*DIRECT_HA_TOKENS, *forbidden):
+            self.assertNotIn(token, source, f"Block 9 provider must not contain forbidden coupling: {token}")
+
+        self.assertIn("homeAssistant", (WEATHER_PROVIDER_ROOT / "provider.js").read_text(encoding="utf-8"))
+        self.assertIn("Intl.DateTimeFormat", (WEATHER_PROVIDER_ROOT / "forecast.js").read_text(encoding="utf-8"))
+        self.assertTrue((WEATHER_PROVIDER_ROOT / "ASTRONOMY_LICENSE.md").is_file())
+        license_source = (WEATHER_PROVIDER_ROOT / "ASTRONOMY_LICENSE.md").read_text(encoding="utf-8")
+        self.assertIn("SunCalc v1.9.0", license_source)
+        self.assertIn("BSD 2-Clause", license_source)
+
+    def test_production_entry_remains_on_legacy_runtime_during_block_9(self):
         source = Path("custom_components/jamesui/frontend/jamesui-entry.js").read_text(encoding="utf-8")
         self.assertIn("jamesui-panel.js", source)
         self.assertIn("jamesui-home-entry.js", source)
@@ -291,6 +344,7 @@ class CoreArchitectureTest(unittest.TestCase):
         self.assertNotIn("frontend/icons", source)
         self.assertNotIn("frontend/modules", source)
         self.assertNotIn("layout.home-hero-deck", source)
+        self.assertNotIn("provider.weather", source)
         self.assertNotRegex(source, r"(?:^|[\"'/])core/index\.js")
         self.assertNotIn("module-loader", source)
         self.assertNotIn("module-registry", source)
