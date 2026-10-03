@@ -203,7 +203,12 @@ export function createWeatherProvider(initialContext, initialConfig, runtime) {
   };
 
   const publishMoonFromHaState = (sensorEntities) => {
-    const value = resolveMoon({ now: runtime.now(), configuredEntityId: config.moon_entity_id ?? null, sensorEntities });
+    const moonEntities = [...sensorEntities];
+    if (config.moon_entity_id && !moonEntities.some((entity) => entity?.entity_id === config.moon_entity_id)) {
+      const configuredMoon = context.homeAssistant.getState(config.moon_entity_id);
+      if (configuredMoon) moonEntities.push(configuredMoon);
+    }
+    const value = resolveMoon({ now: runtime.now(), configuredEntityId: config.moon_entity_id ?? null, sensorEntities: moonEntities });
     moonState = {
       phase: value.phase,
       phase_source: value.phase_source,
