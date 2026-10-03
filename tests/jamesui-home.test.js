@@ -214,19 +214,30 @@ test("renders a calm calendar empty state without fake data", () => {
 test("renders real house status plus four favorite scenes and Weitere", () => {
   const html = renderAlpineHome(alpinePanel());
   assert.match(html, /start-v9-house/);
-  for (const label of ["Licht", "Steckdosen", "Fenster", "Türen", "Lüftung", "Klima", "Medien"]) assert.match(html, new RegExp(label));
-  for (const label of ["Morgen", "Alltag", "Fernsehen", "Abend"]) assert.match(html, new RegExp(label));
-  assert.match(html, /Weitere/);
+  assert.match(html, /Licht/);
+  assert.match(html, /Steckdosen/);
+  assert.match(html, /Fenster/);
+  assert.match(html, /Türen/);
+  assert.match(html, /Lüftung/);
+  assert.match(html, /Klima/);
+  assert.match(html, /Medien/);
+  assert.equal((html.match(/data-home-scene=/g) || []).length, 4);
+  assert.match(html, /data-home-scenes-more/);
+  assert.match(html, />Weitere</);
 });
 
 test("keeps Start free of duplicate primary navigation", () => {
   const html = renderAlpineHome(alpinePanel());
-  assert.doesNotMatch(html, /class="alpine-dock"/);
-  assert.doesNotMatch(html, /data-home-nav=/);
+  assert.doesNotMatch(html, /alpine-function-strip/);
+  assert.doesNotMatch(html, /data-nav="(?:house|climate|media|door)"/);
+  assert.match(html, /data-home-house-more/);
 });
 
 test("keeps calendar and house side-by-side on tablet portrait and compacts the lower region", () => {
-  assert.match(homeSource, /grid-template-columns:minmax\(0,\.82fr\) minmax\(0,1\.18fr\)/);
-  assert.match(homeSource, /\.start-v9-lower-grid\{[^}]*min-height:clamp\(230px,25vh,330px\)/s);
-  assert.match(homeSource, /@media\(max-width:759px\)[\s\S]*grid-template-columns:1fr;/);
+  assert.match(homeSource, /\.start-v9-lower-grid/);
+  assert.match(homeSource, /@media\(orientation:portrait\) and \(min-width:760px\)/);
+  assert.match(homeSource, /grid-template-columns:minmax\(0,\.92fr\) minmax\(0,1\.08fr\)/);
+  assert.match(homeSource, /min-height:clamp\(410px,44vh,540px\)/);
+  assert.match(homeSource, /\.start-v9-section\{[^}]*padding:20px/);
+  assert.match(homeSource, /\.start-v9-scenes\{margin-top:14px/);
 });
