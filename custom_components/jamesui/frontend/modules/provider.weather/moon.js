@@ -127,8 +127,12 @@ export function calculateMoon(date) {
 }
 
 function recognizedPhase(entity) {
-  if (!entity || typeof entity.entity_id !== "string" || !entity.entity_id.startsWith("sensor.")) return null;
+  if (!entity || typeof entity.entity_id !== "string") return null;
   return PHASE_SET.has(entity.state) ? entity.state : null;
+}
+
+function recognizedDiscoveredSensor(entity) {
+  return Boolean(entity?.entity_id?.startsWith("sensor.") && recognizedPhase(entity));
 }
 
 export function resolveMoon({ now, configuredEntityId = null, sensorEntities = [] }) {
@@ -154,7 +158,7 @@ export function resolveMoon({ now, configuredEntityId = null, sensorEntities = [
   }
 
   const discovered = entities
-    .filter((entity) => recognizedPhase(entity))
+    .filter(recognizedDiscoveredSensor)
     .sort((a, b) => a.entity_id.localeCompare(b.entity_id))[0] ?? null;
   if (discovered) {
     return deepFreeze({
