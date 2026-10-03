@@ -50,9 +50,10 @@ test("real weather provider runs through Registry and Loader without Core or pro
       module: Object.freeze({ id, type: manifest.type, version: manifest.version }),
     }),
   });
+  const lifecycleTarget = Object.freeze({ kind: "provider-lifecycle-target" });
 
   assert.equal(await loader.load(MANIFEST.id, { config: {} }), true);
-  assert.equal(loader.mount(MANIFEST.id, null), true);
+  assert.equal(loader.mount(MANIFEST.id, lifecycleTarget), true);
   assert.equal(capabilities.get("weather.current").status, "available");
   assert.equal(capabilities.get("weather.current").value.source_entity_id, "weather.home");
   assert.equal(capabilities.get("weather.sun").status, "available");
