@@ -1,3 +1,6 @@
+import { createDesignSystem } from "../design/design-system.js";
+import { createHomeAssistantAdapter } from "../ha/home-assistant-adapter.js";
+import { registerHomeAssistantActionProviders } from "../ha/ha-action-providers.js";
 import { createRouter } from "./router.js";
 import { createEventBus } from "./event-bus.js";
 import { createOverlayService } from "./overlay-service.js";
@@ -10,8 +13,6 @@ import { createCapabilityRegistry } from "./capability-registry.js";
 import { createActionRegistry } from "./action-registry.js";
 import { registerCoreActionProviders } from "./core-action-providers.js";
 import { createConfigService } from "./config-service.js";
-import { createHomeAssistantAdapter } from "../ha/home-assistant-adapter.js";
-import { registerHomeAssistantActionProviders } from "../ha/ha-action-providers.js";
 
 function defaultOpenUrl(url) {
   if (typeof globalThis.open !== "function") return false;
@@ -44,6 +45,7 @@ export function createJamesUICore({ document = globalThis.document, renderPage, 
     },
   });
   const config = createConfigService({ homeAssistant });
+  const designSystem = createDesignSystem({ document });
   const unregisterCoreActions = registerCoreActionProviders({ actions, router, openUrl });
   const unregisterHomeAssistantActions = registerHomeAssistantActionProviders({ actions, homeAssistant });
   const moduleLoader = createModuleLoader({
@@ -69,6 +71,7 @@ export function createJamesUICore({ document = globalThis.document, renderPage, 
     router,
     overlays,
     health,
+    designSystem,
     getContext: () => hostContext.snapshot(),
     renderPage,
   });

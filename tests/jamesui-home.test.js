@@ -16,6 +16,12 @@ const homeSource = readFileSync(
   "utf8"
 );
 
+function todayAt(hour) {
+  const value = new Date();
+  value.setHours(hour, 0, 0, 0);
+  return value.toISOString();
+}
+
 function panelWith(states, house = {}) {
   return {
     _hass: { states, config: { location_name: "Eitting" } },
@@ -91,15 +97,15 @@ test("builds a three-day temperature and rain tendency", () => {
 test("derives rain time only from granular forecasts", () => {
   const daily = {
     _forecastType: "daily",
-    _forecast: [{ datetime: "2026-10-02T16:00:00+02:00", precipitation_probability: 80 }],
+    _forecast: [{ datetime: todayAt(16), precipitation_probability: 80 }],
   };
   assert.equal(firstExpectedRainTime(daily), null);
 
   const hourly = {
     _forecastType: "hourly",
     _forecast: [
-      { datetime: "2026-10-02T14:00:00+02:00", precipitation_probability: 20, condition: "cloudy" },
-      { datetime: "2026-10-02T16:00:00+02:00", precipitation_probability: 65, condition: "rainy" },
+      { datetime: todayAt(14), precipitation_probability: 20, condition: "cloudy" },
+      { datetime: todayAt(16), precipitation_probability: 65, condition: "rainy" },
     ],
   };
   assert.equal(firstExpectedRainTime(hourly), "16:00");
@@ -140,7 +146,7 @@ function alpinePanel(overrides = {}) {
       { datetime: "2026-10-04", temperature: 18, templow: 10, precipitation_probability: 10, condition: "sunny" },
     ],
     _forecastType: "hourly",
-    _forecast: [{ datetime: "2026-10-02T16:00:00+02:00", precipitation_probability: 65, condition: "rainy" }],
+    _forecast: [{ datetime: todayAt(16), precipitation_probability: 65, condition: "rainy" }],
     _moonInfo: () => ["Zunehmender Mond", "◕", "waxing_gibbous"],
     _moonDetails: () => ({ illumination: 68 }),
     _ambientLight: () => ({ label: "840 lx", dim: 0 }),

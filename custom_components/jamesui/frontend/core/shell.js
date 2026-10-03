@@ -1,15 +1,17 @@
+import { createButton } from "../design/primitives.js";
 import { CORE_ROUTES } from "./routes.js";
 
 function requireDependency(value, name) {
   if (!value) throw new TypeError(`createAppShell requires ${name}`);
 }
 
-export function createAppShell({ document, router, overlays, health, getContext, renderPage = null } = {}) {
+export function createAppShell({ document, router, overlays, health, getContext, designSystem, renderPage = null } = {}) {
   requireDependency(document, "document");
   requireDependency(router, "router");
   requireDependency(overlays, "overlays");
   requireDependency(health, "health");
   requireDependency(getContext, "getContext");
+  requireDependency(designSystem, "designSystem");
 
   const pageRenderer = renderPage ?? (({ document: doc, route }) => {
     const node = doc.createElement("section");
@@ -93,6 +95,7 @@ export function createAppShell({ document, router, overlays, health, getContext,
     unsubscribeOverlay = null;
     unsubscribeHealth = null;
     for (const { button, listener } of navBindings.splice(0)) button.removeEventListener("click", listener);
+    designSystem.destroy();
     if (root?.parentNode) root.parentNode.removeChild(root);
     target = null;
     root = null;
@@ -113,6 +116,7 @@ export function createAppShell({ document, router, overlays, health, getContext,
     root.style.minHeight = "100vh";
     root.style.display = "grid";
     root.style.gridTemplateRows = "1fr auto";
+    designSystem.mount(root);
 
     pageRegion = document.createElement("main");
     pageRegion.dataset.role = "page-region";
@@ -131,9 +135,8 @@ export function createAppShell({ document, router, overlays, health, getContext,
     navigation.style.bottom = "0";
 
     for (const route of CORE_ROUTES) {
-      const button = document.createElement("button");
+      const button = createButton(document, { label: route.label, variant: "ghost", size: "md" });
       button.dataset.routeId = route.id;
-      button.textContent = route.label;
       const listener = () => router.navigate(route.id);
       button.addEventListener("click", listener);
       navBindings.push({ button, listener });
