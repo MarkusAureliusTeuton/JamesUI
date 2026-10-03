@@ -8,6 +8,8 @@ CORE_ROOT = FRONTEND_ROOT / "core"
 HA_ROOT = FRONTEND_ROOT / "ha"
 DESIGN_ROOT = FRONTEND_ROOT / "design"
 ICON_ROOT = FRONTEND_ROOT / "icons"
+MODULES_ROOT = FRONTEND_ROOT / "modules"
+HOME_HERO_DECK_ROOT = MODULES_ROOT / "layout.home-hero-deck"
 CORE_REQUIRED = {
     "routes.js",
     "router.js",
@@ -42,6 +44,11 @@ ICON_REQUIRED = {
     "icon.js",
     "ICONS_LICENSE.md",
 }
+HOME_HERO_DECK_REQUIRED = {
+    "manifest.js",
+    "index.js",
+    "styles.js",
+}
 DIRECT_HA_TOKENS = (
     "hass.states",
     "hass.callService",
@@ -58,11 +65,13 @@ class CoreArchitectureTest(unittest.TestCase):
         ha_present = {path.name for path in HA_ROOT.glob("*.js")}
         design_present = {path.name for path in DESIGN_ROOT.glob("*.js")}
         icon_present = {path.name for path in ICON_ROOT.iterdir() if path.is_file()}
+        home_hero_deck_present = {path.name for path in HOME_HERO_DECK_ROOT.iterdir() if path.is_file()}
         self.assertTrue(CORE_REQUIRED.issubset(core_present))
         self.assertTrue(HA_REQUIRED.issubset(ha_present))
         self.assertTrue(DESIGN_REQUIRED.issubset(design_present))
         self.assertEqual(icon_present, ICON_REQUIRED)
-        for root in (CORE_ROOT, HA_ROOT, DESIGN_ROOT, ICON_ROOT):
+        self.assertEqual(home_hero_deck_present, HOME_HERO_DECK_REQUIRED)
+        for root in (CORE_ROOT, HA_ROOT, DESIGN_ROOT, ICON_ROOT, HOME_HERO_DECK_ROOT):
             for path in root.rglob("*"):
                 if path.is_file():
                     self.assertNotRegex(str(path), r"(?:^|[-_/])v(?:9|10|11)(?:[-_.\\/]|$)")
@@ -94,7 +103,7 @@ class CoreArchitectureTest(unittest.TestCase):
 
     def test_new_runtime_direct_ha_access_is_confined_to_ha_boundary(self):
         # r11 remains production until cutover and intentionally still contains direct HA access.
-        new_runtime_non_ha_roots = (CORE_ROOT, DESIGN_ROOT, ICON_ROOT)
+        new_runtime_non_ha_roots = (CORE_ROOT, DESIGN_ROOT, ICON_ROOT, HOME_HERO_DECK_ROOT)
         for root in new_runtime_non_ha_roots:
             for path in root.rglob("*.js"):
                 source = path.read_text(encoding="utf-8")
@@ -202,7 +211,77 @@ class CoreArchitectureTest(unittest.TestCase):
         self.assertNotIn("data:image", shell)
         self.assertNotIn("<svg", shell)
 
-    def test_production_entry_remains_on_legacy_runtime_during_block_7(self):
+    def test_block_8_home_hero_deck_is_layout_only_and_core_free(self):
+        index_source = (HOME_HERO_DECK_ROOT / "index.js").read_text(encoding="utf-8")
+        styles_source = (HOME_HERO_DECK_ROOT / "styles.js").read_text(encoding="utf-8")
+        module_source = "\n".join(
+            path.read_text(encoding="utf-8") for path in HOME_HERO_DECK_ROOT.glob("*.js")
+        )
+        forbidden_module_tokens = (
+            "Panel.prototype",
+            "jamesui-home",
+            "jamesui-v11-polish",
+            "jamesui-panel.js",
+            "home-assistant-adapter",
+            "config-service",
+            "capability-registry",
+            "action-registry",
+            "provider.weather",
+            "provider.calendar",
+            "provider.house",
+            "provider.media",
+            "weather.",
+            "calendar.",
+            "media_player",
+            "widget.weather",
+            "widget.calendar",
+            "widget.house",
+            "widget.dynamic",
+            "fetch(",
+            "XMLHttpRequest",
+            "DOMParser",
+        )
+        for token in (*DIRECT_HA_TOKENS, *forbidden_module_tokens):
+            self.assertNotIn(token, module_source, f"Block 8 layout must not contain coupling: {token}")
+
+        self.assertIn("target.ownerDocument", index_source)
+        for token in (
+            "globalThis.document",
+            "window.document",
+            "window.",
+            "innerWidth",
+            "resize",
+            "narrow",
+        ):
+            self.assertNotIn(token, index_source, f"Block 8 layout must not use browser/device shortcut: {token}")
+
+        self.assertIn('[data-jui-layout="home-hero-deck"]', styles_source)
+        self.assertIn("@container (max-width: 44rem)", styles_source)
+        raw_palette = re.compile(r"#[0-9a-fA-F]{3,8}\b|rgba?\s*\(|hsla?\s*\(")
+        self.assertIsNone(raw_palette.search(styles_source), "Block 8 styles must use shared design tokens")
+        for token in (
+            "!important",
+            "url(",
+            "data:image",
+            ".jamesui-home",
+            "html {",
+            "body {",
+            "[data-jui-widget",
+            ".widget-",
+        ):
+            self.assertNotIn(token, styles_source, f"Block 8 styles must remain layout-scoped: {token}")
+
+        core_source = "\n".join(path.read_text(encoding="utf-8") for path in CORE_ROOT.glob("*.js"))
+        for token in (
+            "layout.home-hero-deck",
+            "data-jui-layout-slot",
+            "widget-left",
+            "widget-right-main",
+            "widget-right-footer",
+        ):
+            self.assertNotIn(token, core_source, f"Core must not own Block 8 Start layout markup: {token}")
+
+    def test_production_entry_remains_on_legacy_runtime_during_block_8(self):
         source = Path("custom_components/jamesui/frontend/jamesui-entry.js").read_text(encoding="utf-8")
         self.assertIn("jamesui-panel.js", source)
         self.assertIn("jamesui-home-entry.js", source)
@@ -210,6 +289,8 @@ class CoreArchitectureTest(unittest.TestCase):
         self.assertNotIn("frontend/ha", source)
         self.assertNotIn("frontend/design", source)
         self.assertNotIn("frontend/icons", source)
+        self.assertNotIn("frontend/modules", source)
+        self.assertNotIn("layout.home-hero-deck", source)
         self.assertNotRegex(source, r"(?:^|[\"'/])core/index\.js")
         self.assertNotIn("module-loader", source)
         self.assertNotIn("module-registry", source)
