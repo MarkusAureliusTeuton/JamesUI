@@ -1,6 +1,6 @@
 # JamesUI – Project Status / Chat Handover
 
-_Last updated: 2026-10-02_
+_Last updated: 2026-10-03_
 
 This file is the persistent **single source of truth for the current execution state**. Architecture details live in the approved spec, retained behavior in the baseline, and task-level decisions in the individual block plans.
 
@@ -36,6 +36,7 @@ Completed block plans:
 - `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-3-capability-action-registries.md`
 - `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-4-home-assistant-adapter.md`
 - `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-5-config-store-migrations.md`
+- `docs/superpowers/plans/2026-10-03-jamesui-1.0-block-6-design-system.md`
 
 ## 3. Current formal state
 
@@ -45,17 +46,20 @@ Completed block plans:
 - **Block 3 – Capability Registry + Action Registry: ✅ merged through PR #15**
 - **Block 4 – Home Assistant Adapter: ✅ merged through PR #16**
 - **Block 5 – Versioned Config Store + migrations: ✅ merged through PR #17**
-- **Block 6 – Design system and base components: ⬜ not started**
+- **Block 6 – Design System + base components: ✅ merged through PR #18**
+- **Block 7 – Icon library + asset registry: ⬜ not started**
 
-Block 5 merge commit: `1882bd85a4918a80a487d6044f1a6baf25b06fc9`.
+Block 6 merge commit: `869a8b28e34750479b5d458d5c498c335b472002`.
 
 Validation evidence:
-- Block 5 branch validation #253: success
-- Block 5 main validation #254: success
+- Block 6 branch validation #269: success
+- Block 6 main validation #270: success
 
-Next formal gate: **create and review the detailed implementation plan for Block 6 – Design system and base components.** No Block-6 product code before that plan is reviewed and approved.
+Block 6 whole-branch review found no open Critical/Important findings. During implementation one pre-existing date-dependent r11 rain-time test became stale on 2026-10-03; only its forecast fixture was made relative to the current day. No r11 production file was changed.
 
-## 4. Platform completed through Block 5
+Next formal gate: **create and review the detailed implementation plan for Block 7 – Icon library and asset registry.** No Block-7 product code before that plan is reviewed and approved.
+
+## 4. Platform completed through Block 6
 
 ### Core
 The parallel Core under `custom_components/jamesui/frontend/core/` provides:
@@ -71,6 +75,9 @@ The parallel Core under `custom_components/jamesui/frontend/core/` provides:
 - Action Registry
 - read-only Home Assistant Adapter service
 - read-only Config Service
+- internally composed Design System mounted below the JamesUI Core root
+
+The Design System is **not** exposed through Core service properties or module contexts.
 
 ### Module contract
 Supported initial types:
@@ -90,11 +97,12 @@ Lifecycle:
 - `update(nextContext, nextConfig)`
 - `destroy()`
 
-Module context after Block 5:
+Module context after Block 6 remains unchanged:
 - `layout` / `widget`: `events`, `overlays`, `capabilities`, `actions`, `module`
 - `provider` / `action`: same five plus `homeAssistant`
-- **no module receives Config Service, raw `hass`, Router, Health Service, Module Registry or Module Loader**
+- **no module receives Design System, Config Service, raw `hass`, Router, Health Service, Module Registry or Module Loader**
 - module configuration continues through lifecycle `config` arguments
+- visual modules consume the shared `--jui-*` CSS variables and may statically import generic primitives where appropriate
 
 ### Capabilities and actions
 Capability states:
@@ -131,13 +139,13 @@ Adapter responsibilities include:
 
 Disconnected/unavailable state views are deliberately empty so stale cached HA values are not exposed.
 
-## 5. Block 5 configuration result
+## 5. Structured configuration result
 
-JamesUI now has one canonical shared configuration persistence source:
+JamesUI has one canonical shared configuration persistence source:
 
 - Home Assistant `.storage`
-- `Store` key: `jamesui.config`
-- schema version: `1`
+- Store key `jamesui.config`
+- schema version `1`
 - atomic writes enabled
 
 Canonical schema:
@@ -159,32 +167,62 @@ Properties:
 - JSON-safe nested values only
 - transactional Config Service
 - concurrent transforms serialized against latest committed snapshot
-- failed validation/storage writes do not partially replace the active snapshot
+- failed validation/storage writes do not partially replace active config
 - unsupported Store/schema versions are not silently downgraded
 - explicit migration framework for future schema revisions
-
-All 15 relevant r11 options have deterministic mappings into `data_sources` / `module_settings`.
-
-On successful initialization:
-- an existing structured Store wins over stale legacy options
-- known legacy keys are removed from `config_entry.options`
-- unrelated/unknown config-entry options are preserved
+- all 15 retained r11 options have deterministic mappings into `data_sources` / `module_settings`
 
 Temporary r11 compatibility remains until Block 20/21:
 - `jamesui/config`
 - `jamesui/config/update`
 
-These commands project/patch the **same canonical Store**. There is no second persistent configuration source.
-
-New structured WebSocket API:
+Structured API:
 - `jamesui/config/get`
 - `jamesui/config/replace`
 
-Frontend `core.config` communicates through the Home Assistant Adapter only.
+Frontend `core.config` communicates through the Home Assistant Adapter only. Device-local display calibration remains browser-local under `jamesui-display-calibration`.
 
-Device-local display calibration remains browser-local under `jamesui-display-calibration` and is intentionally not part of shared config or migration.
+## 6. Block 6 design-system result
 
-## 6. Production/reference runtime
+New design boundary:
+`custom_components/jamesui/frontend/design/`
+
+Files:
+- `tokens.js` – one frozen 62-token `--jui-*` contract
+- `base-styles.js` – root-scoped shared base styling
+- `design-system.js` – root-local style lifecycle and token serialization
+- `primitives.js` – reusable semantic DOM factories
+
+The token system centrally owns:
+- canvas/surface/accent/status/text colors
+- system typography scale and weights
+- spacing scale
+- radii
+- blur
+- shadows/highlights
+- motion durations/easing
+- icon-size tokens ready for Block 7
+
+Shared primitives now exist for:
+- `surface`: `default | raised | glass`
+- `button`: `default | ghost | accent`, sizes `sm | md | lg`
+- overlay frame
+- accessible dialog frame/title/body/actions
+
+Hard design rules now guarded by tests/CI:
+- design CSS is scoped below `[data-jui-design-root]`
+- no Home Assistant global-document style mutation
+- no raw palette literals outside `tokens.js`
+- no `!important`
+- no `url(...)`, data-image, inline SVG asset hacks in the new design boundary
+- no direct Home Assistant access in the design boundary
+- reduced-motion sets shared motion durations to `0ms`
+- repeated mount/remount/destroy does not duplicate or leak design styles
+- Core navigation uses the shared ghost-button primitive without changing routing behavior
+
+Block 6 deliberately did **not** introduce icons or final page/layout styling.
+
+## 7. Production/reference runtime
 
 Repository: `MarkusAureliusTeuton/JamesUI`
 
@@ -198,7 +236,7 @@ Current frontend revision: `0.5.1-r11`
 
 Do not use r11 structure as the future architecture.
 
-## 7. Start direction to preserve/rebuild
+## 8. Start direction to preserve/rebuild
 
 The accepted visual/behavioral direction remains:
 - Alpine/weather hero
@@ -219,7 +257,7 @@ The accepted visual/behavioral direction remains:
 
 Do not fake missing backend data.
 
-## 8. Development rules
+## 9. Development rules
 
 1. Read spec + roadmap before work.
 2. One roadmap block at a time.
@@ -230,10 +268,10 @@ Do not fake missing backend data.
 7. Green approved blocks merge to `main` without repeated repository confirmation.
 8. Update status/roadmap/handover after merged work.
 9. No new monkey-patches, Prototype overrides, version-polish layers, duplicate implementations or permanent legacy shims.
-10. OnePlus/Fully screenshot testing remains required at major UI milestones.
+10. OnePlus/Fully screenshot testing remains required at major UI milestones; Block 6 itself is infrastructure and does not claim screenshot acceptance.
 
-## 9. Next action
+## 10. Next action
 
-Create and review the detailed implementation plan for **Block 6 – Design system and base components**.
+Create and review the detailed implementation plan for **Block 7 – Icon library and asset registry**.
 
-Block 6 must establish the shared visual language (tokens and base primitives) without starting Block 7 icons or Block 8 Start-layout implementation.
+Block 7 should create one local SVG/currentColor icon system and stable asset IDs. Do not pull forward Block 8 Start layout or domain/provider work.
