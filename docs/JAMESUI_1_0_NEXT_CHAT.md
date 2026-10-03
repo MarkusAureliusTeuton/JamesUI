@@ -1,6 +1,6 @@
 # JamesUI 1.0 – Next Chat / New ChatGPT Project Handover
 
-_Date: 2026-10-02_
+_Date: 2026-10-03_
 
 Use this document to start a fresh JamesUI conversation without relying on old chat history.
 
@@ -23,7 +23,8 @@ The repository is the source of truth.
 7. `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-3-capability-action-registries.md`
 8. `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-4-home-assistant-adapter.md`
 9. `docs/superpowers/plans/2026-10-02-jamesui-1.0-block-5-config-store-migrations.md`
-10. inspect current files only as required by the active block
+10. `docs/superpowers/plans/2026-10-03-jamesui-1.0-block-6-design-system.md`
+11. inspect current files only as required by the active block
 
 ## Binding direction
 
@@ -46,22 +47,23 @@ Completed and merged:
 - Block 3 – Capability/Action registries ✅ PR #15
 - Block 4 – Home Assistant Adapter ✅ PR #16
 - Block 5 – Versioned Config Store + migrations ✅ PR #17
+- Block 6 – Design System + base components ✅ PR #18
 
-Block 5 merge commit:
-`1882bd85a4918a80a487d6044f1a6baf25b06fc9`
+Block 6 merge commit:
+`869a8b28e34750479b5d458d5c498c335b472002`
 
 Validation:
-- branch #253 success
-- main #254 success
+- Block 6 branch #269 success
+- Block 6 main #270 success
 
-**Next formal gate: detailed implementation plan for Block 6 – Design system and base components.**
+**Next formal gate: detailed implementation plan for Block 7 – Icon library and asset registry.**
 
-Block 6 product code has not started.
+Block 7 product code has not started.
 
 ## Current JamesUI 1.0 platform
 
 ### Core
-`custom_components/jamesui/frontend/core/` now provides:
+`custom_components/jamesui/frontend/core/` provides:
 - canonical routes `home | house | climate | media | door`
 - persistent `Start | Haus | Klima | Medien | Tür` navigation
 - structural shell
@@ -74,6 +76,7 @@ Block 6 product code has not started.
 - Action Registry
 - read-only Home Assistant Adapter reference
 - read-only Config Service reference
+- internally composed root-scoped Design System
 
 ### Module contract
 Initial module types:
@@ -93,10 +96,10 @@ Lifecycle:
 - `update(nextContext, nextConfig)`
 - `destroy()`
 
-Module context:
+Module context after Block 6 remains:
 - layout/widget: `events`, `overlays`, `capabilities`, `actions`, `module`
 - provider/action: same five + `homeAssistant`
-- Config Service is intentionally **not** in module context
+- Config Service and Design System are intentionally **not** in module context
 - module config is passed via lifecycle config arguments
 - raw `hass`, Router, Health, Module Registry/Loader remain absent
 
@@ -129,9 +132,9 @@ Provider/action modules may receive the adapter. Layouts/widgets never do.
 
 Disconnected/unavailable states expose no stale cached entity values.
 
-## Block 5 result to preserve
+## Structured configuration result to preserve
 
-Canonical persistence is now one versioned Home Assistant Store:
+Canonical persistence is one versioned Home Assistant Store:
 - key `jamesui.config`
 - schema version `1`
 - atomic writes
@@ -149,35 +152,52 @@ Schema:
 }
 ```
 
-Behavior:
-- strict schema/container validation
-- JSON-safe nested values
-- transactional writes
-- serialized update transforms
-- failed validation/store write leaves current config unchanged
-- explicit future schema migration framework
-- unsupported/newer versions do not silently downgrade
+Temporary r11 config compatibility remains until Block 20/21, backed by the same Store. Frontend `core.config` uses the Home Assistant Adapter only. Local display calibration stays browser-local.
 
-All 15 retained r11 config values migrate deterministically into structured `data_sources` / `module_settings`.
+## Block 6 result to preserve
 
-On initialization:
-- existing structured Store wins over stale legacy options
-- known legacy option keys are removed only after successful Store initialization
-- unrelated config-entry options are preserved
+New design boundary:
+`custom_components/jamesui/frontend/design/`
 
-Temporary r11 compatibility until Block 20/21:
-- `jamesui/config`
-- `jamesui/config/update`
+### Tokens
+`tokens.js` exports one frozen 62-token `--jui-*` contract covering:
+- near-black/anthracite canvas and surfaces
+- restrained champagne accent
+- primary/secondary/muted/status colors
+- system typography scale/weights
+- spacing 1–9
+- radii
+- blur
+- shadows/highlights
+- shared motion/easing
+- icon sizes `sm | md | lg | xl | hero`
 
-These project/patch the same Store, not a second persistence copy.
+### Design runtime
+`design-system.js` mounts one local style element below `[data-jui-design-root]`.
+- no global Home Assistant CSS mutation
+- same-root mount is idempotent
+- moving/destroying cleans old style/marker
+- reduced-motion collapses shared duration tokens to `0ms`
 
-Structured API:
-- `jamesui/config/get`
-- `jamesui/config/replace`
+### Base primitives
+`primitives.js` provides:
+- surfaces: `default | raised | glass`
+- buttons: `default | ghost | accent`
+- button sizes: `sm | md | lg`
+- overlay presentation frame
+- accessible dialog frame/title/body/actions
 
-Frontend `core.config` uses the Home Assistant Adapter only.
+Core navigation now uses the shared ghost-button primitive while keeping the same route behavior.
 
-Local display calibration stays in browser-local `jamesui-display-calibration` and is not shared/migrated.
+### Architecture constraints after Block 6
+- no raw application palette values outside central tokens in the new design boundary
+- no `!important`
+- no asset URLs/data-image/inline-SVG hacks in the Design System
+- no direct HA access in `frontend/design/`
+- Design System is not in module context
+- Block 6 added no icon library and no final Start layout
+
+Implementation note: one old r11 rain-time test contained a hard-coded date and expired on 2026-10-03. Only the test fixture was made relative to the current local day; no r11 product source changed.
 
 ## r11 / cutover status
 
@@ -187,36 +207,35 @@ r11 is **still the running production/reference frontend**.
 
 Do not cut over before Blocks 19–20.
 
-## Block 6 boundary
+## Block 7 boundary
 
-Block 6 – **Design system and base components** should establish one shared visual language for all upcoming new UI.
+Block 7 – **Icon library and asset registry** establishes one local reusable SVG icon system for all future new UI.
 
-Roadmap scope:
-- colors
-- typography
-- spacing
-- radii
-- borders/highlights
-- shadows/blur
-- motion tokens
-- icon-size tokens
-- common surface primitives
-- common button primitives
-- common overlay/dialog primitives
+Roadmap intent:
+- local SVG asset structure
+- stable icon IDs / registry
+- consistent line weight and `currentColor`
+- initial navigation icons
+- weather icons
+- house/control icons
+- moon-phase icons
+- asset/registry validation tests
 
 Important boundaries:
-- no Block-7 icon registry/assets yet
-- no Block-8 Start layout implementation yet
-- no weather/calendar/house domain logic
+- use the Block-6 icon-size tokens and design primitives where useful
+- normal new controls should not rely on Unicode glyphs
+- do not duplicate inline SVG fragments across widgets
+- all icons/assets must be local/offline
+- no Block-8 Start layout yet
+- no weather/calendar/house provider implementation yet
 - no production cutover
-- no new visual constants scattered into modules
-- use the approved Alpine-Chic direction and OnePlus Pad 2 portrait as the target, but Block 6 should build reusable primitives rather than the final Start screen
 
-Before any Block-6 product code:
-1. inspect current spec/roadmap and relevant r11 visual reference
-2. create the detailed Block-6 implementation plan
-3. review it for completeness and boundary violations
-4. wait for user approval
+Before any Block-7 product code:
+1. inspect the approved architecture spec, roadmap and Block-6 design interfaces
+2. inspect retained/current icon references only to decide what concepts need stable IDs; do not copy the old mixed implementation blindly
+3. create the detailed Block-7 implementation plan
+4. review it for asset ownership, registry behavior, accessibility/themeability and architecture boundaries
+5. wait for user approval
 
 ## Start page direction to preserve for later blocks
 
@@ -259,13 +278,13 @@ Bitte arbeite nicht aus Erinnerung, sondern lies zuerst:
 3. docs/JAMESUI_1_0_EXECUTION_ROADMAP.md
 4. docs/JAMESUI_1_0_BASELINE.md
 5. docs/JAMESUI_1_0_NEXT_CHAT.md
-6. die vorhandenen Block-Pläne 1 bis 5
+6. die vorhandenen Block-Pläne 1 bis 6
 
-Variante B ist verbindlich. Blocks 0 bis 5 sind abgeschlossen, grün und auf main. r11 läuft weiterhin produktiv; der neue Core ist noch nicht in den Panel-Bootstrap geschaltet.
+Variante B ist verbindlich. Blocks 0 bis 6 sind abgeschlossen, grün und auf main. r11 läuft weiterhin produktiv; der neue Core ist noch nicht in den Panel-Bootstrap geschaltet.
 
-Nächster Gate: Erstelle den detaillierten Implementierungsplan für Block 6 – Design system and base components. Noch keinen Block-6-Produktcode schreiben, bevor der Plan geprüft und freigegeben ist.
+Nächster Gate: Erstelle den detaillierten Implementierungsplan für Block 7 – Icon library and asset registry. Noch keinen Block-7-Produktcode schreiben, bevor der Plan geprüft und freigegeben ist.
 
-Block 6 soll die wiederverwendbaren Design-Tokens und Basisprimitives für JamesUI 1.0 definieren. Noch keine Block-7-Iconbibliothek, keine Block-8-Startseite, keine Domain-Provider und kein Cutover vorziehen.
+Block 7 soll ein lokales, stabiles SVG/currentColor-Iconsystem mit Registry und validierten Asset-IDs aufbauen. Nutze den neuen Block-6-Design-Unterbau, ziehe aber weder Block 8 Start-Layout noch Domain-Provider oder Cutover vor.
 
 Wichtig: Deutsch, kurz und technisch sauber. Repository direkt bearbeiten, wenn GitHub-Zugriff vorhanden ist. TDD für Verhaltensänderungen; absichtlich rote Tests niemals nach main. Keine neuen Monkey-Patches, Prototype-Overrides, Versions-Polish-Dateien, parallelen Implementierungen oder dauerhaften Legacy-Krücken. OnePlus Pad 2 Hochformat ist das primäre Ziel; Fully ist nur die Kiosk-Hülle.
 ```
