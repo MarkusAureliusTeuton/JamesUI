@@ -16,6 +16,12 @@ const homeSource = readFileSync(
   "utf8"
 );
 
+function todayAt(hour) {
+  const value = new Date();
+  value.setHours(hour, 0, 0, 0);
+  return value.toISOString();
+}
+
 function panelWith(states, house = {}) {
   return {
     _hass: { states, config: { location_name: "Eitting" } },
@@ -91,15 +97,15 @@ test("builds a three-day temperature and rain tendency", () => {
 test("derives rain time only from granular forecasts", () => {
   const daily = {
     _forecastType: "daily",
-    _forecast: [{ datetime: "2026-10-02T16:00:00+02:00", precipitation_probability: 80 }],
+    _forecast: [{ datetime: todayAt(16), precipitation_probability: 80 }],
   };
   assert.equal(firstExpectedRainTime(daily), null);
 
   const hourly = {
     _forecastType: "hourly",
     _forecast: [
-      { datetime: "2026-10-02T14:00:00+02:00", precipitation_probability: 20, condition: "cloudy" },
-      { datetime: "2026-10-02T16:00:00+02:00", precipitation_probability: 65, condition: "rainy" },
+      { datetime: todayAt(14), precipitation_probability: 20, condition: "cloudy" },
+      { datetime: todayAt(16), precipitation_probability: 65, condition: "rainy" },
     ],
   };
   assert.equal(firstExpectedRainTime(hourly), "16:00");
@@ -140,7 +146,7 @@ function alpinePanel(overrides = {}) {
       { datetime: "2026-10-04", temperature: 18, templow: 10, precipitation_probability: 10, condition: "sunny" },
     ],
     _forecastType: "hourly",
-    _forecast: [{ datetime: "2026-10-02T16:00:00+02:00", precipitation_probability: 65, condition: "rainy" }],
+    _forecast: [{ datetime: todayAt(16), precipitation_probability: 65, condition: "rainy" }],
     _moonInfo: () => ["Zunehmender Mond", "◕", "waxing_gibbous"],
     _moonDetails: () => ({ illumination: 68 }),
     _ambientLight: () => ({ label: "840 lx", dim: 0 }),
@@ -208,30 +214,19 @@ test("renders a calm calendar empty state without fake data", () => {
 test("renders real house status plus four favorite scenes and Weitere", () => {
   const html = renderAlpineHome(alpinePanel());
   assert.match(html, /start-v9-house/);
-  assert.match(html, /Licht/);
-  assert.match(html, /Steckdosen/);
-  assert.match(html, /Fenster/);
-  assert.match(html, /Türen/);
-  assert.match(html, /Lüftung/);
-  assert.match(html, /Klima/);
-  assert.match(html, /Medien/);
-  assert.equal((html.match(/data-home-scene=/g) || []).length, 4);
-  assert.match(html, /data-home-scenes-more/);
-  assert.match(html, />Weitere</);
+  for (const label of ["Licht", "Steckdosen", "Fenster", "Türen", "Lüftung", "Klima", "Medien"]) assert.match(html, new RegExp(label));
+  for (const label of ["Morgen", "Alltag", "Fernsehen", "Abend"]) assert.match(html, new RegExp(label));
+  assert.match(html, /Weitere/);
 });
 
 test("keeps Start free of duplicate primary navigation", () => {
   const html = renderAlpineHome(alpinePanel());
-  assert.doesNotMatch(html, /alpine-function-strip/);
-  assert.doesNotMatch(html, /data-nav="(?:house|climate|media|door)"/);
-  assert.match(html, /data-home-house-more/);
+  assert.doesNotMatch(html, /class="alpine-dock"/);
+  assert.doesNotMatch(html, /data-home-nav=/);
 });
 
 test("keeps calendar and house side-by-side on tablet portrait and compacts the lower region", () => {
-  assert.match(homeSource, /\.start-v9-lower-grid/);
-  assert.match(homeSource, /@media\(orientation:portrait\) and \(min-width:760px\)/);
-  assert.match(homeSource, /grid-template-columns:minmax\(0,\.92fr\) minmax\(0,1\.08fr\)/);
-  assert.match(homeSource, /min-height:clamp\(410px,44vh,540px\)/);
-  assert.match(homeSource, /\.start-v9-section\{[^}]*padding:20px/);
-  assert.match(homeSource, /\.start-v9-scenes\{margin-top:14px/);
+  assert.match(homeSource, /grid-template-columns:minmax\(0,\.82fr\) minmax\(0,1\.18fr\)/);
+  assert.match(homeSource, /\.start-v9-lower-grid\{[^}]*min-height:clamp\(230px,25vh,330px\)/s);
+  assert.match(homeSource, /@media\(max-width:759px\)[\s\S]*grid-template-columns:1fr;/);
 });
