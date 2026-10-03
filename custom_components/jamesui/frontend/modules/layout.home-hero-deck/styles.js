@@ -2,7 +2,7 @@ export const HOME_HERO_DECK_STYLES = `
 [data-jui-layout="home-hero-deck"] {
   container-type: inline-size;
   display: grid;
-  grid-template-rows: var(--jui-home-hero-ratio) minmax(0, 1fr);
+  grid-template-rows: var(--jui-home-hero-ratio) minmax(auto, 1fr);
   min-height: 100%;
   height: 100%;
   min-width: 0;
@@ -19,7 +19,6 @@ export const HOME_HERO_DECK_STYLES = `
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: var(--jui-space-6);
   min-width: 0;
-  min-height: 0;
   margin-top: calc(var(--jui-space-6) * -1);
   padding: var(--jui-space-6);
   border-top: 1px solid var(--jui-color-border-strong);
@@ -32,20 +31,17 @@ export const HOME_HERO_DECK_STYLES = `
 
 [data-jui-layout="home-hero-deck"] [data-jui-layout-region="left"] {
   min-width: 0;
-  min-height: 0;
 }
 
 [data-jui-layout="home-hero-deck"] [data-jui-layout-region="right"] {
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: minmax(auto, 1fr) auto;
   gap: var(--jui-space-4);
   min-width: 0;
-  min-height: 0;
 }
 
 [data-jui-layout="home-hero-deck"] [data-jui-layout-slot] {
   min-width: 0;
-  min-height: 0;
 }
 
 @container (max-width: 44rem) {
@@ -54,7 +50,7 @@ export const HOME_HERO_DECK_STYLES = `
   }
 
   [data-jui-layout="home-hero-deck"] [data-jui-layout-region="right"] {
-    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-rows: minmax(auto, 1fr) auto;
   }
 }
 `;
