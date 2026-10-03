@@ -1,3 +1,5 @@
+import { ICON_DEFINITIONS } from "./icon-definitions.js";
+
 export const ICON_ID_PATTERN = /^(nav|shell|weather|home|moon)\.[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 const ALLOWED_ATTRIBUTES = Object.freeze({
@@ -113,3 +115,8 @@ export function createIconRegistry(definitions) {
     },
   });
 }
+
+export const ICON_REGISTRY = createIconRegistry(ICON_DEFINITIONS);
+export const hasIcon = (id) => ICON_REGISTRY.hasIcon(id);
+export const getIconDefinition = (id) => ICON_REGISTRY.getIconDefinition(id);
+export const listIconIds = () => ICON_REGISTRY.listIconIds();
