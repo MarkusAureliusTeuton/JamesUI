@@ -18,8 +18,9 @@ Default branch: `main`
 4. `docs/JAMESUI_1_0_BASELINE.md`
 5. `docs/JAMESUI_1_0_NEXT_CHAT.md`
 6. `docs/superpowers/specs/2026-10-03-jamesui-1.0-block-7-icon-asset-system-design.md`
-7. `docs/superpowers/plans/2026-10-03-jamesui-1.0-block-7-icon-asset-system.md`
-8. inspect only files relevant to the active block
+7. `docs/superpowers/specs/2026-10-03-jamesui-1.0-block-8-home-hero-deck-design.md`
+8. `docs/superpowers/plans/2026-10-03-jamesui-1.0-block-8-home-hero-deck.md`
+9. inspect only files relevant to the active block
 
 ## Binding direction
 
@@ -43,16 +44,18 @@ Completed and merged:
 - Block 5 – Versioned Config Store + migrations ✅ PR #17
 - Block 6 – Design System + base components ✅ PR #18
 - Block 7 – Icon Library + Asset Registry ✅ PR #19
+- Block 8 – `layout.home-hero-deck` ✅ PR #20
 
-Block 7 merge commit:
-`3b1142d9d0491605775f998c1dfe2b39f9791d63`
+Block 8 merge commit:
+`e13d8e386ee3bbbc5d86bd88c068315018fc4647`
 
 Validation:
-- Block 7 branch #285 success
-- Block 7 main #286 success
-- Whole-branch review: no open Critical/Important findings
+- Block 8 final branch #301 success
+- Block 8 main #302 success
+- Whole-branch review found one Important content-growth issue; RED #300 captured it and the final fix is green
+- no open Critical/Important findings
 
-**Next formal gate: Block 8 – `layout.home-hero-deck`.** Block 8 product code has not started.
+**Next formal gate: Block 9 – Weather provider.** Block 9 product code has not started.
 
 ## Current platform
 
@@ -84,55 +87,78 @@ One canonical Home Assistant `.storage` Store:
 - semantic icon sizes `sm | md | lg | xl | hero`
 - root-scoped styling only
 
-### Block 7 icon system
+### Icon system
 `frontend/icons/` owns one local immutable semantic registry.
 
 Contract:
 - exact initial 40 IDs across `nav.*`, `shell.*`, `weather.*`, `home.*`, `moon.*`
-- Tabler Icons v3.48.0 pinned source/style baseline for standard icons
+- Tabler Icons v3.48.0 pinned source/style baseline
 - checked-in MIT attribution
 - JamesUI-specific weather/shutter/moon icons use the same 24×24 / 2.0 px / `currentColor` contract
 - SVG creation only through `createElementNS()`
 - no runtime Tabler/npm/CDN/fetch/icon-font/SVG-string/XML-parser dependency
-- decorative by default; labelled standalone icons supported
-- unknown/malformed IDs fail with no fallback glyph
-
-Core navigation now uses:
-`nav.start`, `nav.house`, `nav.climate`, `nav.media`, `nav.door`.
+- Core navigation uses `nav.start`, `nav.house`, `nav.climate`, `nav.media`, `nav.door`
 
 Implementation ruling: `home.ventilation` uses Tabler `propeller`; the originally planned `fan` source name does not exist in v3.48.0.
 
-Existing `assets/weather/*.svg` are large weather/background illustrations, not the new icon family, and remain untouched.
+### Block 8 layout
+Boundary:
+`frontend/modules/layout.home-hero-deck/`
+
+Contract:
+- manifest ID `layout.home-hero-deck`, type `layout`, version `1.0.0`
+- no dependencies or required/provided capabilities
+- exact stable slots:
+  - `hero`
+  - `widget-left`
+  - `widget-right-main`
+  - `widget-right-footer`
+- `getSlot()` and frozen `listSlots()`
+- slot identity and children survive `update()`
+- optional strict `hero_ratio`; default `0.42`, range `0.35–0.50`
+- invalid updates are atomic
+- DOM uses `target.ownerDocument`; no module-context expansion
+- one continuous lower deck surface
+- two-column primary deck; right-main + right-footer stack
+- CSS-only `44rem` container fallback
+- lower content can grow the deck/scroll area when future widgets are taller than the initial viewport
+- shared Block-6 tokens only
+- real Registry/Loader load/mount/update/reload/destroy compatibility tested
+- no HA/config/domain/widget logic and no Core Start markup
 
 ## r11 / cutover status
 
 r11 is **still the running production/reference frontend**.
 
-`jamesui-entry.js` still loads the old panel/start bridge. The new Core/Design/Icon runtime is not wired into production. Do not cut over before Blocks 19–20.
+`jamesui-entry.js` still loads the old panel/start bridge. The new Core/Design/Icon/Layout runtime is not wired into production. Do not cut over before Blocks 19–20.
 
-## Block 8 boundary
+## Block 9 boundary
 
-Block 8 is **`layout.home-hero-deck`**.
+Block 9 is **Weather provider**.
 
-Known foundation contract:
-- layout only; no Home Assistant/business logic
-- intended slots:
-  - `hero`
-  - `widget-left`
-  - `widget-right-main`
-  - `widget-right-footer`
-- later assignment will be Weather Today / Calendar Agenda / House Quick / Dynamic Buttons, but those later widgets/providers are not implemented in Block 8
-- preserve the accepted Start composition: Alpine/weather hero above one intentional lower deck extending to persistent bottom navigation
-- OnePlus Pad 2 portrait is the primary target
+Roadmap goal:
+- normalized `weather.current`
+- normalized `weather.daily`
+- optional normalized `weather.hourly`
+- sun information
+- moon information
+- atmosphere/background-selection inputs
+- provider owns Home Assistant discovery/subscriptions/normalization
+- all direct HA interaction goes through the existing Home Assistant Adapter
+- explicit unavailable/not-configured behavior; never fabricate weather data
 
-Before Block-8 product code:
-1. read current status/foundation/roadmap
-2. inspect relevant Core/Design/Icon/layout infrastructure only
-3. complete the required Block-8 design/planning stage
-4. get user approval
-5. implement on an isolated branch with TDD
+Reusable behavior candidates from the baseline include configured weather source preference, daily forecast normalization, sun-period logic, first-rain-time only from genuinely granular data, and moon details where appropriate. Re-evaluate old heuristics rather than copying legacy panel code.
 
-Do not pull forward Block 9+ weather/provider/widget/domain logic.
+Block 9 must **not** implement the Weather Today visual widget or forecast overlay; those are Block 10. It also must not compose Start, implement Calendar/House/Dynamic Buttons, or cut over production.
+
+Before Block-9 product code:
+1. read current status/foundation/roadmap/baseline
+2. inspect current HA Adapter, Capability Registry, module contracts and only relevant legacy weather logic as evidence
+3. brainstorm and write the Block-9 architectural spec
+4. get user spec approval
+5. write the detailed implementation plan
+6. get user plan approval
+7. implement on an isolated branch with TDD
 
 ## Working preferences
 
@@ -153,11 +179,11 @@ Do not pull forward Block 9+ weather/provider/widget/domain logic.
 ```text
 Wir setzen mein Projekt JamesUI aus dem Repository MarkusAureliusTeuton/JamesUI fort.
 
-Bitte arbeite nicht aus Erinnerung, sondern lies zuerst PROJECT_STATUS.md, die Foundation-Spec, die Execution Roadmap, die Baseline und JAMESUI_1_0_NEXT_CHAT.md. Lies außerdem die Block-7-Icon-Spec und den Block-7-Plan, damit die neue visuelle Infrastruktur klar ist.
+Bitte arbeite nicht aus Erinnerung, sondern lies zuerst PROJECT_STATUS.md, die Foundation-Spec, die Execution Roadmap, die Baseline und JAMESUI_1_0_NEXT_CHAT.md. Lies für den aktuellen Plattformstand außerdem die Block-8-Spec und den Block-8-Plan.
 
-Variante B ist verbindlich. Blocks 0 bis 7 sind abgeschlossen, reviewed, grün und auf main. r11 läuft weiterhin produktiv; der neue Core ist noch nicht in den Panel-Bootstrap geschaltet.
+Variante B ist verbindlich. Blocks 0 bis 8 sind abgeschlossen, reviewed, grün und auf main. r11 läuft weiterhin produktiv; der neue Core ist noch nicht in den Panel-Bootstrap geschaltet.
 
-Nächster Gate: Block 8 – layout.home-hero-deck. Beginne mit der vorgesehenen Design-/Planungsstufe und schreibe noch keinen Block-8-Produktcode vor meiner Freigabe. Block 8 ist nur das wiederverwendbare Start-Layout; keine Weather/Calendar/House Provider oder Widgets, keine Dynamic Buttons und kein Cutover vorziehen.
+Nächster Gate: Block 9 – Weather provider. Beginne mit der vorgesehenen Architektur-/Designstufe und schreibe noch keinen Block-9-Produktcode vor meiner Freigabe. Block 9 normalisiert Weather/Sun/Moon/Atmosphere hinter Capability Registry und HA Adapter; Weather Today UI und Forecast Overlay gehören erst zu Block 10.
 
 Wichtig: Deutsch, kurz und technisch sauber. Repository direkt bearbeiten, wenn GitHub-Zugriff vorhanden ist. TDD für Verhaltensänderungen; absichtlich rote Tests niemals nach main. Keine Monkey-Patches, Prototype-Overrides, Versions-Polish-Dateien, parallelen Implementierungen oder dauerhaften Legacy-Krücken. OnePlus Pad 2 Hochformat ist das primäre Ziel; Fully ist nur die Kiosk-Hülle.
 ```
