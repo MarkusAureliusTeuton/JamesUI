@@ -11,9 +11,9 @@ test("defines one root-scoped token-driven hero/deck stylesheet", () => {
   assert.equal(typeof HOME_HERO_DECK_STYLES, "string");
   assert.match(HOME_HERO_DECK_STYLES, /\[data-jui-layout="home-hero-deck"\]\s*\{/);
   assert.match(HOME_HERO_DECK_STYLES, /container-type:\s*inline-size/);
-  assert.match(HOME_HERO_DECK_STYLES, /grid-template-rows:\s*var\(--jui-home-hero-ratio\)/);
+  assert.match(HOME_HERO_DECK_STYLES, /grid-template-rows:\s*var\(--jui-home-hero-ratio\)\s+minmax\(auto,\s*1fr\)/);
   assert.match(HOME_HERO_DECK_STYLES, /\[data-jui-layout-region="deck"\][^{]*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+minmax\(0,\s*1fr\)/s);
-  assert.match(HOME_HERO_DECK_STYLES, /\[data-jui-layout-region="right"\][^{]*\{[^}]*grid-template-rows:\s*minmax\(0,\s*1fr\)\s+auto/s);
+  assert.match(HOME_HERO_DECK_STYLES, /\[data-jui-layout-region="right"\][^{]*\{[^}]*grid-template-rows:\s*minmax\(auto,\s*1fr\)\s+auto/s);
   assert.match(HOME_HERO_DECK_STYLES, /@container\s*\(max-width:\s*44rem\)/);
   assert.match(HOME_HERO_DECK_STYLES, /@container[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
 
