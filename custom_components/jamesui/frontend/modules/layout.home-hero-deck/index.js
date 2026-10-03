@@ -1,3 +1,5 @@
+import { HOME_HERO_DECK_STYLES } from "./styles.js";
+
 export const SLOT_NAMES = Object.freeze([
   "hero",
   "widget-left",
@@ -55,9 +57,12 @@ function createNode(document, attribute, value) {
 export function create(_context, config = {}) {
   let currentConfig = validateConfig(config);
   let root = null;
+  let styleNode = null;
   let slots = new Map();
 
   const destroy = () => {
+    if (styleNode?.parentNode) styleNode.parentNode.removeChild(styleNode);
+    styleNode = null;
     if (root?.parentNode) root.parentNode.removeChild(root);
     root = null;
     slots = new Map();
@@ -91,6 +96,12 @@ export function create(_context, config = {}) {
     deck.appendChild(right);
     root.appendChild(heroRegion);
     root.appendChild(deck);
+
+    styleNode = document.createElement("style");
+    styleNode.setAttribute("data-jui-layout-style", "home-hero-deck");
+    styleNode.textContent = HOME_HERO_DECK_STYLES;
+    root.appendChild(styleNode);
+
     target.appendChild(root);
     slots = nextSlots;
     return root;
