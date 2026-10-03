@@ -5,33 +5,48 @@ import { createRouter } from "../custom_components/jamesui/frontend/core/router.
 import { createOverlayService } from "../custom_components/jamesui/frontend/core/overlay-service.js";
 import { createHealthService } from "../custom_components/jamesui/frontend/core/health-service.js";
 import { createAppShell } from "../custom_components/jamesui/frontend/core/shell.js";
+import { createDesignSystem } from "../custom_components/jamesui/frontend/design/design-system.js";
 import { FakeElement, createFakeDocument } from "./helpers/fake-dom.js";
 
 function setup(options = {}) {
-  const document = createFakeDocument();
+  const document = options.document ?? createFakeDocument();
   const router = createRouter();
   const overlays = createOverlayService();
   const health = createHealthService();
+  const designSystem = options.designSystem ?? createDesignSystem({ document });
   const target = new FakeElement("main");
   const shell = createAppShell({
     document,
     router,
     overlays,
     health,
+    designSystem,
     getContext: () => ({ marker: "context" }),
-    ...options,
+    renderPage: options.renderPage,
   });
   shell.mount(target);
-  return { document, router, overlays, health, target, shell };
+  return { document, router, overlays, health, designSystem, target, shell };
 }
 
-test("mounts canonical persistent navigation and changes only page content", () => {
+test("mounts canonical persistent navigation through shared design primitives", () => {
   const { target } = setup();
+  const root = target.querySelector('[data-role="app-shell"]');
   const nav = target.querySelector('[data-role="bottom-navigation"]');
   const page = target.querySelector('[data-role="page-region"]');
   const buttons = nav.querySelectorAll("button");
-  assert.deepEqual(buttons.map((button) => [button.dataset.routeId, button.textContent]), [
-    ["home", "Start"], ["house", "Haus"], ["climate", "Klima"], ["media", "Medien"], ["door", "Tür"],
+  assert.equal(root.getAttribute("data-jui-design-root"), "");
+  assert.equal(root.querySelectorAll('style[data-jui-design-system="1"]').length, 1);
+  assert.deepEqual(buttons.map((button) => [
+    button.dataset.routeId,
+    button.textContent,
+    button.getAttribute("data-jui-button"),
+    button.getAttribute("data-jui-button-size"),
+  ]), [
+    ["home", "Start", "ghost", "md"],
+    ["house", "Haus", "ghost", "md"],
+    ["climate", "Klima", "ghost", "md"],
+    ["media", "Medien", "ghost", "md"],
+    ["door", "Tür", "ghost", "md"],
   ]);
   assert.equal(page.children[0].dataset.routeId, "home");
   assert.equal(buttons[0].getAttribute("aria-current"), "page");
@@ -81,4 +96,30 @@ test("overlay replacement and stale close never rebuild the shell", () => {
   overlays.close("second");
   assert.equal(overlayRoot.hidden, true);
   assert.equal(target.querySelector('[data-role="bottom-navigation"]'), nav);
+});
+
+test("shell cleanup destroys root-local design state and remounts exactly once", () => {
+  const { target, shell } = setup();
+  const firstRoot = target.querySelector('[data-role="app-shell"]');
+  shell.destroy();
+  assert.equal(firstRoot.getAttribute("data-jui-design-root"), null);
+  assert.equal(firstRoot.querySelectorAll('style[data-jui-design-system="1"]').length, 0);
+  assert.doesNotThrow(() => shell.destroy());
+
+  shell.mount(target);
+  const secondRoot = target.querySelector('[data-role="app-shell"]');
+  assert.notEqual(secondRoot, firstRoot);
+  assert.equal(secondRoot.getAttribute("data-jui-design-root"), "");
+  assert.equal(secondRoot.querySelectorAll('style[data-jui-design-system="1"]').length, 1);
+});
+
+test("shell requires an explicit Design System dependency", () => {
+  const document = createFakeDocument();
+  assert.throws(() => createAppShell({
+    document,
+    router: createRouter(),
+    overlays: createOverlayService(),
+    health: createHealthService(),
+    getContext: () => ({}),
+  }), /designSystem/);
 });
