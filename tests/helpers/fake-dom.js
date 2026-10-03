@@ -36,6 +36,13 @@ export class FakeElement {
     return child;
   }
 
+  prepend(child) {
+    if (child.parentNode) child.parentNode.removeChild(child);
+    this.children.unshift(child);
+    child.parentNode = this;
+    return child;
+  }
+
   removeChild(child) {
     const index = this.children.indexOf(child);
     if (index >= 0) {
