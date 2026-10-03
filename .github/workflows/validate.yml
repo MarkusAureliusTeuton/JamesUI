@@ -90,7 +90,8 @@ jobs:
       - name: Test JamesUI Block 7 icon system
         run: |
           node --experimental-default-type=module --test \
-            tests/jamesui-icon-registry.test.js
+            tests/jamesui-icon-registry.test.js \
+            tests/jamesui-icon.test.js
 
       - name: Validate Alpine atmosphere assets
         run: python -m unittest tests/test_alpine_assets.py
