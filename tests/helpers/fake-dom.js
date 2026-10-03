@@ -15,15 +15,32 @@ function matchesSelector(node, selector) {
   return String(actual) === expected;
 }
 
+class FakeStyle {
+  setProperty(name, value) {
+    this[name] = String(value);
+  }
+
+  getPropertyValue(name) {
+    return Object.prototype.hasOwnProperty.call(this, name) ? String(this[name]) : "";
+  }
+
+  removeProperty(name) {
+    const previous = this.getPropertyValue(name);
+    delete this[name];
+    return previous;
+  }
+}
+
 export class FakeElement {
-  constructor(tagName, namespaceURI = null) {
+  constructor(tagName, namespaceURI = null, ownerDocument = null) {
     this.tagName = tagName.toUpperCase();
     this.namespaceURI = namespaceURI;
+    this.ownerDocument = ownerDocument;
     this.children = [];
     this.parentNode = null;
     this.attributes = new Map();
     this.dataset = {};
-    this.style = {};
+    this.style = new FakeStyle();
     this.textContent = "";
     this.hidden = false;
     this.listeners = new Map();
@@ -104,8 +121,8 @@ export class FakeElement {
 }
 
 export function createFakeDocument() {
-  return {
-    createElement: (tagName) => new FakeElement(tagName),
-    createElementNS: (namespaceURI, tagName) => new FakeElement(tagName, namespaceURI),
-  };
+  const document = {};
+  document.createElement = (tagName) => new FakeElement(tagName, null, document);
+  document.createElementNS = (namespaceURI, tagName) => new FakeElement(tagName, namespaceURI, document);
+  return document;
 }
