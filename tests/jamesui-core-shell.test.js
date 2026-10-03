@@ -8,6 +8,14 @@ import { createAppShell } from "../custom_components/jamesui/frontend/core/shell
 import { createDesignSystem } from "../custom_components/jamesui/frontend/design/design-system.js";
 import { FakeElement, createFakeDocument } from "./helpers/fake-dom.js";
 
+const NAV_ICONS = Object.freeze({
+  home: "nav.start",
+  house: "nav.house",
+  climate: "nav.climate",
+  media: "nav.media",
+  door: "nav.door",
+});
+
 function setup(options = {}) {
   const document = options.document ?? createFakeDocument();
   const router = createRouter();
@@ -28,7 +36,7 @@ function setup(options = {}) {
   return { document, router, overlays, health, designSystem, target, shell };
 }
 
-test("mounts canonical persistent navigation through shared design primitives", () => {
+test("mounts canonical persistent navigation through shared design and icon primitives", () => {
   const { target } = setup();
   const root = target.querySelector('[data-role="app-shell"]');
   const nav = target.querySelector('[data-role="bottom-navigation"]');
@@ -48,6 +56,18 @@ test("mounts canonical persistent navigation through shared design primitives", 
     ["media", "Medien", "ghost", "md"],
     ["door", "Tür", "ghost", "md"],
   ]);
+
+  const icons = buttons.map((button) => {
+    const routeId = button.dataset.routeId;
+    const icon = button.querySelector(`svg[data-jui-icon="${NAV_ICONS[routeId]}"]`);
+    assert.ok(icon, routeId);
+    assert.equal(button.querySelectorAll("svg").length, 1, routeId);
+    assert.equal(icon.getAttribute("data-jui-icon-size"), "md", routeId);
+    assert.equal(icon.getAttribute("aria-hidden"), "true", routeId);
+    assert.equal(icon.getAttribute("role"), null, routeId);
+    return icon;
+  });
+
   assert.equal(page.children[0].dataset.routeId, "home");
   assert.equal(buttons[0].getAttribute("aria-current"), "page");
 
@@ -56,6 +76,7 @@ test("mounts canonical persistent navigation through shared design primitives", 
   assert.equal(target.querySelector('[data-role="bottom-navigation"]'), nav);
   assert.equal(buttons[0].getAttribute("aria-current"), null);
   assert.equal(buttons[1].getAttribute("aria-current"), "page");
+  buttons.forEach((button, index) => assert.equal(button.querySelector("svg"), icons[index]));
 });
 
 test("page renderer failures stay isolated and recover on another route", () => {
@@ -98,19 +119,29 @@ test("overlay replacement and stale close never rebuild the shell", () => {
   assert.equal(target.querySelector('[data-role="bottom-navigation"]'), nav);
 });
 
-test("shell cleanup destroys root-local design state and remounts exactly once", () => {
+test("shell cleanup destroys design and icon state and remounts one fresh navigation set", () => {
   const { target, shell } = setup();
   const firstRoot = target.querySelector('[data-role="app-shell"]');
+  const firstNav = target.querySelector('[data-role="bottom-navigation"]');
+  const firstIcons = firstNav.querySelectorAll("svg");
+  assert.equal(firstIcons.length, 5);
+
   shell.destroy();
   assert.equal(firstRoot.getAttribute("data-jui-design-root"), null);
   assert.equal(firstRoot.querySelectorAll('style[data-jui-design-system="1"]').length, 0);
+  assert.equal(target.querySelector('[data-role="bottom-navigation"]'), null);
   assert.doesNotThrow(() => shell.destroy());
 
   shell.mount(target);
   const secondRoot = target.querySelector('[data-role="app-shell"]');
+  const secondNav = target.querySelector('[data-role="bottom-navigation"]');
+  const secondIcons = secondNav.querySelectorAll("svg");
   assert.notEqual(secondRoot, firstRoot);
+  assert.notEqual(secondNav, firstNav);
   assert.equal(secondRoot.getAttribute("data-jui-design-root"), "");
   assert.equal(secondRoot.querySelectorAll('style[data-jui-design-system="1"]').length, 1);
+  assert.equal(secondIcons.length, 5);
+  secondIcons.forEach((icon, index) => assert.notEqual(icon, firstIcons[index]));
 });
 
 test("shell requires an explicit Design System dependency", () => {
