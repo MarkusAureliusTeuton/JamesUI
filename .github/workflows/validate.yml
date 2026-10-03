@@ -98,7 +98,8 @@ jobs:
           node --experimental-default-type=module --test \
             tests/jamesui-home-hero-deck-manifest.test.js \
             tests/jamesui-home-hero-deck.test.js \
-            tests/jamesui-home-hero-deck-styles.test.js
+            tests/jamesui-home-hero-deck-styles.test.js \
+            tests/jamesui-home-hero-deck-loader.test.js
 
       - name: Validate Alpine atmosphere assets
         run: python -m unittest tests/test_alpine_assets.py
