@@ -49,24 +49,35 @@ Only explicitly configured calendar/task sources are shown. No automatic inclusi
 
 ## Agenda presentation
 
-Two presentation modes must be supported by widget configuration:
+Three presentation modes must be supported by widget configuration:
 
 - `grouped` – grouped by day (`Heute`, `Morgen`, then date), with events and tasks within the day
-- `timeline` – one chronological agenda presentation
+- `timeline` – one chronological agenda presentation across the configured look-ahead window
+- `day` – one selected day at a time; horizontal touch swipe moves to the previous/next day while vertical touch scrolling remains available within the selected day when more rows exist than fit in the viewport
 
-The user can switch between these modes later in configuration. Provider contracts/data stay identical; only widget presentation changes.
+The user can switch between these modes later in configuration. Provider contracts/data stay identical; only widget presentation/navigation changes.
 
-### Visibility and look-ahead
+The `day` mode must keep gesture directions semantically distinct:
+
+- horizontal swipe = previous/next calendar day
+- vertical swipe/scroll = additional agenda entries within the currently selected day
+- switching days must not change row geometry or silently alter task-ordering rules
+- the selected day needs a clear but visually restrained date/day label so the user always knows which day is being viewed
+
+## Visibility and look-ahead
 
 Visible row count and source look-ahead are separate concerns:
 
 - `max_visible_items` controls how many fixed-height agenda rows fit in the widget viewport at once
-- calendar `lookahead_days` controls how far future calendar events are loaded/made available for scrolling
-- a configured calendar may later override the global calendar look-ahead value if that option is enabled
+- global calendar `lookahead_days` defaults to **30 days**
+- calendar `lookahead_days` controls how far future calendar events are loaded/made available for scrolling/day paging
+- a configured calendar may override the global calendar look-ahead value if that option is enabled
 - task lists do not need a practical look-ahead limit; tasks remain available independent of calendar look-ahead
 - for schema/config consistency, task sources may still expose `lookahead_days`, but its default and normal value is `0`
 - for `todo.*`, `lookahead_days = 0` means **no look-ahead restriction / not applicable**, never “show zero tasks”
 - task look-ahead controls should not clutter the normal configuration UI unless a future source genuinely requires them
+
+The 30-day calendar default applies consistently to `grouped`, `timeline` and `day` modes. Changing the presentation mode must not silently change provider query range.
 
 ### Row geometry and density
 
@@ -95,13 +106,15 @@ For each displayed day:
 - when later items for that day exist below the current visible portion, the timeline continues downward beyond the last visible point as a short dashed line rather than terminating with a point
 - this dashed continuation is a visual indication that more entries exist before/after within that day
 - separate up/down navigation arrows are therefore not required for normal agenda navigation
-- vertical touch scrolling/swiping is the primary navigation mechanism
+- vertical touch scrolling/swiping is the primary within-day navigation mechanism
+
+In `day` mode the dashed continuation continues to represent hidden entries within the current day; horizontal day navigation is conveyed by the swipe interaction rather than by adding permanent arrow controls.
 
 The continuation treatment must remain visually restrained and must not change row height or timeline alignment.
 
 ## Task ordering
 
-Task ordering is global across both `grouped` and `timeline` presentation modes.
+Task ordering is global across `grouped`, `timeline` and `day` presentation modes.
 
 Supported modes:
 
@@ -216,10 +229,11 @@ Future editing should use the provider/HA boundary rather than direct Home Assis
 
 - exact capability names/shapes for calendar and task providers
 - exact Home Assistant query/subscription strategy and refresh semantics
-- final calendar look-ahead default and allowed bounds
+- allowed bounds for calendar look-ahead around the confirmed 30-day default
 - whether calendar look-ahead can be overridden per calendar
 - exact visible-row default and bounds
 - precise visual dimensions/style of dashed timeline continuation cues
+- exact `day`-mode day-label/header treatment and swipe threshold/snap behavior
 - task detail-overlay fields beyond currently available source data
 - task-editing phase/block placement
 - reminder metadata feasibility and fallback strategy
