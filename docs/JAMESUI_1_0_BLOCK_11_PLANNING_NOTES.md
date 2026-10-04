@@ -74,13 +74,16 @@ Visible row count and source look-ahead are separate concerns:
 - `max_visible_items` controls how many fixed-height agenda rows fit in the widget viewport at once
 - global calendar `lookahead_days` defaults to **30 days**
 - calendar `lookahead_days` controls how far future calendar events are loaded/made available for scrolling/day paging
-- a configured calendar may override the global calendar look-ahead value if that option is enabled
+- every configured calendar inherits the global 30-day value by default
+- each configured calendar can optionally enable its own look-ahead override and then supply its own `lookahead_days` value
+- when the per-calendar override is disabled, the local value has no effect and the calendar follows the global value
+- the configuration UI must make this dependency clear: the local calendar look-ahead control remains disabled/greyed until the override is enabled
 - task lists do not need a practical look-ahead limit; tasks remain available independent of calendar look-ahead
 - for schema/config consistency, task sources may still expose `lookahead_days`, but its default and normal value is `0`
 - for `todo.*`, `lookahead_days = 0` means **no look-ahead restriction / not applicable**, never “show zero tasks”
 - task look-ahead controls should not clutter the normal configuration UI unless a future source genuinely requires them
 
-The 30-day calendar default applies consistently to `grouped`, `timeline` and `day` modes. Changing the presentation mode must not silently change provider query range.
+The global/default calendar look-ahead applies consistently to `grouped`, `timeline` and `day` modes. Changing the presentation mode must not silently change provider query range.
 
 ### Row geometry and density
 
@@ -233,7 +236,6 @@ Future editing should use the provider/HA boundary rather than direct Home Assis
 - exact capability names/shapes for calendar and task providers
 - exact Home Assistant query/subscription strategy and refresh semantics
 - allowed bounds for calendar look-ahead around the confirmed 30-day default
-- whether calendar look-ahead can be overridden per calendar
 - exact visible-row default and bounds
 - precise visual dimensions/style of dashed timeline continuation cues
 - exact `day`-mode swipe threshold/snap behavior
