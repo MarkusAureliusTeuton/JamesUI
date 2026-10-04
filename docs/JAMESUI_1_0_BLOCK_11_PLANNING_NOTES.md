@@ -54,7 +54,7 @@ Each widget instance has its own stable instance ID and its own configuration, i
 - whether calendar functionality is enabled
 - whether task functionality is enabled
 - presentation mode (`grouped`, `timeline`, `day`)
-- look-ahead presentation settings
+- look-ahead / lookback presentation settings
 - visible-row mode / item count
 - task ordering
 - all-day visibility
@@ -93,6 +93,7 @@ Provider data/contracts stay identical; presentation mode changes only widget re
 - other days: e.g. `Mo, 5. Oktober`
 - empty day: quiet state such as `Keine Termine oder Aufgaben`
 - changing days must not change row geometry or task-ordering rules
+- backwards day navigation is bounded by the per-instance `lookback_days` value
 
 ## Visibility and look-ahead
 
@@ -105,6 +106,17 @@ Calendar and widget density are separate concerns.
 - each configured calendar inherits the global value by default
 - each calendar may optionally enable its own `lookahead_days` override
 - local override field remains visible but disabled/greyed until override is enabled
+
+### Day-mode lookback
+
+Past-day navigation is a separate widget-instance concern from future calendar source look-ahead.
+
+- `lookback_days` default = **7** per Agenda widget instance
+- it defines how many local calendar days before today can be reached in `day` mode
+- `lookback_days = 0` means today is the earliest reachable day
+- horizontal previous-day navigation stops cleanly at the configured lower bound; it must not wrap or jump to another date
+- changing `lookback_days` does not change calendar future `lookahead_days`
+- exact allowed configuration bounds remain to be finalized in the formal spec
 
 ### Task look-ahead
 
@@ -357,6 +369,7 @@ This remains a high-priority unresolved design item.
 - exact capability names/shapes for calendar and task providers
 - exact Home Assistant calendar/todo query/subscription/refresh strategy
 - allowed bounds around the confirmed 30-day calendar default
+- allowed bounds around the confirmed 7-day `lookback_days` default
 - exact minimum usable Agenda host height in `auto` mode
 - exact dashed-continuation visual dimensions
 - exact `day` swipe threshold/snap behavior
