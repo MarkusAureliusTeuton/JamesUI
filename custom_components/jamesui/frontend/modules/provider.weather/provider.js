@@ -152,7 +152,7 @@ export function createWeatherProvider(initialContext, initialConfig, runtime) {
       cachedHourlyValue = null;
       handle("weather.hourly")?.unavailable("empty_data");
     } else {
-      const hourly = normalizeHourlyForecast({ sourceEntityId: selectedWeatherId, units, forecast: forecastPayloads.hourly });
+      const hourly = normalizeHourlyForecast({ sourceEntityId: selectedWeatherId, units, forecast: forecastPayloads.hourly, timeZone: cachedTimeZone });
       cachedHourlyValue = hourly.value;
       if (hourly.value) handle("weather.hourly")?.available(hourly.value);
       else handle("weather.hourly")?.unavailable(hourly.reason);
@@ -244,7 +244,7 @@ export function createWeatherProvider(initialContext, initialConfig, runtime) {
       return;
     }
 
-    const sunValue = normalizeSun(context.homeAssistant.getState("sun.sun"));
+    const sunValue = normalizeSun(context.homeAssistant.getState("sun.sun"), cachedTimeZone);
     if (sunValue) handle("weather.sun")?.available(sunValue);
     else handle("weather.sun")?.unavailable("sun_unavailable");
 
@@ -304,7 +304,7 @@ export function createWeatherProvider(initialContext, initialConfig, runtime) {
     const override = config.outdoor_temperature_entity_id
       ? context.homeAssistant.getState(config.outdoor_temperature_entity_id)
       : null;
-    currentBase = normalizeCurrentWeather({ weatherEntity: nextWeatherEntity, overrideEntity: override, nextPrecipitation: null });
+    currentBase = normalizeCurrentWeather({ weatherEntity: nextWeatherEntity, overrideEntity: override, nextPrecipitation: null, timeZone: cachedTimeZone });
     ensureForecastSubscriptions(nextWeatherEntity);
     publishCurrentFromCache();
     reconcileIndependentCapabilities(true);

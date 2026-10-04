@@ -35,6 +35,7 @@ test("normalizes complete sun value and malformed optional fields", () => {
   }));
   assert.deepEqual(value, {
     source_entity_id: "sun.sun",
+    time_zone: null,
     is_up: true,
     elevation: 8.5,
     azimuth: 210,

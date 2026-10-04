@@ -1,4 +1,4 @@
-import { deepFreeze, finiteOrNull, isoInstantOrNull } from "./normalize.js";
+import { deepFreeze, finiteOrNull, isoInstantOrNull, normalizeTimeZone } from "./normalize.js";
 
 export function sunPeriod(elevation, horizonState) {
   const numeric = finiteOrNull(elevation);
@@ -13,13 +13,14 @@ export function sunPeriod(elevation, horizonState) {
   return null;
 }
 
-export function normalizeSun(entity) {
+export function normalizeSun(entity, timeZone = null) {
   if (!entity || entity.entity_id !== "sun.sun" || entity.state === "unknown" || entity.state === "unavailable") return null;
   const attributes = entity.attributes ?? {};
   const elevation = finiteOrNull(attributes.elevation);
   const state = typeof entity.state === "string" ? entity.state : null;
   return deepFreeze({
     source_entity_id: "sun.sun",
+    time_zone: normalizeTimeZone(timeZone),
     is_up: state === "above_horizon" ? true : state === "below_horizon" ? false : null,
     elevation,
     azimuth: finiteOrNull(attributes.azimuth),

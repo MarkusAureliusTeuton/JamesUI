@@ -11,6 +11,7 @@ ICON_ROOT = FRONTEND_ROOT / "icons"
 MODULES_ROOT = FRONTEND_ROOT / "modules"
 HOME_HERO_DECK_ROOT = MODULES_ROOT / "layout.home-hero-deck"
 WEATHER_PROVIDER_ROOT = MODULES_ROOT / "provider.weather"
+WEATHER_TODAY_ROOT = MODULES_ROOT / "widget.weather-today"
 CORE_REQUIRED = {
     "routes.js",
     "router.js",
@@ -61,6 +62,17 @@ WEATHER_PROVIDER_REQUIRED = {
     "index.js",
     "ASTRONOMY_LICENSE.md",
 }
+WEATHER_TODAY_REQUIRED = {
+    "manifest.js",
+    "config.js",
+    "assets.js",
+    "format.js",
+    "model.js",
+    "overlay.js",
+    "styles.js",
+    "widget.js",
+    "index.js",
+}
 DIRECT_HA_TOKENS = (
     "hass.states",
     "hass.callService",
@@ -79,13 +91,23 @@ class CoreArchitectureTest(unittest.TestCase):
         icon_present = {path.name for path in ICON_ROOT.iterdir() if path.is_file()}
         home_hero_deck_present = {path.name for path in HOME_HERO_DECK_ROOT.iterdir() if path.is_file()}
         weather_provider_present = {path.name for path in WEATHER_PROVIDER_ROOT.iterdir() if path.is_file()}
+        weather_today_present = {path.name for path in WEATHER_TODAY_ROOT.iterdir() if path.is_file()}
         self.assertTrue(CORE_REQUIRED.issubset(core_present))
         self.assertTrue(HA_REQUIRED.issubset(ha_present))
         self.assertTrue(DESIGN_REQUIRED.issubset(design_present))
         self.assertEqual(icon_present, ICON_REQUIRED)
         self.assertEqual(home_hero_deck_present, HOME_HERO_DECK_REQUIRED)
         self.assertEqual(weather_provider_present, WEATHER_PROVIDER_REQUIRED)
-        for root in (CORE_ROOT, HA_ROOT, DESIGN_ROOT, ICON_ROOT, HOME_HERO_DECK_ROOT, WEATHER_PROVIDER_ROOT):
+        self.assertEqual(weather_today_present, WEATHER_TODAY_REQUIRED)
+        for root in (
+            CORE_ROOT,
+            HA_ROOT,
+            DESIGN_ROOT,
+            ICON_ROOT,
+            HOME_HERO_DECK_ROOT,
+            WEATHER_PROVIDER_ROOT,
+            WEATHER_TODAY_ROOT,
+        ):
             for path in root.rglob("*"):
                 if path.is_file():
                     self.assertNotRegex(str(path), r"(?:^|[-_/])v(?:9|10|11)(?:[-_.\\/]|$)")
@@ -117,7 +139,14 @@ class CoreArchitectureTest(unittest.TestCase):
 
     def test_new_runtime_direct_ha_access_is_confined_to_ha_boundary(self):
         # r11 remains production until cutover and intentionally still contains direct HA access.
-        new_runtime_non_ha_roots = (CORE_ROOT, DESIGN_ROOT, ICON_ROOT, HOME_HERO_DECK_ROOT, WEATHER_PROVIDER_ROOT)
+        new_runtime_non_ha_roots = (
+            CORE_ROOT,
+            DESIGN_ROOT,
+            ICON_ROOT,
+            HOME_HERO_DECK_ROOT,
+            WEATHER_PROVIDER_ROOT,
+            WEATHER_TODAY_ROOT,
+        )
         for root in new_runtime_non_ha_roots:
             for path in root.rglob("*.js"):
                 source = path.read_text(encoding="utf-8")
@@ -334,7 +363,73 @@ class CoreArchitectureTest(unittest.TestCase):
         self.assertIn("SunCalc v1.9.0", license_source)
         self.assertIn("BSD 2-Clause", license_source)
 
-    def test_production_entry_remains_on_legacy_runtime_during_block_9(self):
+    def test_block_10_weather_today_is_capability_only_local_and_legacy_free(self):
+        js_files = tuple(WEATHER_TODAY_ROOT.glob("*.js"))
+        source = "\n".join(path.read_text(encoding="utf-8") for path in js_files)
+        forbidden = (
+            "Panel.prototype",
+            "jamesui-panel",
+            "jamesui-v11",
+            "jamesui-home-entry",
+            "home-assistant-adapter",
+            "config-service",
+            "createConfigService",
+            "module-registry",
+            "module-loader",
+            "health-service",
+            "hass.",
+            "callService",
+            "callWS",
+            "fetch(",
+            "XMLHttpRequest",
+            "cdn.jsdelivr",
+            "unpkg",
+            "data:image",
+            "/assets/weather",
+            "calculateMoon",
+            "findNextPrecipitation",
+        )
+        for token in (*DIRECT_HA_TOKENS, *forbidden):
+            self.assertNotIn(token, source, f"Block 10 widget must not contain forbidden coupling: {token}")
+
+        assets = (WEATHER_TODAY_ROOT / "assets.js").read_text(encoding="utf-8")
+        self.assertIn('const ROOT = "/jamesui_static/assets/alpine/";', assets)
+        asset_files = set(re.findall(r"\$\{ROOT\}([^`]+\.webp)", assets))
+        self.assertEqual(asset_files, {
+            "clear-day.webp",
+            "cloudy-day.webp",
+            "rain-day.webp",
+            "snow-day.webp",
+            "fog.webp",
+            "dusk.webp",
+            "clear-night.webp",
+            "cloudy-night.webp",
+        })
+        self.assertIsNone(re.search(r"https?://|data:image", assets))
+
+        styles = (WEATHER_TODAY_ROOT / "styles.js").read_text(encoding="utf-8")
+        raw_palette = re.compile(r"#[0-9a-fA-F]{3,8}\b|rgba?\s*\(|hsla?\s*\(")
+        self.assertIsNone(raw_palette.search(styles), "Block 10 styles must use shared design tokens")
+        for token in ("!important", "html {", "body {", ":root", "url(", "data:image"):
+            self.assertNotIn(token, styles, f"Block 10 styles must remain scoped and local: {token}")
+
+        core_shell = (CORE_ROOT / "shell.js").read_text(encoding="utf-8")
+        for token in (
+            "widget.weather-today",
+            "conditionPresentation",
+            "/jamesui_static/assets/alpine/",
+            "clear-day.webp",
+            "cloudy-day.webp",
+            "rain-day.webp",
+        ):
+            self.assertNotIn(token, core_shell, f"Core shell must stay weather-neutral: {token}")
+
+        design_styles = (DESIGN_ROOT / "base-styles.js").read_text(encoding="utf-8")
+        self.assertIn("[data-jui-overlay]", design_styles)
+        self.assertIn("z-index: 100", design_styles)
+        self.assertNotIn("z-index: 100", styles)
+
+    def test_production_entry_remains_on_legacy_runtime_during_block_10(self):
         source = Path("custom_components/jamesui/frontend/jamesui-entry.js").read_text(encoding="utf-8")
         self.assertIn("jamesui-panel.js", source)
         self.assertIn("jamesui-home-entry.js", source)
@@ -345,6 +440,7 @@ class CoreArchitectureTest(unittest.TestCase):
         self.assertNotIn("frontend/modules", source)
         self.assertNotIn("layout.home-hero-deck", source)
         self.assertNotIn("provider.weather", source)
+        self.assertNotIn("widget.weather-today", source)
         self.assertNotRegex(source, r"(?:^|[\"'/])core/index\.js")
         self.assertNotIn("module-loader", source)
         self.assertNotIn("module-registry", source)

@@ -33,6 +33,7 @@ class FakeStyle {
 
 export class FakeElement {
   constructor(tagName, namespaceURI = null, ownerDocument = null) {
+    this.nodeType = 1;
     this.tagName = tagName.toUpperCase();
     this.namespaceURI = namespaceURI;
     this.ownerDocument = ownerDocument;

@@ -1,4 +1,4 @@
-import { deepFreeze, finiteOrNull, isoInstantOrNull, percentOrNull } from "./normalize.js";
+import { deepFreeze, finiteOrNull, isoInstantOrNull, normalizeTimeZone, percentOrNull } from "./normalize.js";
 
 export const FORECAST_FEATURE_DAILY = 1;
 export const FORECAST_FEATURE_HOURLY = 2;
@@ -7,14 +7,7 @@ export const FORECAST_FEATURE_TWICE_DAILY = 4;
 const PRECIPITATION_CONDITIONS = new Set(["rainy", "pouring", "lightning-rainy", "snowy-rainy", "hail"]);
 
 export function isValidTimeZone(timeZone) {
-  if (typeof timeZone !== "string" || timeZone.trim() === "") return false;
-  try {
-    new Intl.DateTimeFormat("en-US", { timeZone: timeZone.trim() }).format(new Date(0));
-    return true;
-  } catch (error) {
-    if (error instanceof RangeError) return false;
-    throw error;
-  }
+  return normalizeTimeZone(timeZone) !== null;
 }
 
 function parsedDate(instant) {
@@ -23,11 +16,12 @@ function parsedDate(instant) {
 }
 
 export function localDateParts(instant, timeZone) {
-  if (!isValidTimeZone(timeZone)) throw new RangeError("invalid IANA timezone");
+  const normalizedTimeZone = normalizeTimeZone(timeZone);
+  if (!normalizedTimeZone) throw new RangeError("invalid IANA timezone");
   const date = parsedDate(instant);
   if (!date) throw new TypeError("instant must be a valid date/time");
   const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: timeZone.trim(),
+    timeZone: normalizedTimeZone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -95,7 +89,7 @@ function invalidArrayReason(forecast) {
   return null;
 }
 
-export function normalizeHourlyForecast({ sourceEntityId, units, forecast }) {
+export function normalizeHourlyForecast({ sourceEntityId, units, forecast, timeZone = null }) {
   const arrayReason = invalidArrayReason(forecast);
   if (arrayReason) return { value: null, reason: arrayReason };
   const items = forecast
@@ -105,19 +99,20 @@ export function normalizeHourlyForecast({ sourceEntityId, units, forecast }) {
     .map(({ record, datetime }) => normalizeCommon({ ...record, datetime }));
   if (items.length === 0) return { value: null, reason: "empty_data" };
   return {
-    value: deepFreeze({ source_entity_id: sourceEntityId, units: frozenUnits(units), items }),
+    value: deepFreeze({ source_entity_id: sourceEntityId, time_zone: normalizeTimeZone(timeZone), units: frozenUnits(units), items }),
     reason: null,
   };
 }
 
 function timezoneUnavailable(timeZone) {
-  return !isValidTimeZone(timeZone);
+  return normalizeTimeZone(timeZone) === null;
 }
 
-function dailyEnvelope(sourceEntityId, source, units, items) {
+function dailyEnvelope(sourceEntityId, source, units, items, timeZone) {
   return deepFreeze({
     source_entity_id: sourceEntityId,
     forecast_source: source,
+    time_zone: normalizeTimeZone(timeZone),
     units: frozenUnits(units),
     items: items.sort((a, b) => a.date.localeCompare(b.date)).slice(0, 7),
   });
@@ -148,7 +143,7 @@ export function normalizeTrueDailyForecast({ sourceEntityId, units, forecast, ti
     });
   }
   if (items.length === 0) return { value: null, reason: "empty_data" };
-  return { value: dailyEnvelope(sourceEntityId, "daily", units, items), reason: null };
+  return { value: dailyEnvelope(sourceEntityId, "daily", units, items, timeZone), reason: null };
 }
 
 function finiteValues(records, selector) {
@@ -219,7 +214,7 @@ export function aggregateTwiceDailyForecast({ sourceEntityId, units, forecast, t
       uv_index: maxOrNull(finiteValues(dayRecords, (record) => record.uv_index)),
     });
   }
-  return { value: dailyEnvelope(sourceEntityId, "twice_daily", units, items), reason: null };
+  return { value: dailyEnvelope(sourceEntityId, "twice_daily", units, items, timeZone), reason: null };
 }
 
 export function aggregateHourlyForecastToDaily({ sourceEntityId, units, hourlyValue, timeZone }) {
@@ -265,7 +260,7 @@ export function aggregateHourlyForecastToDaily({ sourceEntityId, units, hourlyVa
       uv_index: maxOrNull(finiteValues(dayRecords, (record) => record.uv_index)),
     });
   }
-  return { value: dailyEnvelope(sourceEntityId, "hourly", units, items), reason: null };
+  return { value: dailyEnvelope(sourceEntityId, "hourly", units, items, timeZone), reason: null };
 }
 
 export function findNextPrecipitation(hourlyValue, { now, timeZone }) {

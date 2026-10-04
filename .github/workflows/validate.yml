@@ -47,7 +47,8 @@ jobs:
             tests/jamesui-core-router.test.js \
             tests/jamesui-core-services.test.js \
             tests/jamesui-core-shell.test.js \
-            tests/jamesui-core.test.js
+            tests/jamesui-core.test.js \
+            tests/jamesui-overlay-dom-host.test.js
 
       - name: Test JamesUI module system
         run: |
@@ -111,7 +112,19 @@ jobs:
             tests/jamesui-weather-moon.test.js \
             tests/jamesui-weather-provider.test.js \
             tests/jamesui-weather-loader.test.js \
-            tests/jamesui-weather-review-regressions.test.js
+            tests/jamesui-weather-review-regressions.test.js \
+            tests/jamesui-weather-timezone-metadata.test.js
+
+      - name: Test JamesUI Block 10 Weather Today
+        run: |
+          node --experimental-default-type=module --test \
+            tests/jamesui-weather-today-manifest-config.test.js \
+            tests/jamesui-weather-today-model.test.js \
+            tests/jamesui-weather-today-overlay.test.js \
+            tests/jamesui-weather-today-widget.test.js \
+            tests/jamesui-weather-today-styles.test.js \
+            tests/jamesui-weather-today-loader.test.js \
+            tests/jamesui-weather-today-review-regressions.test.js
 
       - name: Validate Alpine atmosphere assets
         run: python -m unittest tests/test_alpine_assets.py
