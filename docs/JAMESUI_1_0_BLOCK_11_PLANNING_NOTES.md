@@ -3,250 +3,192 @@
 _Date: 2026-10-04_
 _Status: active design notes; not yet the approved Block-11 spec or implementation plan_
 
-This file is the persistent planning record for decisions made while designing Block 11. It exists so confirmed behavior and explicitly deferred requirements are not lost between chats. Once the Block-11 design is approved, these notes must be reconciled into the formal spec and the detailed implementation plan.
+This file is the persistent planning record for confirmed Block-11 decisions and explicitly deferred requirements. Future Block-11 chats must read and update it. Cross-page layout rules live in `docs/JAMESUI_1_0_LAYOUT_PLANNING_NOTES.md` and must also be read when sizing/scroll behavior is involved.
 
 ## Persistent chat / AI working rules
-
-This file is also the persistent Block-11 handover for future JamesUI chats.
 
 Every future chat that continues Block 11 must:
 
 - read this file before proposing, changing or implementing Block-11 behavior
-- treat the repository as source of truth; do not rely on memory or old chat summaries when the repository contains the current decision
-- add newly confirmed Block-11 product decisions to this file during the design phase so they survive chat changes
-- add explicitly deferred or later-phase requirements to this file instead of leaving them only in chat
-- keep this file updated when a decision is changed or superseded; do not leave contradictory active requirements behind
-- reconcile these notes into the formal Block-11 spec before implementation planning, then into the implementation plan where execution detail belongs
-- not use this planning note as authorization to write Block-11 product code before the required spec/plan gates are approved
+- treat the repository as source of truth, not chat memory
+- add newly confirmed Block-11 decisions here during design
+- add explicitly deferred requirements here instead of leaving them only in chat
+- update/remove superseded wording rather than keeping contradictory active requirements
+- reconcile these notes into the formal Block-11 spec before implementation planning
+- not use this planning note as permission to write product code before spec/plan approval
 
-AI/agent work on JamesUI must additionally preserve the project rules already established in the canonical repository documents:
+JamesUI AI/agent work must preserve the project rules already established in the canonical repository documents:
 
 - German, concise, technical and direct communication
 - every JamesUI response starts with `✅ Fertig:`, `⚠️ Test nötig:` or `🚧 Nicht fertig:` and ends with a short summary
 - work one roadmap block at a time
 - inspect current repository state before changing code or architecture
-- edit the repository directly when GitHub access is available instead of giving the user unnecessary copy/paste work
+- edit the repository directly when GitHub access is available
 - use TDD for behavior changes; intentionally red tests never go to `main`
-- do not add monkey-patches, Prototype overrides, version-polish layers, parallel implementations or permanent legacy compatibility shims
-- keep r11 as production/reference only until the controlled cutover; new normal functionality belongs to the JamesUI 1.0 architecture
+- no monkey-patches, Prototype overrides, version-polish layers, parallel implementations or permanent legacy compatibility shims
+- r11 remains production/reference until controlled cutover
 - do not invent unavailable backend data or silently substitute fabricated values
-- preserve OnePlus Pad 2 portrait as the primary visual target; Fully is only the kiosk shell
-- record future-facing decisions and AI handling rules in the repository rather than depending on chat memory
-
-If these working rules later change, update this section in the same repository commit that changes the rule wherever practical.
+- OnePlus Pad 2 portrait remains the primary visual target; Fully is only the kiosk shell
+- future-facing product and AI-handling decisions must be persisted in the repository
 
 ## Scope direction
 
-Block 11 is expanding from the original calendar-only wording to a combined household agenda:
+Block 11 is a combined household agenda, not calendar-only:
 
-- `provider.calendar` for configured Home Assistant `calendar.*` sources
-- `provider.tasks` for configured Home Assistant `todo.*` sources
+- `provider.calendar` for explicitly configured Home Assistant `calendar.*` sources
+- `provider.tasks` for explicitly configured Home Assistant `todo.*` sources
 - `widget.calendar-agenda` consuming capabilities only
 - no raw Home Assistant access from the widget
 - no final Start composition or production cutover in Block 11
 
-Only explicitly configured calendar/task sources are shown. No automatic inclusion of every discovered calendar.
+No automatic inclusion of every discovered calendar/task list as visible content.
 
 ## Agenda presentation
 
-Three presentation modes must be supported by widget configuration:
+Three presentation modes must be configurable:
 
-- `grouped` – grouped by day (`Heute`, `Morgen`, then date), with events and tasks within the day
+- `grouped` – grouped by day (`Heute`, `Morgen`, then date), events and tasks combined inside each day
 - `timeline` – one chronological agenda presentation across the configured look-ahead window
-- `day` – one selected day at a time; horizontal touch swipe moves to the previous/next day while vertical touch scrolling remains available within the selected day when more rows exist than fit in the viewport
+- `day` – exactly one selected calendar day at a time
 
-The user can switch between these modes later in configuration. Provider contracts/data stay identical; only widget presentation/navigation changes.
+Provider data/contracts stay identical; presentation mode changes only widget rendering/navigation.
 
-The `day` mode must keep gesture directions semantically distinct:
+### `day` mode
 
 - horizontal swipe = previous/next calendar day
-- vertical swipe/scroll = additional agenda entries within the currently selected day
-- switching days must not change row geometry or silently alter task-ordering rules
-- the selected day uses a compact, restrained header; for today the form is `Heute · So, 4. Oktober`, while other days use the weekday/date form such as `Mo, 5. Oktober`
-- the day header updates together with the horizontal day swipe so the currently selected day is always explicit
-- every calendar day remains reachable in sequence, including days with no calendar events or tasks; the widget must not skip automatically to the next occupied day
-- an empty selected day shows a quiet empty state such as `Keine Termine oder Aufgaben` while preserving the normal day header and navigation behavior
+- vertical swipe/scroll = additional entries inside the selected day
+- every calendar day remains reachable in sequence; empty days are not skipped
+- today header format: `Heute · So, 4. Oktober`
+- other days: e.g. `Mo, 5. Oktober`
+- empty day: quiet state such as `Keine Termine oder Aufgaben`
+- changing days must not change row geometry or task-ordering rules
 
 ## Visibility and look-ahead
 
-Visible row count and source look-ahead are separate concerns:
+Calendar and widget density are separate concerns.
 
-- global calendar `lookahead_days` defaults to **30 days**
-- calendar `lookahead_days` controls how far future calendar events are loaded/made available for scrolling/day paging
-- every configured calendar inherits the global 30-day value by default
-- each configured calendar can optionally enable its own look-ahead override and then supply its own `lookahead_days` value
-- when the per-calendar override is disabled, the local value has no effect and the calendar follows the global value
-- the configuration UI must make this dependency clear: the local calendar look-ahead control remains disabled/greyed until the override is enabled
-- task lists do not need a practical look-ahead limit; tasks remain available independent of calendar look-ahead
-- for schema/config consistency, task sources may still expose `lookahead_days`, but its default and normal value is `0`
-- for `todo.*`, `lookahead_days = 0` means **no look-ahead restriction / not applicable**, never “show zero tasks”
-- task look-ahead controls should not clutter the normal configuration UI unless a future source genuinely requires them
+### Calendar look-ahead
 
-The global/default calendar look-ahead applies consistently to `grouped`, `timeline` and `day` modes. Changing the presentation mode must not silently change provider query range.
+- global `lookahead_days` default = **30**
+- applies consistently to `grouped`, `timeline` and `day`
+- each configured calendar inherits the global value by default
+- each calendar may optionally enable its own `lookahead_days` override
+- local override field remains visible but disabled/greyed until override is enabled
 
-### Visible-row modes, auto sizing and bounded height
+### Task look-ahead
 
-The agenda supports two visible-row modes:
+Tasks do not need a practical look-ahead restriction.
 
-- `fixed` – a configured number of rows is shown in the widget viewport
-- `auto` – the widget derives the number of fully visible rows from the vertical space actually allocated to it by the page layout
+- for schema consistency, task sources may expose `lookahead_days`
+- default/normal task value = `0`
+- for `todo.*`, `0` means **no look-ahead restriction / not applicable**, never “show zero tasks”
+- this control should not clutter normal task configuration unless a future source requires it
 
-For `fixed` mode:
+## Visible-row modes and host sizing
+
+The Agenda supports:
+
+- `visible_items_mode = fixed`
+- `visible_items_mode = auto`
+
+### `fixed`
 
 - default `max_visible_items = 5`
-- allowed range is `3–8`
-- events and tasks count together toward this visible item budget
+- allowed range `3–8`
+- events and tasks count together toward the visible-row budget
 
-For `auto` mode:
+### `auto`
 
-- the agenda uses as many complete fixed-height rows as fit below its own header/controls inside the allocated widget height
-- no row may be compressed or partially clipped merely to squeeze in another item
-- the fixed `max_visible_items` control is irrelevant and must remain visible but disabled/greyed in configuration
-- items beyond the calculated visible capacity remain reachable through the widget's internal vertical touch scrolling/swiping
-- recalculation follows a genuine change in the widget's allocated layout height; it must not resize the parent page to make more content fit
+- use as many complete fixed-height rows as fit below the widget header/controls inside the **height actually allocated by the host layout**
+- do not compress row height or show a partial row to squeeze in another item
+- `max_visible_items` remains visible but disabled/greyed because it is irrelevant in auto mode
+- recalculate when the allocated host height genuinely changes
+- additional items stay reachable through the widget's own vertical scrolling
 
-The agenda widget must be height-constrained by its host/layout. It must never force the Start page to become taller merely because more agenda items exist.
+### Layout responsibility
 
-The user must later be able to set a manual maximum widget height through the Start page's shared layout-grid system rather than by entering arbitrary pixel values. The agenda's `auto` mode then fills the usable portion of that configured grid height with the maximum number of complete rows.
+The Agenda does **not** decide whether the page itself is fixed or vertically scrollable. That belongs to the selected page layout; see `docs/JAMESUI_1_0_LAYOUT_PLANNING_NOTES.md`.
 
-This creates a deliberate responsibility split:
+The Agenda must always respect the host region it receives:
 
-- Block 11 defines a widget that behaves correctly inside a bounded height, including internal scrolling and automatic row-capacity calculation
-- Block 14 defines/configures the shared Start-page height grid, widget grid spans/max-heights and the composed non-scrollable tablet viewport
+- it may not enlarge its parent merely to expose more rows
+- in a bounded/fixed layout, overflow stays inside the Agenda
+- in a vertically scrollable layout, the layout may allocate a larger region, but the Agenda still obeys that allocation
+- manual maximum height is expressed later through the host layout's logical grid/span system where that layout uses a grid, not through arbitrary widget pixel values
 
-The final OnePlus/Fully Start page is intended to fit inside the available tablet viewport without page-level vertical scrolling. Widgets therefore may not visually or logically extend below their allocated layout area. Internal widget scrolling is allowed where the widget's content exceeds its allocated height.
+Block 11 therefore implements a height-aware widget contract; Block 14 formalizes the Start layout/configuration and its lower-deck grid.
 
-### Row geometry and density
+## Row geometry
 
-- agenda rows have a consistent fixed height within the selected presentation configuration
-- time/date and icon areas have stable reserved geometry
-- task completion control has stable reserved geometry where applicable
-- the remaining horizontal space belongs to the title
-- long titles are truncated cleanly with ellipsis; font size is not reduced to make them fit
-- additional items remain reachable through vertical touch scrolling/swiping
-- the widget must not compress rows or grow unpredictably because many items exist
+Rows remain visually stable:
 
-### Timeline continuation instead of navigation arrows
+- equal fixed row height
+- stable time/date column
+- stable icon area
+- stable task-completion-control area where applicable
+- title gets all remaining width (`minmax(0, 1fr)` behavior)
+- long titles use ellipsis; font size does not shrink
+- icon/accent selection must not alter geometry
 
-The agenda uses the vertical point-and-line timeline language from the approved mockup as both structure and continuation cue.
+### Optional location line
+
+`show_location` is a global widget option.
+
+- disabled: no compact location line
+- enabled: reserve a consistent second-line region for rows so row heights do not jump
+- render location only when the event actually has one
+- never render fake placeholder text such as `Kein Ort`
+
+## Timeline continuation / internal scrolling
+
+The Agenda uses the mockup's vertical point-and-line timeline.
 
 For each displayed day:
 
-- visible agenda entries sit on the vertical timeline as points connected by a line
-- when no earlier item for that day exists outside the visible portion, the timeline may terminate normally at the first visible point
-- when earlier items for that day exist above the current visible portion, the timeline continues upward beyond the first visible point as a short dashed line rather than terminating with a point
-- when no later item for that day exists outside the visible portion, the timeline may terminate normally at the last visible point
-- when later items for that day exist below the current visible portion, the timeline continues downward beyond the last visible point as a short dashed line rather than terminating with a point
-- this dashed continuation is a visual indication that more entries exist before/after within that day
-- separate up/down navigation arrows are therefore not required for normal agenda navigation
-- vertical touch scrolling/swiping is the primary within-day navigation mechanism
+- visible entries use points connected by the vertical line
+- if earlier entries for that day exist above the current visible portion, the line continues upward as a short dashed continuation instead of ending normally
+- if later entries for that day exist below the current visible portion, the line continues downward as a short dashed continuation
+- if no hidden entries exist in that direction, the timeline terminates normally
+- no permanent up/down arrow controls are required
+- vertical touch scrolling is the primary within-day/internal navigation
+- dashed continuation must not change row height or timeline alignment
 
-In `day` mode the dashed continuation continues to represent hidden entries within the current day; horizontal day navigation is conveyed by the swipe interaction rather than by adding permanent arrow controls.
-
-The continuation treatment must remain visually restrained and must not change row height or timeline alignment.
+In `day` mode the dashed continuation refers only to hidden entries inside the current day; horizontal day navigation remains separate.
 
 ## Task ordering
 
-Task ordering is global across `grouped`, `timeline` and `day` presentation modes.
+Ordering is global across `grouped`, `timeline` and `day`.
 
-Supported modes:
+Supported `task_order_mode` values:
 
-- `chronological` – timed tasks participate in chronological ordering with calendar events
-- `tasks_before` – all tasks for the day are grouped before calendar events
-- `tasks_after` – all tasks for the day are grouped after calendar events
+- `chronological` – timed tasks mix chronologically with events
+- `tasks_before` – all tasks of a day before calendar events
+- `tasks_after` – all tasks of a day after calendar events
 
-For `chronological`, untimed tasks additionally support:
+For `chronological` only:
 
-- `untimed_task_position = before`
-- `untimed_task_position = after`
+- `untimed_task_position = before | after`
+- default recommendation remains `after`
 
-If `tasks_before` or `tasks_after` is selected, `untimed_task_position` has no effect and must be visibly disabled/greyed in configuration rather than silently remaining active.
+If `tasks_before` or `tasks_after` is active, `untimed_task_position` has no effect and must be shown disabled/greyed rather than silently active.
 
-This dependency-aware configuration rule is general: when one choice makes another setting meaningless, the irrelevant setting remains understandable but disabled.
+This dependency-aware configuration principle applies generally to later settings.
 
 ## Task completion and overdue behavior
 
-- completed tasks disappear from the normal agenda
 - task completion is available directly from the row
+- completed tasks disappear from the normal agenda immediately
 - completing a task offers a short-lived Undo action
-- tapping the remainder of the task row opens a task detail view
+- tapping the rest of a task row opens a task detail view
 - overdue incomplete tasks are carried forward into JamesUI's `Heute` presentation until completed
-- this carry-forward is presentation logic only: JamesUI does **not** rewrite the task's real source due date and does not alter recurrence/source semantics
-- overdue tasks are visually shown like ordinary current tasks; no warning color, badge, `seit X Tagen`, or other overdue emphasis is added
+- carry-forward is presentation logic only: do not rewrite the real provider due date or recurrence
+- overdue carried-forward tasks look like ordinary current tasks; no warning color, badge or `seit X Tagen`
 
-## Calendar event row and details
+## Task editing – deferred but binding
 
-A calendar event row reserves stable geometry for time/date and icon. The rest of the width is used for the title.
+The user wants tasks editable from JamesUI later.
 
-`show_location` is a global widget option:
-
-- when disabled, the compact agenda row shows no location
-- when enabled, a second line is reserved consistently for location
-- the location text is rendered only when the event actually contains a location
-- missing location is not replaced with placeholder text
-
-Tapping a calendar event opens a detail overlay. It shows only fields that really exist, including as applicable:
-
-- title
-- date/time or all-day information
-- location
-- description
-
-## Calendar icon and accent rules
-
-Each configured calendar can define a default presentation:
-
-- default icon
-- default accent color
-
-Specific event rules can override both icon and accent color. This supports use cases such as a waste-collection calendar where `Gelber Sack` is shown with a suitable waste/recycling icon and a yellow accent.
-
-Rule matching supports simple user-facing predicates:
-
-- `ist genau`
-- `enthält`
-- `beginnt mit`
-
-Rules are ordered; the first matching rule wins.
-
-Search fields:
-
-- event title is searched by default
-- description can optionally be included per rule
-- location can optionally be included per rule
-
-No regex input is required for normal configuration.
-
-Presentation priority:
-
-1. first matching event/keyword rule: icon and/or accent color
-2. calendar default icon/accent color
-3. neutral JamesUI calendar fallback
-
-Accent color is used restrainedly (for example icon/marker/fine accent), not as a full brightly colored card, to preserve the quiet Alpine-Chic visual language.
-
-## Deferred but binding future requirements
-
-The following items are explicitly important and must not be forgotten even if they are not fully implemented in the first Block-11 delivery.
-
-### Calendar reminder / advance-notice semantics
-
-The user considers source-event reminder lead time important. Example: if an event is configured to remind one week in advance, the agenda should ideally surface the relevant information early enough rather than only on the event day.
-
-Current design rule:
-
-- do not fabricate reminder metadata when Home Assistant does not expose it
-- investigate whether the selected calendar integration/source exposes reminder/alarm metadata through any supported Home Assistant API
-- preserve the capability/data model so truthful reminder metadata can be added later without redesigning the widget
-- if direct reminder metadata remains unavailable, evaluate a JamesUI-owned configurable look-ahead/advance-visibility policy as an explicit fallback product feature, not as a fake source reminder
-
-This requirement remains OPEN and high priority for later design/research.
-
-### Task editing
-
-The user wants tasks to be editable from JamesUI later.
-
-The first Block-11 interaction may remain limited to display, completion and Undo, but the normalized task model must preserve enough identity/source information for later editing, including as available:
+Block 11 may remain display + complete + Undo, but the normalized task model must preserve truthful edit identity/context as available:
 
 - source todo entity/list
 - stable task UID
@@ -254,24 +196,85 @@ The first Block-11 interaction may remain limited to display, completion and Und
 - due date/time
 - description/notes
 - status
-- other truthful provider fields needed to update the original task
+- other provider fields required for future updates
 
-Future editing should use the provider/HA boundary rather than direct Home Assistant access from the widget.
+Future editing must go through the provider/HA boundary, never direct raw HA access from the widget.
 
-## Still open in the current design
+## Event details
+
+Tapping a calendar event opens a shared detail overlay showing only real available fields, such as:
+
+- title
+- date/time or all-day information
+- location
+- description
+
+No fake/missing-field placeholders.
+
+All-day events use a clear all-day time-area presentation (`Ganztägig`) unless later visual acceptance changes only the wording.
+
+## Calendar icon and accent rules
+
+Each configured calendar can define:
+
+- default icon
+- default accent color
+
+Ordered event rules may override icon and/or accent color.
+
+Supported matching operators:
+
+- `ist genau`
+- `enthält`
+- `beginnt mit`
+
+Rules:
+
+- first matching rule wins
+- event title is searched by default
+- description may optionally be included per rule
+- location may optionally be included per rule
+- no regex is required in normal UI
+- rules should be reorderable
+
+Presentation priority:
+
+1. first matching event rule
+2. calendar default icon/accent
+3. neutral JamesUI fallback
+
+Color remains restrained: icon/marker/fine accent only, not brightly colored full cards.
+
+Example requirement: waste calendar can use a neutral trash/recycling default while rules such as `Gelber Sack`, `Biotonne`, `Restmüll`, `Papier` override icon/color appropriately.
+
+The shared icon registry may need additional semantic IDs (birthday, waste, recycling, paper, etc.); this must be done through the existing icon system, never ad hoc inline icons.
+
+## Calendar reminder / advance-notice semantics – OPEN and important
+
+The user explicitly considers reminder lead time important. Example: an appointment intended to remind one week beforehand should ideally become visible/noticeable sufficiently early.
+
+Current rule:
+
+- never fabricate reminder metadata
+- investigate supported Home Assistant/source APIs for real reminder/alarm metadata
+- preserve provider/capability model so truthful reminder metadata can be added later without redesign
+- if source reminder data is unavailable, evaluate an explicit JamesUI-owned advance-visibility/look-ahead feature as a separate product behavior, not as a fake source reminder
+
+This remains a high-priority unresolved design item.
+
+## Still open
 
 - exact capability names/shapes for calendar and task providers
-- exact Home Assistant query/subscription strategy and refresh semantics
-- allowed bounds for calendar look-ahead around the confirmed 30-day default
-- exact Start-page height-grid definition / grid unit count and how widget max-height spans are configured in Block 14
-- exact minimum usable widget height when `auto` mode cannot fit the normal number of agenda rows
-- precise visual dimensions/style of dashed timeline continuation cues
-- exact `day`-mode swipe threshold/snap behavior
-- task detail-overlay fields beyond currently available source data
-- task-editing phase/block placement
-- reminder metadata feasibility and fallback strategy
-- whether new semantic icons are required in the shared icon registry for categories such as birthday, waste, recycling, paper, etc.
+- exact Home Assistant calendar/todo query/subscription/refresh strategy
+- allowed bounds around the confirmed 30-day calendar default
+- exact minimum usable Agenda host height in `auto` mode
+- exact dashed-continuation visual dimensions
+- exact `day` swipe threshold/snap behavior
+- exact task detail-overlay fields supported by HA source data
+- future task-editing block placement
+- reminder metadata feasibility/fallback
+- exact semantic icon additions required
 
 ## Gate
 
-No Block-11 product code should be written from this note alone. Remaining design questions must be resolved, then the approved decisions are written into the formal Block-11 spec. Only after spec approval is the detailed implementation plan created and approved.
+No Block-11 product code from these notes alone. Resolve remaining design questions, write the binding Block-11 spec, get approval, then write/approve the detailed implementation plan before TDD implementation.
