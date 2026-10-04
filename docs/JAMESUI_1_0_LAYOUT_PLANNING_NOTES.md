@@ -51,6 +51,31 @@ Other page layouts may use different structures, including:
 
 Do not implement speculative layout variants before a real page requires them, but preserve the layout contract so these variants can be added without changing widget contracts.
 
+## Reusable widget instances across pages
+
+A widget **module** is reusable code; a widget **instance** is one configured placement of that module.
+
+The same widget module must be instantiable multiple times on the same page or on different pages. Every instance must have:
+
+- its own stable instance ID
+- its own widget configuration
+- its own selected data-source subset where the widget supports source selection
+- its own presentation/interaction settings
+- its own layout placement and grid span/region assignment
+- independent lifecycle state
+
+Changing one instance must not silently change another instance of the same widget module.
+
+Examples:
+
+- two `widget.calendar-agenda` instances may use different calendars/task lists and different presentation modes
+- one Agenda instance may enable tasks while another disables them
+- later generic widgets such as Dynamic Buttons may also have different configured content per instance
+
+Shared providers remain shared. Reusing a widget module must not require cloning its provider architecture; instances consume shared capabilities and independently select/filter/present the data they need.
+
+This rule is already compatible with the foundation configuration model's top-level `widget_instances` section and must be preserved by the page/layout configuration experience in Block 14 and later pages.
+
 ## Start layout – `layout.home-hero-deck`
 
 The existing `layout.home-hero-deck` remains the Start layout family. The current stable slot contract from Block 8 remains valid unless a future approved spec deliberately migrates it.
@@ -110,12 +135,12 @@ This same widget contract must remain valid if the Agenda is later placed on a d
 
 ## Block ownership
 
-- Block 11: Agenda respects host bounds and supports fixed/automatic visible-row capacity.
-- Block 14: define the page/layout configuration experience, formalize layout scroll behavior and the Start lower-deck grid, and compose the approved Start page.
-- Later page migrations: introduce additional layout modules/variants only when those pages need them, using the same layout-level scroll/grid principles.
+- Block 11: Agenda respects host bounds, supports fixed/automatic visible-row capacity and exposes per-instance source/presentation configuration.
+- Block 14: define the page/layout configuration experience, formalize layout scroll behavior and the Start lower-deck grid, preserve generic multi-instance widget placement/configuration, and compose the approved Start page.
+- Later page migrations: introduce additional layout modules/variants only when those pages need them, using the same layout-level scroll/grid and widget-instance principles.
 
 ## Persistent AI/chat rule
 
-Future JamesUI chats must record new confirmed cross-page layout rules, layout variants, scroll semantics and deferred layout requirements in this file (or a later canonical spec that explicitly supersedes it). Do not leave such decisions only in chat summaries.
+Future JamesUI chats must record new confirmed cross-page layout rules, widget-instance rules, layout variants, scroll semantics and deferred layout requirements in this file (or a later canonical spec that explicitly supersedes it). Do not leave such decisions only in chat summaries.
 
 If a later decision supersedes an item here, update/remove the old active wording rather than accumulating contradictory rules.
