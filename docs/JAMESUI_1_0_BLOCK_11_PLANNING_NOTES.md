@@ -200,7 +200,7 @@ Block 11 may remain display + complete + Undo, but the normalized task model mus
 
 Future editing must go through the provider/HA boundary, never direct raw HA access from the widget.
 
-## Event details
+## Event details and all-day behavior
 
 Tapping a calendar event opens a shared detail overlay showing only real available fields, such as:
 
@@ -211,7 +211,13 @@ Tapping a calendar event opens a shared detail overlay showing only real availab
 
 No fake/missing-field placeholders.
 
-All-day events use a clear all-day time-area presentation (`Ganztägig`) unless later visual acceptance changes only the wording.
+All-day behavior is confirmed:
+
+- global `show_all_day` default = `true`
+- all-day events are shown as normal agenda rows and count toward the visible-row budget
+- the time area displays `Ganztägig`; no artificial clock time is invented
+- `show_all_day = false` hides all-day calendar events globally from the Agenda
+- no per-calendar all-day override is required in Block 11 unless a later real use case justifies it
 
 ## Calendar icon and accent rules
 
@@ -274,6 +280,7 @@ This remains a high-priority unresolved design item.
 - future task-editing block placement
 - reminder metadata feasibility/fallback
 - exact semantic icon additions required
+- exact within-day position of all-day events relative to timed events/tasks
 
 ## Gate
 
