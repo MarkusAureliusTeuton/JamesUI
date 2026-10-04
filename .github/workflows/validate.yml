@@ -119,7 +119,8 @@ jobs:
         run: |
           node --experimental-default-type=module --test \
             tests/jamesui-weather-today-manifest-config.test.js \
-            tests/jamesui-weather-today-model.test.js
+            tests/jamesui-weather-today-model.test.js \
+            tests/jamesui-weather-today-overlay.test.js
 
       - name: Validate Alpine atmosphere assets
         run: python -m unittest tests/test_alpine_assets.py
