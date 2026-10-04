@@ -146,6 +146,7 @@ export const BASE_DESIGN_STYLES = `
 [data-jui-design-root] [data-jui-overlay] {
   position: fixed;
   inset: 0;
+  z-index: 100;
   display: grid;
   place-items: center;
   padding: var(--jui-space-6);
