@@ -1,4 +1,4 @@
-import { deepFreeze, finiteOrNull, percentOrNull } from "./normalize.js";
+import { deepFreeze, finiteOrNull, isoInstantOrNull, percentOrNull } from "./normalize.js";
 
 export const FORECAST_FEATURE_DAILY = 1;
 export const FORECAST_FEATURE_HOURLY = 2;
@@ -56,7 +56,7 @@ function stringOrNull(value) {
 
 function validForecastRecord(record) {
   if (!record || typeof record !== "object" || Array.isArray(record)) return null;
-  const datetime = stringOrNull(record.datetime);
+  const datetime = isoInstantOrNull(record.datetime);
   const date = datetime ? parsedDate(datetime) : null;
   return date ? { record, datetime, date } : null;
 }
@@ -274,7 +274,10 @@ export function findNextPrecipitation(hourlyValue, { now, timeZone }) {
   if (!nowDate) return null;
   const today = localDateKey(nowDate, timeZone);
   const items = [...hourlyValue.items]
-    .map((item) => ({ item, date: parsedDate(item?.datetime) }))
+    .map((item) => {
+      const datetime = isoInstantOrNull(item?.datetime);
+      return { item, date: datetime ? parsedDate(datetime) : null };
+    })
     .filter(({ date }) => date)
     .sort((a, b) => a.date - b.date);
   for (const { item, date } of items) {
