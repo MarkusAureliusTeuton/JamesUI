@@ -1,4 +1,5 @@
 const UNUSABLE_STATES = new Set(["unknown", "unavailable"]);
+const ISO_INSTANT_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?(?:Z|[+-]\d{2}:\d{2})$/;
 
 export function deepFreeze(value) {
   if (!value || typeof value !== "object" || Object.isFrozen(value)) return value;
@@ -18,6 +19,14 @@ export function percentOrNull(value) {
   const number = finiteOrNull(value);
   if (number === null) return null;
   return Math.min(100, Math.max(0, number));
+}
+
+export function isoInstantOrNull(value) {
+  if (typeof value !== "string") return null;
+  const instant = value.trim();
+  if (!ISO_INSTANT_PATTERN.test(instant)) return null;
+  const parsed = new Date(instant);
+  return Number.isFinite(parsed.valueOf()) ? instant : null;
 }
 
 function nonEmptyStringOrNull(value) {
@@ -114,7 +123,7 @@ export function normalizeCurrentWeather({ weatherEntity, overrideEntity = null, 
     wind_speed_unit: nonEmptyStringOrNull(attributes.wind_speed_unit),
     wind_bearing: finiteOrNull(attributes.wind_bearing),
     uv_index: finiteOrNull(attributes.uv_index),
-    next_precipitation_at: nonEmptyStringOrNull(nextPrecipitation?.datetime),
+    next_precipitation_at: isoInstantOrNull(nextPrecipitation?.datetime),
     next_precipitation_probability: percentOrNull(nextPrecipitation?.probability),
   });
 }
