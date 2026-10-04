@@ -27,7 +27,7 @@ test("maps canonical weather conditions to semantic icons and German labels with
     ["cloudy", "weather.cloudy", "Bewölkt"],
     ["exceptional", "weather.cloudy", "Außergewöhnliche Wetterlage"],
     ["rainy", "weather.rain", "Regen"],
-    ["pouring", "weather.heavy-rain", "Starkregen"],
+    ["pouring", "weather.heavy-rain", "Starker Regen"],
     ["snowy", "weather.snow", "Schnee"],
     ["lightning", "weather.storm", "Gewitter"],
     ["lightning-rainy", "weather.storm", "Gewitter mit Regen"],
@@ -38,7 +38,11 @@ test("maps canonical weather conditions to semantic icons and German labels with
     ["snowy-rainy", "weather.rain", "Schneeregen"],
   ];
   for (const [condition, iconId, label] of cases) {
-    assert.deepEqual(conditionPresentation(condition, null), { iconId, label, emphasis: ["lightning", "lightning-rainy", "hail", "windy", "windy-variant"].includes(condition) ? "alert" : "normal" });
+    assert.deepEqual(conditionPresentation(condition, null), {
+      iconId,
+      label,
+      emphasis: ["pouring", "lightning", "lightning-rainy", "hail", "windy", "windy-variant"].includes(condition) ? "alert" : "normal",
+    });
   }
   assert.deepEqual(conditionPresentation("clear-night", "waxing_gibbous"), {
     iconId: "moon.waxing-gibbous", label: "Klar", emphasis: "normal",
