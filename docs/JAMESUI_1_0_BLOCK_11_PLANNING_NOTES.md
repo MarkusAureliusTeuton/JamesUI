@@ -119,6 +119,12 @@ Tasks do not need a practical look-ahead restriction.
 
 Calendar and task functionality are independently optional **per Agenda widget instance**.
 
+At least one content domain must remain enabled:
+
+- `calendar_enabled = false` and `tasks_enabled = false` at the same time is an invalid Agenda configuration
+- configuration must prevent or reject saving an instance with both domains disabled
+- this validation is per widget instance and has no effect on the shared providers
+
 ### Calendar enablement
 
 - the instance exposes a calendar enable/disable setting (working name `calendar_enabled`)
@@ -348,7 +354,6 @@ This remains a high-priority unresolved design item.
 
 ## Still open
 
-- whether an Agenda instance may persist with both `calendar_enabled = false` and `tasks_enabled = false`, or whether configuration must require at least one content domain
 - exact capability names/shapes for calendar and task providers
 - exact Home Assistant calendar/todo query/subscription/refresh strategy
 - allowed bounds around the confirmed 30-day calendar default
