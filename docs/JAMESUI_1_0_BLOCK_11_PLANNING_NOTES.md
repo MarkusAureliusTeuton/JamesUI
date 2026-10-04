@@ -62,7 +62,8 @@ The `day` mode must keep gesture directions semantically distinct:
 - horizontal swipe = previous/next calendar day
 - vertical swipe/scroll = additional agenda entries within the currently selected day
 - switching days must not change row geometry or silently alter task-ordering rules
-- the selected day needs a clear but visually restrained date/day label so the user always knows which day is being viewed
+- the selected day uses a compact, restrained header; for today the form is `Heute · So, 4. Oktober`, while other days use the weekday/date form such as `Mo, 5. Oktober`
+- the day header updates together with the horizontal day swipe so the currently selected day is always explicit
 
 ## Visibility and look-ahead
 
@@ -233,7 +234,7 @@ Future editing should use the provider/HA boundary rather than direct Home Assis
 - whether calendar look-ahead can be overridden per calendar
 - exact visible-row default and bounds
 - precise visual dimensions/style of dashed timeline continuation cues
-- exact `day`-mode day-label/header treatment and swipe threshold/snap behavior
+- exact `day`-mode swipe threshold/snap behavior
 - task detail-overlay fields beyond currently available source data
 - task-editing phase/block placement
 - reminder metadata feasibility and fallback strategy
