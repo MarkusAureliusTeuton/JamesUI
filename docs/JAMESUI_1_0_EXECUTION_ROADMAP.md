@@ -1,6 +1,6 @@
 # JamesUI 1.0 – Execution Roadmap
 
-_Status: foundation architecture approved; Blocks 0–9 complete and validated; next gate Block 10 design/spec_
+_Status: foundation architecture approved; Blocks 0–10 complete and validated; next gate Block 11_
 _Date: 2026-10-04_
 
 This document defines the implementation order for JamesUI 1.0 using **Variant B: clean foundation + controlled cutover**. r11 remains the running design/reference runtime until the cutover gate.
@@ -109,7 +109,6 @@ Delivered:
 - precise next-rain time only from genuine Hourly data
 - independent Sun normalization and semantic day/golden/twilight/night period
 - local Moon fallback derived from SunCalc v1.9.0 with checked-in BSD-2-Clause attribution
-- local Moon fallback passed fixed 2026 primary-phase references at the predeclared ±3 percentage-point illumination tolerance
 - semantic atmosphere scene keys only; no asset paths
 - one five-minute time-derived refresh timer with no HA polling
 - source-generation guards prevent stale forecast callbacks from publishing
@@ -118,13 +117,37 @@ Delivered:
 
 Review note: whole-branch review caught two timestamp-truthfulness issues where `Date.parse()` accepted locale-formatted non-ISO values. Review CI #333 stayed red until strict ISO-instant validation was added; final branch #336 is green with no open Critical/Important findings.
 
-### Block 10 – Weather Today widget + forecast overlay ⬜
-Goal: rebuild the accepted Alpine/weather hero using Block-9 capabilities plus shared Design/Icon/Overlay boundaries. Temperature opens the forecast overlay without layout shift.
+### Block 10 – Weather Today widget + forecast overlay ✅
+Spec: `docs/superpowers/specs/2026-10-04-jamesui-1.0-block-10-weather-today-design.md`
 
-**Next gate:** complete Block-10 architectural/visual design/spec, user review, detailed implementation plan and approval before product code.
+Plan: `docs/superpowers/plans/2026-10-04-jamesui-1.0-block-10-weather-today.md`
+
+Result: PR #22, merge `f8abbbb28588e210e87727f5fcb3a68984766887`. Final branch #378 and main #379 green. The final branch validation was explicitly rerun on the unchanged head before merge and passed all workflow steps again.
+
+Delivered:
+- additive validated `time_zone` metadata for current/hourly/daily/sun weather capability values needed by consumers
+- generic same-document DOM overlay hosting in Core shell; no weather-specific Core branch
+- shared Overlay layer remains in Design at `z-index: 100`
+- `widget.weather-today` consuming exactly the six Block-9 weather capabilities and no direct HA access
+- stable Alpine hero with device-local German date/time, current semantic weather presentation and accessible temperature forecast trigger
+- truthful high/low, genuine Hourly-derived precipitation time, wind/gust, sunrise/sunset and moon facts with independent missing-data behavior
+- exact local eight-scene Alpine asset allowlist plus neutral unknown fallback
+- restrained seven-fact primary row with CSS container fallback
+- forecast overlay with up to 12 future Hourly entries and 7 current/future Daily entries, explicit HA-timezone formatting and deliberate empty states
+- live hero/forecast updates preserve important DOM identity and do not shift the hero layout
+- stale-safe overlay ownership; widget destroy/reload cannot close a newer unrelated overlay
+- real Registry/Loader integration proof including capability ownership, update/reload/destroy cleanup
+- permanent Block-10 architecture and review-regression gates
+- r11 production entry remains unchanged; no final Start composition or cutover
+
+Review note: whole-branch review found one Important presentation mismatch: Home Assistant `pouring` was rendered as `Starkregen` with normal emphasis. A focused regression test went RED before the mapping was corrected to approved `Starker Regen` + alert emphasis. No Critical/Important findings remain.
+
+Visual acceptance note: the repository has no deterministic browser/screenshot harness. Block-10 acceptance therefore used DOM/CSS/architecture review; screenshot-level OnePlus/Fully acceptance was not claimed and remains mandatory at Block 14 / pre-cutover.
 
 ### Block 11 – Calendar provider + Calendar Agenda widget ⬜
-Real configured calendar data, normalization/deduplication and clean empty states.
+Goal: real configured calendar data, normalization/deduplication, explicit timezone/day semantics and clean empty/unavailable states, then a Calendar Agenda widget for the Start deck.
+
+**Next gate:** inspect existing HA/Config/Capability contracts and retained real calendar behavior, then complete Block-11 design/spec and detailed implementation plan before product code.
 
 ### Block 12 – House capability providers + House Quick widget ⬜
 Aggregated house state and quick controls through capabilities/actions.
@@ -133,7 +156,7 @@ Aggregated house state and quick controls through capabilities/actions.
 Configurable reusable action buttons for entity toggle, HA service, scene, navigation and URL.
 
 ### Block 14 – Start configuration experience ⬜
-Configure complete new Start page using the structured Config Store.
+Configure complete new Start page using the structured Config Store. This is also the next major composed OnePlus/Fully portrait screenshot-acceptance milestone.
 
 ## Phase D – Remaining application areas
 
@@ -174,7 +197,7 @@ Delete old monolith/patch/demo/compatibility paths and enforce permanent archite
 | 7 Icon library | ✅ |
 | 8 Start layout | ✅ |
 | 9 Weather provider | ✅ |
-| 10 Weather widget | ⬜ |
+| 10 Weather widget | ✅ |
 | 11 Calendar | ⬜ |
 | 12 House Quick | ⬜ |
 | 13 Dynamic Buttons | ⬜ |
@@ -187,4 +210,4 @@ Delete old monolith/patch/demo/compatibility paths and enforce permanent archite
 | 20 Cutover | ⬜ |
 | 21 Legacy deletion/gate | ⬜ |
 
-**Current summary:** Blocks 0–9 are complete, reviewed, green and merged. Block 10 has not started. r11 remains production/reference; no cutover has occurred.
+**Current summary:** Blocks 0–10 are complete, reviewed, green and merged. Block 11 is the next formal gate. r11 remains production/reference; no cutover has occurred.
