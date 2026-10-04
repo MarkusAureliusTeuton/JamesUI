@@ -60,14 +60,20 @@ export function createAppShell({ document, router, overlays, health, getContext,
   const updateOverlay = () => {
     if (!overlayRoot) return;
     const descriptor = overlays.current;
+    overlayRoot.replaceChildren();
+    overlayRoot.textContent = "";
     if (!descriptor) {
       overlayRoot.hidden = true;
       delete overlayRoot.dataset.overlayId;
-      overlayRoot.textContent = "";
       return;
     }
     overlayRoot.hidden = false;
     overlayRoot.dataset.overlayId = descriptor.id;
+    const content = descriptor.content;
+    if (content?.nodeType === 1 && content.ownerDocument === document) {
+      overlayRoot.replaceChildren(content);
+      return;
+    }
     overlayRoot.textContent = descriptor.title ?? descriptor.id;
   };
 
