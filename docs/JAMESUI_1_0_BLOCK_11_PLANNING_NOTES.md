@@ -64,6 +64,8 @@ The `day` mode must keep gesture directions semantically distinct:
 - switching days must not change row geometry or silently alter task-ordering rules
 - the selected day uses a compact, restrained header; for today the form is `Heute · So, 4. Oktober`, while other days use the weekday/date form such as `Mo, 5. Oktober`
 - the day header updates together with the horizontal day swipe so the currently selected day is always explicit
+- every calendar day remains reachable in sequence, including days with no calendar events or tasks; the widget must not skip automatically to the next occupied day
+- an empty selected day shows a quiet empty state such as `Keine Termine oder Aufgaben` while preserving the normal day header and navigation behavior
 
 ## Visibility and look-ahead
 
