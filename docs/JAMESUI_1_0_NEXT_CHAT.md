@@ -17,26 +17,31 @@ Default branch: `main`
 3. `docs/JAMESUI_1_0_EXECUTION_ROADMAP.md`
 4. `docs/JAMESUI_1_0_BASELINE.md`
 5. `docs/JAMESUI_1_0_NEXT_CHAT.md`
-6. `docs/superpowers/specs/2026-10-03-jamesui-1.0-block-8-home-hero-deck-design.md`
-7. `docs/superpowers/specs/2026-10-03-jamesui-1.0-block-9-weather-provider-design.md`
-8. `docs/superpowers/specs/2026-10-04-jamesui-1.0-block-10-weather-today-design.md`
-9. `docs/superpowers/plans/2026-10-04-jamesui-1.0-block-10-weather-today.md`
-10. inspect only files relevant to the active block
+6. `docs/JAMESUI_1_0_BLOCK_11_PLANNING_NOTES.md`
+7. `docs/JAMESUI_1_0_LAYOUT_PLANNING_NOTES.md`
+8. `docs/superpowers/specs/2026-10-03-jamesui-1.0-block-8-home-hero-deck-design.md`
+9. `docs/superpowers/specs/2026-10-03-jamesui-1.0-block-9-weather-provider-design.md`
+10. `docs/superpowers/specs/2026-10-04-jamesui-1.0-block-10-weather-today-design.md`
+11. `docs/superpowers/plans/2026-10-04-jamesui-1.0-block-10-weather-today.md`
+12. inspect only files relevant to the active block
+
+The Block-11 and Layout planning notes are mandatory reading while Block 11 is being designed. New confirmed product decisions, deferred requirements and cross-page layout rules must be persisted in the appropriate repository note; do not leave them only in chat memory.
 
 ## Binding direction
 
 Variant B remains binding:
+
 - build the clean JamesUI 1.0 runtime in parallel
 - r11 remains production/reference until controlled cutover
 - port desired behavior, not legacy architecture
 - delete obsolete legacy implementation after cutover
 - Git history is the archive
-
-No normal feature development on r11.
+- no normal feature development on r11
 
 ## Current execution state
 
 Completed and merged:
+
 - Block 0 – Baseline ✅
 - Block 1 – Core shell ✅ PR #13
 - Block 2 – Module system ✅ PR #14
@@ -49,160 +54,124 @@ Completed and merged:
 - Block 9 – `provider.weather` ✅ PR #21
 - Block 10 – `widget.weather-today` + forecast overlay ✅ PR #22
 
-Block 10 merge commit:
-`f8abbbb28588e210e87727f5fcb3a68984766887`
+Block 10 merge: `f8abbbb28588e210e87727f5fcb3a68984766887`.
 
-Validation:
-- Block 10 final branch #378 success; full job rerun on unchanged head also passed
-- Block 10 main #379 success on the merge commit
-- whole-branch review found one Important `pouring` presentation mismatch; a focused RED regression preceded the fix to `Starker Regen` + alert emphasis
-- permanent architecture guards protect widget boundaries, local Alpine allowlist, Core weather neutrality and legacy production entry
-- no open Critical/Important findings
-- no deterministic browser/screenshot harness exists; screenshot-level Block-10 acceptance was not claimed. Full composed OnePlus/Fully portrait acceptance remains required at Block 14 / pre-cutover.
+r11 is still production/reference. The new runtime has not been cut over.
 
-**Next formal gate: Block 11 – Calendar provider + Calendar Agenda widget.** No Block-11 product code has started.
+**Next formal gate: Block 11 – Calendar/task providers + Agenda widget. No Block-11 product code has started.**
 
-## Current platform
+## Current architecture
 
-### Core
-`frontend/core/` provides routes, persistent navigation, Router, Event Bus, Overlay Service, Health Service, Module Registry/Loader, Capability Registry, Action Registry, Config Service and composition with the Design System.
+Foundation rules remain binding:
 
-The shell now generically mounts same-document DOM element content from Overlay Service descriptors. This is domain-neutral; Core has no Weather Today special case.
+- pages select layout instances
+- layouts arrange regions/slots and do not know Home Assistant
+- widgets consume capabilities
+- provider modules own data subscriptions/normalization
+- user/control commands go through Action Registry
+- module lifecycle: `create(context, config)`, `mount(target)`, `update(nextContext, nextConfig)`, `destroy()`
+- layout/widget context: `events`, `overlays`, `capabilities`, `actions`, `module`
+- provider/action context additionally receives `homeAssistant`
+- no raw `hass`, Router, Health, Config Service, Design System or Registry/Loader in normal modules
 
-### Module context
-- layout/widget: `events`, `overlays`, `capabilities`, `actions`, `module`
-- provider/action: same five + `homeAssistant`
-- raw `hass`, Router, Health, Config Service, Design System and Registry/Loader are not exposed to modules
-- module config enters through lifecycle config arguments
+Configuration remains one versioned `.storage` store with `pages`, `layouts`, `widget_instances`, `dynamic_buttons`, `data_sources`, `module_settings`.
 
-### Home Assistant boundary
-All direct new-runtime HA access belongs under `frontend/ha/`. HA-backed actions use the adapter. The adapter additionally exposes validated `timeZone()` for provider-side HA-local day semantics. Disconnected/unavailable state views expose no stale cached entity data.
+## Layout clarification – binding planning direction
 
-### Configuration
-One canonical Home Assistant `.storage` Store:
-- key `jamesui.config`
-- schema version 1
-- sections `pages`, `layouts`, `widget_instances`, `dynamic_buttons`, `data_sources`, `module_settings`
-- atomic/transactional writes and explicit migrations
-- local display calibration remains browser-local
+Read `docs/JAMESUI_1_0_LAYOUT_PLANNING_NOTES.md`.
 
-### Design System / icons
-`frontend/design/` owns the 62-token root-scoped design contract and shared Surface/Button/Overlay/Dialog primitives.
+Important:
 
-`frontend/icons/` owns the immutable local 40-ID semantic icon registry, using pinned Tabler v3.48.0 provenance plus JamesUI-specific weather/shutter/moon icons. No runtime CDN/npm/fetch/icon-font/SVG-string dependency.
+- page-level scroll behavior belongs to the selected **layout**, not globally to the application or route
+- initial layout behaviors: `fixed` and vertically scrollable (`vertical`)
+- a `fixed` layout stays inside the available viewport; child overflow belongs inside widgets where supported
+- a `vertical` layout may grow and use page-level vertical scrolling
+- layouts may contain multiple structural regions; do not force every page into one universal full-page grid
 
-### Block 8 layout
-Boundary: `frontend/modules/layout.home-hero-deck/`
+For Start, the approved mockup is represented as a specialized `layout.home-hero-deck` family:
 
-Contract:
-- stable slots `hero`, `widget-left`, `widget-right-main`, `widget-right-footer`
-- `getSlot()` / frozen `listSlots()`
-- strict optional `hero_ratio`, default `0.42`, range `0.35–0.50`
-- atomic updates preserve slot identity/children
-- continuous lower deck, two-column primary geometry, CSS-only `44rem` fallback
-- tall widget content grows deck/page scroll
-- no domain logic/Core Start markup
+- upper full-width hero/global presentation region for `widget.weather-today`
+- Alpine/weather/time-of-day background and weather fact strip remain Weather widget/domain content, not Core-owned fields
+- lower widget deck contains Agenda, House Quick and Dynamic Buttons
+- the lower deck gets a logical widget grid/raster for placement and spans
+- grid sizing uses logical units/spans, not arbitrary pixel heights
+- exact grid dimensions are still open and must be chosen from the composed OnePlus Pad 2 portrait design
 
-### Block 9 Weather provider
-Boundary: `frontend/modules/provider.weather/`
+Other layouts may later use a full-page grid, scrollable grid, split/detail structure, etc. Add them only when a real page needs them.
 
-Capabilities:
-- `weather.current`
-- `weather.daily`
-- `weather.hourly`
-- `weather.sun`
-- `weather.moon`
-- `weather.atmosphere`
+## Block 11 confirmed product direction
 
-Important behavior:
-- deterministic source selection; explicit configured source never silently falls back
-- real Daily/Hourly/Twice-Daily HA forecast subscriptions
-- Daily fallback priority usable Daily → Twice-Daily → Hourly
-- exact rain start only from genuine Hourly data
-- validated additive timezone metadata supports truthful consumer formatting
-- day grouping uses HA IANA timezone
-- Sun strict ISO instants + semantic period
-- Moon prefers valid HA phase, otherwise verified local SunCalc-based fallback
-- atmosphere exposes semantic scene keys only
-- five-minute time-derived refresh, no HA polling
-- source-generation guards reject stale callbacks
-- no DOM/UI/assets/raw HA/config/r11 coupling
+Read the full binding planning record in `docs/JAMESUI_1_0_BLOCK_11_PLANNING_NOTES.md` before asking already-answered questions.
 
-### Block 10 Weather Today
-Boundary: `frontend/modules/widget.weather-today/`
+Current confirmed direction includes:
 
-Important behavior:
-- consumes only the six Block-9 weather capabilities
-- strict empty V1 config; no direct HA
-- stable Alpine hero DOM
-- device-local German date + `HH:MM` clock with one aligned timeout
-- temperature is the accessible forecast trigger
-- truthful current condition, today high/low, genuine rain/time, wind/gust, sunrise/sunset and moon facts
-- exact eight-scene local Alpine asset allowlist + neutral fallback
-- seven restrained facts in one primary row with CSS container fallback
-- forecast overlay: up to 12 future Hourly + 7 current/future Daily entries, explicit HA timezone, clean empty states
-- live updates preserve important DOM identity
-- stale-safe overlay ownership and complete cleanup on update/reload/destroy
-- real Registry/Loader integration and capability ownership are tested
-- no Core weather branching, r11 copy, old weather SVG dependency, raw palette or remote assets
+- `provider.calendar` + `provider.tasks` + `widget.calendar-agenda`
+- only explicitly configured `calendar.*` / `todo.*` sources
+- Agenda modes: `grouped`, `timeline`, `day`
+- `day`: horizontal swipe changes calendar day; vertical scroll handles entries within that day; empty days remain visible
+- day header example: `Heute · So, 4. Oktober`
+- global calendar look-ahead = 30 days, optionally overridden per calendar
+- task `lookahead_days = 0` means unrestricted/not applicable
+- visible-row modes: `fixed` and `auto`
+- fixed default = 5, allowed 3–8
+- auto derives complete visible rows from host-allocated widget height
+- Agenda does not own page scroll behavior; it respects its host layout
+- vertical point/line timeline; dashed line continuation indicates additional hidden entries above/below, replacing separate up/down arrows
+- task ordering globally configurable: chronological / tasks before / tasks after; untimed before/after applies only to chronological mode
+- completed tasks disappear; completion offers short Undo
+- overdue incomplete tasks are presented under Today without modifying provider due date and without special overdue styling
+- row geometry remains fixed; title consumes remaining width and ellipsizes
+- optional `show_location` reserves stable second-line geometry
+- event tap opens detail overlay with real available fields only
+- calendar default icon/accent plus ordered event rules that can override both; title default matching, optional description/location scope
+- future task editing is required and the normalized model must preserve source/list/UID and editable fields
+- reminder/advance-notice behavior is important and remains open; never invent unavailable reminder metadata
 
-## r11 / cutover status
+## Block 11 design gate
 
-r11 is **still the running production/reference frontend**.
+Block 11 is now architectural enough that the design/spec gate must be completed before product code.
 
-`jamesui-entry.js` still loads the old panel/start bridge. The new Core/Design/Icon/Layout/Weather/Weather-Today runtime is not wired into production. Do not cut over before Blocks 19–20.
+Continue in this order:
 
-## Block 11 boundary
+1. inspect actual HA adapter, Config Store, Capability/Action contracts and retained r11 calendar behavior
+2. verify current Home Assistant Calendar/Todo APIs needed for events, todo items, completion/Undo and source identity
+3. resolve remaining design questions one at a time; do not re-ask confirmed items from the planning notes
+4. compare 2–3 viable architecture approaches where a real architectural choice remains, especially task update/action ownership
+5. write the binding Block-11 design/spec under `docs/superpowers/specs/`
+6. self-review spec and ask user to review/approve it
+7. only then create the detailed implementation plan under `docs/superpowers/plans/`
+8. get plan approval before implementation
+9. implement in an isolated branch with TDD, whole-branch review and fresh CI
 
-Block 11 is **Calendar provider + Calendar Agenda widget**.
+Do not implement House Quick, Dynamic Buttons, final Start composition, production bootstrap switch or cutover in Block 11.
 
-Initial goal:
-- use real configured Home Assistant calendar data only
-- define normalized Calendar capability contract before widget implementation
-- deterministic configured-calendar selection; no fabricated demo events
-- normalize event identity, start/end, all-day semantics, titles and source calendar
-- define explicit timezone/day-boundary behavior compatible with Home Assistant/local household semantics
-- deduplicate repeated/overlapping source representations where required by the retained UX
-- distinguish unavailable/not-configured/empty states
-- provider owns HA subscriptions/queries; widget consumes capabilities only
-- Calendar Agenda mounts in Block-8 `widget-left` later without final Start composition in Block 11
-- preserve premium quiet deck styling rather than generic HA cards
+## Working preferences / AI rules
 
-Block 11 must **not** implement House Quick, Dynamic Buttons, final Start composition, production bootstrap switch or cutover.
-
-Before Block-11 product code:
-1. read current status/foundation/roadmap/baseline and Blocks 8–10 contracts
-2. inspect existing Config Store data-source shape, HA adapter calendar support/gaps and retained r11 calendar behavior as evidence
-3. brainstorm 2–3 provider/widget boundary approaches if architecture choices remain
-4. write and get approval for the binding Block-11 design/spec
-5. write the detailed implementation plan
-6. get plan approval
-7. implement in an isolated branch with TDD, whole-branch review and fresh CI
-
-## Working preferences
-
-- German
-- concise, technical, direct
+- German, concise, technical, direct
+- every JamesUI response begins `✅ Fertig:`, `⚠️ Test nötig:` or `🚧 Nicht fertig:`
+- every response ends with a short summary
 - repository edits directly through GitHub when available
-- every JamesUI response starts `✅ Fertig:`, `⚠️ Test nötig:` or `🚧 Nicht fertig:`
+- repository is source of truth; do not work from old chat memory when current docs exist
 - one roadmap block at a time
-- TDD for behavior changes
-- intentionally red tests never to `main`
-- approved green blocks merge to `main` without repeated repository confirmation
-- update status/roadmap/handover after merged work
+- TDD for behavior changes; intentionally red tests never to `main`
+- approved green work may be merged without repeated repository confirmation
 - no monkey-patches, Prototype overrides, version-polish files, parallel implementations or permanent legacy shims
 - OnePlus Pad 2 portrait is primary visual target; Fully is kiosk shell only
+- when a new confirmed product decision or future requirement appears, persist it in the repository in the same work sequence
+- when AI/agent handling rules change, persist those too
 
 ## Fresh-chat prompt
 
 ```text
 Wir setzen mein Projekt JamesUI aus dem Repository MarkusAureliusTeuton/JamesUI fort.
 
-Bitte arbeite nicht aus Erinnerung, sondern lies zuerst PROJECT_STATUS.md, die Foundation-Spec, die Execution Roadmap, die Baseline und JAMESUI_1_0_NEXT_CHAT.md. Lies für den aktuellen Plattformstand außerdem die Block-8-, Block-9- und Block-10-Spec sowie den Block-10-Plan.
+Arbeite nicht aus Erinnerung. Lies zuerst PROJECT_STATUS.md, die Foundation-Spec, die Execution Roadmap, die Baseline, JAMESUI_1_0_NEXT_CHAT.md, JAMESUI_1_0_BLOCK_11_PLANNING_NOTES.md und JAMESUI_1_0_LAYOUT_PLANNING_NOTES.md. Lies danach die relevanten Block-8-/9-/10-Specs und nur die Dateien, die du für den aktiven Block brauchst.
 
-Variante B ist verbindlich. Blocks 0 bis 10 sind abgeschlossen, reviewed, grün und auf main. Block 10 wurde über PR #22 mit Merge f8abbbb28588e210e87727f5fcb3a68984766887 integriert; Main-CI #379 ist grün. r11 läuft weiterhin produktiv; der neue Core ist noch nicht in den Panel-Bootstrap geschaltet.
+Variante B ist verbindlich. Blocks 0–10 sind abgeschlossen und auf main. r11 läuft weiterhin produktiv; kein Cutover.
 
-Nächster Gate: Block 11 – Calendar provider + Calendar Agenda widget. Beginne mit Repo-/Vertragsanalyse und der vorgesehenen Design-/Spec-Stufe. Schreibe noch keinen Block-11-Produktcode vor meiner Freigabe. Der Provider soll reale Home-Assistant-Kalenderdaten normalisieren; das Widget konsumiert nur Capabilities. House Quick, Dynamic Buttons, finaler Start-Aufbau und Cutover gehören in spätere Blöcke.
+Nächster Gate ist Block 11: provider.calendar + provider.tasks + widget.calendar-agenda. Die bisherigen Produktentscheidungen stehen in der Block-11-Planungsnotiz; frage sie nicht erneut ab. Die Layout-/Scroll-Regeln stehen in der Layout-Planungsnotiz. Page-Scrolling ist eine Layout-Eigenschaft, keine globale Startseitenregel.
 
-Wichtig: Deutsch, kurz und technisch sauber. Repository direkt bearbeiten, wenn GitHub-Zugriff vorhanden ist. TDD für Verhaltensänderungen; absichtlich rote Tests niemals nach main. Keine Monkey-Patches, Prototype-Overrides, Versions-Polish-Dateien, parallelen Implementierungen oder dauerhaften Legacy-Krücken. OnePlus Pad 2 Hochformat ist das primäre Ziel; Fully ist nur die Kiosk-Hülle.
+Block 11 ist noch in der Design-/Spec-Phase. Schreibe keinen Produktcode vor Spec- und Planfreigabe. Kläre die verbleibenden Punkte, prüfe die echten Home-Assistant-Kalender-/Todo-Verträge und halte neue bestätigte Entscheidungen sowie spätere Anforderungen im Repository fest.
+
+Wichtig: Deutsch, kurz und technisch sauber. Repository direkt bearbeiten, wenn GitHub-Zugriff vorhanden ist. TDD für Verhaltensänderungen; rote Tests nie nach main. Keine Monkey-Patches, Prototype-Overrides, Versions-Polish-Dateien, parallelen Implementierungen oder dauerhaften Legacy-Krücken. OnePlus Pad 2 Hochformat ist das primäre Ziel; Fully ist nur die Kiosk-Hülle.
 ```
