@@ -1,7 +1,7 @@
 # JamesUI 1.0 – Execution Roadmap
 
-_Status: written foundation architecture approved; Blocks 0–8 complete and validated; next gate Block 9 design/planning_
-_Date: 2026-10-03_
+_Status: foundation architecture approved; Blocks 0–9 complete and validated; next gate Block 10 design/spec_
+_Date: 2026-10-04_
 
 This document defines the implementation order for JamesUI 1.0 using **Variant B: clean foundation + controlled cutover**. r11 remains the running design/reference runtime until the cutover gate.
 
@@ -91,13 +91,37 @@ Delivered:
 
 Review note: one Important content-growth issue was found during whole-branch review. RED #300 captured it; the corrected auto-minimum grid tracks passed final branch #301.
 
-### Block 9 – Weather provider ⬜
-Goal: normalized `weather.current`, `weather.daily`, optional hourly, sun, moon and atmosphere capabilities behind the existing provider/Home Assistant Adapter boundary.
+### Block 9 – Weather provider ✅
+Spec: `docs/superpowers/specs/2026-10-03-jamesui-1.0-block-9-weather-provider-design.md`
 
-**Next gate:** complete Block-9 architectural design/spec, user review, detailed implementation plan and approval before product code.
+Plan: `docs/superpowers/plans/2026-10-03-jamesui-1.0-block-9-weather-provider.md`
+
+Result: PR #21, merge `3f27f8d800534792c50c29e7e153045bc14a1352`. Final branch #336 and main #337 green.
+
+Delivered:
+- `provider.weather` with exact capabilities `weather.current`, `weather.daily`, `weather.hourly`, `weather.sun`, `weather.moon`, `weather.atmosphere`
+- narrow validated Home Assistant `timeZone()` adapter boundary
+- explicit configured Weather source never silently falls back; automatic mode is deterministic
+- current weather normalization with explicit units and optional outdoor-temperature override
+- real Daily/Hourly/Twice-Daily forecast subscriptions through the HA adapter
+- Daily fallback priority: usable Daily → Twice-Daily → Hourly aggregation
+- HA-timezone-aware day grouping and DST/midnight handling
+- precise next-rain time only from genuine Hourly data
+- independent Sun normalization and semantic day/golden/twilight/night period
+- local Moon fallback derived from SunCalc v1.9.0 with checked-in BSD-2-Clause attribution
+- local Moon fallback passed fixed 2026 primary-phase references at the predeclared ±3 percentage-point illumination tolerance
+- semantic atmosphere scene keys only; no asset paths
+- one five-minute time-derived refresh timer with no HA polling
+- source-generation guards prevent stale forecast callbacks from publishing
+- strict ISO-instant normalization for Forecast and Sun timestamps
+- no UI, DOM, raw HA, Config Service, asset loading, r11 coupling or production-entry change
+
+Review note: whole-branch review caught two timestamp-truthfulness issues where `Date.parse()` accepted locale-formatted non-ISO values. Review CI #333 stayed red until strict ISO-instant validation was added; final branch #336 is green with no open Critical/Important findings.
 
 ### Block 10 – Weather Today widget + forecast overlay ⬜
-Rebuild accepted hero using capabilities/design/icons; temperature opens overlay without layout shift.
+Goal: rebuild the accepted Alpine/weather hero using Block-9 capabilities plus shared Design/Icon/Overlay boundaries. Temperature opens the forecast overlay without layout shift.
+
+**Next gate:** complete Block-10 architectural/visual design/spec, user review, detailed implementation plan and approval before product code.
 
 ### Block 11 – Calendar provider + Calendar Agenda widget ⬜
 Real configured calendar data, normalization/deduplication and clean empty states.
@@ -149,7 +173,7 @@ Delete old monolith/patch/demo/compatibility paths and enforce permanent archite
 | 6 Design system | ✅ |
 | 7 Icon library | ✅ |
 | 8 Start layout | ✅ |
-| 9 Weather provider | ⬜ |
+| 9 Weather provider | ✅ |
 | 10 Weather widget | ⬜ |
 | 11 Calendar | ⬜ |
 | 12 House Quick | ⬜ |
@@ -163,4 +187,4 @@ Delete old monolith/patch/demo/compatibility paths and enforce permanent archite
 | 20 Cutover | ⬜ |
 | 21 Legacy deletion/gate | ⬜ |
 
-**Current summary:** Blocks 0–8 are complete, reviewed, green and merged. Block 9 has not started. r11 remains production/reference; no cutover has occurred.
+**Current summary:** Blocks 0–9 are complete, reviewed, green and merged. Block 10 has not started. r11 remains production/reference; no cutover has occurred.
