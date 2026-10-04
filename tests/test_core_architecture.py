@@ -393,17 +393,19 @@ class CoreArchitectureTest(unittest.TestCase):
             self.assertNotIn(token, source, f"Block 10 widget must not contain forbidden coupling: {token}")
 
         assets = (WEATHER_TODAY_ROOT / "assets.js").read_text(encoding="utf-8")
-        alpine_paths = set(re.findall(r'"(/jamesui_static/assets/alpine/[^"\\]+\.webp)"', assets))
-        self.assertEqual(alpine_paths, {
-            "/jamesui_static/assets/alpine/clear-day.webp",
-            "/jamesui_static/assets/alpine/cloudy-day.webp",
-            "/jamesui_static/assets/alpine/rain-day.webp",
-            "/jamesui_static/assets/alpine/snow-day.webp",
-            "/jamesui_static/assets/alpine/fog.webp",
-            "/jamesui_static/assets/alpine/dusk.webp",
-            "/jamesui_static/assets/alpine/clear-night.webp",
-            "/jamesui_static/assets/alpine/cloudy-night.webp",
+        self.assertIn('const ROOT = "/jamesui_static/assets/alpine/";', assets)
+        asset_files = set(re.findall(r"\$\{ROOT\}([^`]+\.webp)", assets))
+        self.assertEqual(asset_files, {
+            "clear-day.webp",
+            "cloudy-day.webp",
+            "rain-day.webp",
+            "snow-day.webp",
+            "fog.webp",
+            "dusk.webp",
+            "clear-night.webp",
+            "cloudy-night.webp",
         })
+        self.assertIsNone(re.search(r"https?://|data:image", assets))
 
         styles = (WEATHER_TODAY_ROOT / "styles.js").read_text(encoding="utf-8")
         raw_palette = re.compile(r"#[0-9a-fA-F]{3,8}\b|rgba?\s*\(|hsla?\s*\(")
