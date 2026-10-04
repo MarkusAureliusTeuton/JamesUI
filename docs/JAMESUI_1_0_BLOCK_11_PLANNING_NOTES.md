@@ -51,6 +51,7 @@ Each widget instance has its own stable instance ID and its own configuration, i
 
 - selected calendars
 - selected task/todo lists
+- whether calendar functionality is enabled
 - whether task functionality is enabled
 - presentation mode (`grouped`, `timeline`, `day`)
 - look-ahead presentation settings
@@ -66,6 +67,7 @@ Therefore, examples such as these must be possible without creating a second wid
 
 - Start page Agenda: family + waste calendars, household tasks, grouped mode
 - another page Agenda: work calendar only, tasks disabled, day mode
+- another Agenda instance: task lists only, calendars disabled
 - another Agenda instance: different calendar/task subset and independent density/look-ahead settings
 
 Providers remain shared data providers. Multiple Agenda widget instances consume the same normalized capabilities and independently filter/present them; they must not create duplicate provider architectures merely because the same widget module is instantiated more than once.
@@ -113,15 +115,27 @@ Tasks do not need a practical look-ahead restriction.
 - for `todo.*`, `0` means **no look-ahead restriction / not applicable**, never “show zero tasks”
 - this control should not clutter normal task configuration unless a future source requires it
 
-## Task source enablement and presentation
+## Calendar/task source enablement and presentation
 
-Task functionality is optional **per Agenda widget instance**.
+Calendar and task functionality are independently optional **per Agenda widget instance**.
+
+### Calendar enablement
+
+- the instance exposes a calendar enable/disable setting (working name `calendar_enabled`)
+- default is enabled
+- when disabled, that Agenda instance renders no calendar rows and opens no calendar-event detail interactions
+- calendar-specific configuration that has no effect while calendars are disabled remains understandable but disabled/greyed in configuration
+- disabling calendars in one Agenda instance must not disable `provider.calendar` globally and must not affect another Agenda instance
+- with calendars disabled and tasks enabled, the module acts as a task-only Agenda without requiring a second widget implementation
+
+### Task enablement
 
 - the instance exposes a task enable/disable setting (working name `tasks_enabled`)
 - default is enabled for the combined household Agenda unless the formal spec chooses a different property name
 - when disabled, that Agenda instance renders no task rows and exposes no task-completion interaction
 - task-specific configuration that has no effect while tasks are disabled remains understandable but disabled/greyed in configuration
 - disabling tasks in one Agenda instance must not disable `provider.tasks` globally and must not affect another Agenda instance
+- with tasks disabled and calendars enabled, the module acts as a calendar-only Agenda without requiring a second widget implementation
 
 Each selected `todo.*` list can define restrained presentation for that widget instance:
 
@@ -334,6 +348,7 @@ This remains a high-priority unresolved design item.
 
 ## Still open
 
+- whether an Agenda instance may persist with both `calendar_enabled = false` and `tasks_enabled = false`, or whether configuration must require at least one content domain
 - exact capability names/shapes for calendar and task providers
 - exact Home Assistant calendar/todo query/subscription/refresh strategy
 - allowed bounds around the confirmed 30-day calendar default
