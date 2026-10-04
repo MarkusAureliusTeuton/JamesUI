@@ -115,6 +115,7 @@ test("normalizes exact current schema and explicit outdoor-temperature override"
   });
   assert.deepEqual(value, {
     source_entity_id: "weather.home",
+    time_zone: null,
     condition: "partlycloudy",
     temperature: 16.8,
     temperature_unit: "°C",
