@@ -135,7 +135,7 @@ test("temperature remains an accessible forecast trigger and opens caller-owned 
   const overlayRoot = overlays.current.content;
   assert.equal(root.parentNode, target);
 
-  capabilities.publish("weather.hourly", available("weather.hourly", { time_zone: "Europe/Berlin", units: { temperature: "°C" }, items: [{ datetime: "2026-10-04T10:00:00Z", condition: "rainy", temperature: 15, precipitation_probability: 80 }] }));
+  capabilities.publish("weather.hourly", available("weather.hourly", { time_zone: "Europe/Berlin", units: { temperature: "°C" }, items: [{ datetime: "2026-10-04T11:00:00Z", condition: "rainy", temperature: 15, precipitation_probability: 80 }] }));
   assert.equal(overlays.current.content, overlayRoot);
   assert.equal(overlayRoot.querySelectorAll('[data-jui-weather-forecast-hour=""]').length, 1);
   widget.destroy();
