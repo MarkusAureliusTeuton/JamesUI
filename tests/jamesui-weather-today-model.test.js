@@ -49,8 +49,17 @@ test("maps canonical weather conditions to semantic icons and German labels with
 });
 
 test("maps all canonical moon phases and no others", () => {
-  const phases = ["new", "waxing_crescent", "first_quarter", "waxing_gibbous", "full", "waning_gibbous", "last_quarter", "waning_crescent"];
-  for (const phase of phases) assert.equal(moonIconForPhase(phase), `moon.${phase.replaceAll("_", "-")}`);
+  const cases = {
+    new_moon: "moon.new",
+    waxing_crescent: "moon.waxing-crescent",
+    first_quarter: "moon.first-quarter",
+    waxing_gibbous: "moon.waxing-gibbous",
+    full_moon: "moon.full",
+    waning_gibbous: "moon.waning-gibbous",
+    last_quarter: "moon.last-quarter",
+    waning_crescent: "moon.waning-crescent",
+  };
+  for (const [phase, iconId] of Object.entries(cases)) assert.equal(moonIconForPhase(phase), iconId);
   assert.equal(moonIconForPhase("unknown"), null);
   assert.equal(moonIconForPhase(null), null);
 });
