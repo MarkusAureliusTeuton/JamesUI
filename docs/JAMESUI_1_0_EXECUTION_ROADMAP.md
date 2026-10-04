@@ -91,6 +91,8 @@ Delivered:
 
 Review note: one Important content-growth issue was found during whole-branch review. RED #300 captured it; the corrected auto-minimum grid tracks passed final branch #301.
 
+The Block-8 growth behavior remains a generic safety property of the reusable layout. Final Start composition is allowed to impose bounded slot heights so composed widgets scroll internally instead of growing the page; that final viewport policy is owned by Block 14.
+
 ### Block 9 – Weather provider ✅
 Spec: `docs/superpowers/specs/2026-10-03-jamesui-1.0-block-9-weather-provider-design.md`
 
@@ -144,10 +146,12 @@ Review note: whole-branch review found one Important presentation mismatch: Home
 
 Visual acceptance note: the repository has no deterministic browser/screenshot harness. Block-10 acceptance therefore used DOM/CSS/architecture review; screenshot-level OnePlus/Fully acceptance was not claimed and remains mandatory at Block 14 / pre-cutover.
 
-### Block 11 – Calendar provider + Calendar Agenda widget ⬜
-Goal: real configured calendar data, normalization/deduplication, explicit timezone/day semantics and clean empty/unavailable states, then a Calendar Agenda widget for the Start deck.
+### Block 11 – Calendar/task providers + Agenda widget ⬜
+Goal: real configured calendar and task data, normalization/deduplication, explicit timezone/day semantics, task completion and clean empty/unavailable states, then a bounded Calendar Agenda widget for the Start deck. The widget must support fixed and height-derived automatic visible-row capacity and keep overflow inside the widget rather than forcing page growth.
 
-**Next gate:** inspect existing HA/Config/Capability contracts and retained real calendar behavior, then complete Block-11 design/spec and detailed implementation plan before product code.
+Persistent design notes: `docs/JAMESUI_1_0_BLOCK_11_PLANNING_NOTES.md`
+
+**Next gate:** inspect existing HA/Config/Capability contracts and retained real calendar/task behavior, then complete Block-11 design/spec and detailed implementation plan before product code.
 
 ### Block 12 – House capability providers + House Quick widget ⬜
 Aggregated house state and quick controls through capabilities/actions.
@@ -158,7 +162,12 @@ Configurable reusable action buttons for entity toggle, HA service, scene, navig
 ### Block 14 – Start configuration experience ⬜
 Configure complete new Start page using the structured Config Store. This is also the next major composed OnePlus/Fully portrait screenshot-acceptance milestone.
 
-## Phase D – Remaining application areas
+Binding composition requirements already identified for this block:
+- the normal tablet Start page fits inside the available OnePlus/Fully viewport without page-level vertical scrolling
+- widgets must stay inside their allocated layout regions; overflow belongs inside the widget when that widget supports scrolling
+- define one shared layout-height grid for the Start page and allow widget maximum heights/spans to be configured in grid units rather than arbitrary pixel values
+- height-aware widgets such as the Block-11 Agenda can derive their visible content capacity from their actual allocated grid height
+- configuration controls must be dependency-aware: settings made meaningless by another selected option remain understandable but disabled/greyed instead of silently active
 
 ### Block 15 – Haus page migration ⬜
 Rebuild useful Haus behavior on the new platform.
@@ -198,7 +207,7 @@ Delete old monolith/patch/demo/compatibility paths and enforce permanent archite
 | 8 Start layout | ✅ |
 | 9 Weather provider | ✅ |
 | 10 Weather widget | ✅ |
-| 11 Calendar | ⬜ |
+| 11 Calendar/tasks agenda | ⬜ |
 | 12 House Quick | ⬜ |
 | 13 Dynamic Buttons | ⬜ |
 | 14 Start config | ⬜ |
