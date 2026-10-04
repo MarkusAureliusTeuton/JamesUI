@@ -101,6 +101,18 @@ jobs:
             tests/jamesui-home-hero-deck-styles.test.js \
             tests/jamesui-home-hero-deck-loader.test.js
 
+      - name: Test JamesUI Block 9 weather provider
+        run: |
+          node --experimental-default-type=module --test \
+            tests/jamesui-weather-manifest-config.test.js \
+            tests/jamesui-weather-normalize.test.js \
+            tests/jamesui-weather-forecast.test.js \
+            tests/jamesui-weather-atmosphere.test.js \
+            tests/jamesui-weather-moon.test.js \
+            tests/jamesui-weather-provider.test.js \
+            tests/jamesui-weather-loader.test.js \
+            tests/jamesui-weather-review-regressions.test.js
+
       - name: Validate Alpine atmosphere assets
         run: python -m unittest tests/test_alpine_assets.py
 

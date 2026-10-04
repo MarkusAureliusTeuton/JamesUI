@@ -33,6 +33,18 @@ function sameEntityList(previous, next) {
   return true;
 }
 
+function validTimeZone(value) {
+  if (typeof value !== "string" || value.trim() === "") return null;
+  const timeZone = value.trim();
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone }).format(new Date(0));
+    return timeZone;
+  } catch (error) {
+    if (error instanceof RangeError) return null;
+    throw error;
+  }
+}
+
 export class HomeAssistantUnavailableError extends Error {
   constructor(message = "Home Assistant is unavailable") {
     super(message);
@@ -122,6 +134,11 @@ export function createHomeAssistantAdapter({ onSubscriberError = null } = {}) {
 
     connectionState() {
       return connectionStateFor(currentHass);
+    },
+
+    timeZone() {
+      if (destroyed || connectionStateFor(currentHass) !== "connected") return null;
+      return validTimeZone(currentHass?.config?.time_zone);
     },
 
     getState(entityId) {
