@@ -200,7 +200,7 @@ Block 11 may remain display + complete + Undo, but the normalized task model mus
 
 Future editing must go through the provider/HA boundary, never direct raw HA access from the widget.
 
-## Event details and all-day behavior
+## Event details and multi-day behavior
 
 Tapping a calendar event opens a shared detail overlay showing only real available fields, such as:
 
@@ -222,6 +222,14 @@ All-day behavior is confirmed:
 - the detail overlay for a multi-day all-day event keeps the truthful original start/end range instead of pretending each daily row is a separate source event
 - `show_all_day = false` hides all-day calendar events globally from the Agenda
 - no per-calendar all-day override is required in Block 11 unless a later real use case justifies it
+
+Timed events crossing local midnight are also day-aware:
+
+- a timed event that starts on one local day and ends after midnight on the next local day is shown on both affected days
+- on the start day, the compact time area shows the real start time, e.g. `22:00`
+- on the following day, the continuation row shows `bis <end time>`, e.g. `bis 01:30`
+- the event remains a timed event and must never be converted into an all-day event merely because it crosses midnight
+- both rows refer to the same normalized source event; the detail overlay always shows the truthful original start/end range
 
 ## Calendar icon and accent rules
 
@@ -284,7 +292,7 @@ This remains a high-priority unresolved design item.
 - future task-editing block placement
 - reminder metadata feasibility/fallback
 - exact semantic icon additions required
-- behavior of timed calendar events that span midnight/multiple days
+- behavior of timed source events that span more than two local calendar days, if such a real use case needs special presentation
 
 ## Gate
 
