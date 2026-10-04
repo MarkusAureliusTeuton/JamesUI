@@ -29,6 +29,18 @@ export function isoInstantOrNull(value) {
   return Number.isFinite(parsed.valueOf()) ? instant : null;
 }
 
+export function normalizeTimeZone(value) {
+  if (typeof value !== "string" || value.trim() === "") return null;
+  const timeZone = value.trim();
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone }).format(new Date(0));
+    return timeZone;
+  } catch (error) {
+    if (error instanceof RangeError) return null;
+    throw error;
+  }
+}
+
 function nonEmptyStringOrNull(value) {
   return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
 }
@@ -84,7 +96,7 @@ function validOverride(entity) {
   return { value, unit: nonEmptyStringOrNull(entity.attributes?.unit_of_measurement) };
 }
 
-export function normalizeCurrentWeather({ weatherEntity, overrideEntity = null, nextPrecipitation = null }) {
+export function normalizeCurrentWeather({ weatherEntity, overrideEntity = null, nextPrecipitation = null, timeZone = null }) {
   if (!weatherEntity || typeof weatherEntity.entity_id !== "string") {
     throw new TypeError("weatherEntity is required");
   }
@@ -106,6 +118,7 @@ export function normalizeCurrentWeather({ weatherEntity, overrideEntity = null, 
 
   return deepFreeze({
     source_entity_id: weatherEntity.entity_id,
+    time_zone: normalizeTimeZone(timeZone),
     condition,
     temperature,
     temperature_unit: temperatureUnit,
