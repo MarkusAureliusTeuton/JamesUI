@@ -1,384 +1,562 @@
 # JamesUI 1.0 – Block 11 Planning Notes
 
 _Date: 2026-10-04_
-_Status: active design notes; not yet the approved Block-11 spec or implementation plan_
+_Status: conversational design complete; written spec candidate pending user review_
 
-This file is the persistent planning record for confirmed Block-11 decisions and explicitly deferred requirements. Future Block-11 chats must read and update it. Cross-page layout rules live in `docs/JAMESUI_1_0_LAYOUT_PLANNING_NOTES.md` and must also be read when sizing/scroll behavior is involved.
+This file is the persistent planning record for confirmed Block-11 decisions. The consolidated written spec candidate is:
 
-## Persistent chat / AI working rules
+`docs/superpowers/specs/2026-10-04-jamesui-1.0-block-11-calendar-tasks-agenda-design.md`
 
-Every future chat that continues Block 11 must:
+Until that spec is explicitly approved, this planning note remains the record of confirmed product decisions. No Block-11 product code may be written before spec approval and later implementation-plan approval.
 
-- read this file before proposing, changing or implementing Block-11 behavior
-- treat the repository as source of truth, not chat memory
-- add newly confirmed Block-11 decisions here during design
-- add explicitly deferred requirements here instead of leaving them only in chat
-- update/remove superseded wording rather than keeping contradictory active requirements
-- reconcile these notes into the formal Block-11 spec before implementation planning
-- not use this planning note as permission to write product code before spec/plan approval
+Cross-page sizing/scroll rules remain in `docs/JAMESUI_1_0_LAYOUT_PLANNING_NOTES.md`.
 
-JamesUI AI/agent work must preserve the project rules already established in the canonical repository documents:
+## Working rules
 
-- German, concise, technical and direct communication
-- every JamesUI response starts with `✅ Fertig:`, `⚠️ Test nötig:` or `🚧 Nicht fertig:` and ends with a short summary
-- work one roadmap block at a time
-- inspect current repository state before changing code or architecture
-- edit the repository directly when GitHub access is available
-- use TDD for behavior changes; intentionally red tests never go to `main`
-- no monkey-patches, Prototype overrides, version-polish layers, parallel implementations or permanent legacy compatibility shims
-- r11 remains production/reference until controlled cutover
-- do not invent unavailable backend data or silently substitute fabricated values
-- OnePlus Pad 2 portrait remains the primary visual target; Fully is only the kiosk shell
-- future-facing product and AI-handling decisions must be persisted in the repository
+- German, concise, technical, direct communication.
+- Every JamesUI response begins `✅ Fertig:`, `⚠️ Test nötig:` or `🚧 Nicht fertig:` and ends with a short summary.
+- Repository is source of truth.
+- One roadmap block at a time.
+- TDD for behavior changes; intentionally red tests never reach `main`.
+- No monkey-patches, Prototype overrides, version-polish layers, parallel implementations or permanent legacy shims.
+- r11 stays production/reference until controlled cutover.
+- Never fabricate backend data.
+- OnePlus Pad 2 portrait remains primary target; Fully is only the kiosk shell.
+- During design, decisions may be collected in chat and then persisted in one consolidated pass rather than writing every micro-decision immediately.
 
-## Scope direction
+## Block 11 scope
 
-Block 11 is a combined household agenda, not calendar-only:
+Block 11 is a combined household Agenda:
 
-- `provider.calendar` for explicitly configured Home Assistant `calendar.*` sources
-- `provider.tasks` for explicitly configured Home Assistant `todo.*` sources
-- `widget.calendar-agenda` consuming capabilities only
-- no raw Home Assistant access from the widget
-- no final Start composition or production cutover in Block 11
+- `provider.calendar`
+- `provider.tasks`
+- dedicated task-update action exposing `task.update`
+- `widget.calendar-agenda`
 
-No automatic inclusion of every discovered calendar/task list as visible content.
+The widget consumes capabilities/actions only and has no raw Home Assistant access.
 
-## Widget instances and per-instance configuration
+In scope:
 
-`widget.calendar-agenda` must support multiple simultaneous widget instances. Reusing the same widget module on another page or in another slot must not reuse the first instance's settings implicitly.
+- calendar-only, task-only and combined Agenda;
+- `grouped`, `timeline`, `day` modes;
+- calendar lookahead and day-mode lookback;
+- current/running/upcoming and historical-day semantics;
+- all-day and multi-day events;
+- duplicate collapse with provenance;
+- task ordering, completion, ~5 s Undo and editing;
+- overdue carry-forward;
+- event/task detail overlays;
+- JamesUI-owned advance notices;
+- icon/accent rules;
+- fixed/auto row capacity;
+- source-specific error handling.
 
-Each widget instance has its own stable instance ID and its own configuration, including as applicable:
+Out of scope:
 
-- selected calendars
-- selected task/todo lists
-- whether calendar functionality is enabled
-- whether task functionality is enabled
-- presentation mode (`grouped`, `timeline`, `day`)
-- look-ahead / lookback presentation settings
-- visible-row mode / item count
-- task ordering
-- all-day visibility
-- location visibility
-- per-calendar presentation/rules
-- per-task-list presentation
-- other widget-specific settings introduced by the approved Block-11 spec
+- task creation/deletion/move/reorder;
+- calendar event editing;
+- source reminder/alarm import;
+- final Start grid/composition;
+- generic Module Loader instance orchestration;
+- House Quick, Dynamic Buttons, production cutover.
 
-Therefore, examples such as these must be possible without creating a second widget implementation:
+## Selected architecture
 
-- Start page Agenda: family + waste calendars, household tasks, grouped mode
-- another page Agenda: work calendar only, tasks disabled, day mode
-- another Agenda instance: task lists only, calendars disabled
-- another Agenda instance: different calendar/task subset and independent density/look-ahead settings
+Chosen approach:
 
-Providers remain shared data providers. Multiple Agenda widget instances consume the same normalized capabilities and independently filter/present them; they must not create duplicate provider architectures merely because the same widget module is instantiated more than once.
+- Calendar is a **range-based read capability** because each Agenda instance can request a different historical/future window.
+- Tasks are a **live normalized snapshot** built from `todo/item/subscribe` streams.
+- Task mutations use a dedicated semantic `task.update` action instead of generic `ha.service` from the widget.
 
-This is consistent with the JamesUI configuration model's `widget_instances` concept and is a general architecture requirement, not an Agenda-only exception. The generic cross-page rule is also recorded in `docs/JAMESUI_1_0_LAYOUT_PLANNING_NOTES.md`.
+Rejected:
 
-## Agenda presentation
+- one giant 1–365-day calendar snapshot for all consumers;
+- provider range derived by coupling providers to all widget/page configuration.
 
-Three presentation modes must be configurable:
+### Capability direction
 
-- `grouped` – grouped by day (`Heute`, `Morgen`, then date), events and tasks combined inside each day
-- `timeline` – one chronological agenda presentation across the configured look-ahead window
-- `day` – exactly one selected calendar day at a time
+- `calendar.events`: read-only range service with HA timezone metadata, configured-source metadata and per-range subscription.
+- `tasks.items`: normalized snapshot of configured todo lists, source status, supported features and items.
 
-Provider data/contracts stay identical; presentation mode changes only widget rendering/navigation.
+### Task action
 
-### `day` mode
+`task.update` uses:
 
-- horizontal swipe = previous/next calendar day
-- vertical swipe/scroll = additional entries inside the selected day
-- every calendar day remains reachable in sequence; empty days are not skipped
-- today header format: `Heute · So, 4. Oktober`
-- other days: e.g. `Mo, 5. Oktober`
-- empty day: quiet state such as `Keine Termine oder Aufgaben`
-- changing days must not change row geometry or task-ordering rules
-- backwards day navigation is bounded by the per-instance `lookback_days` value
+- `source_entity_id`
+- stable task `uid`
+- minimal patch containing changed title/status/due/description fields.
 
-## Visibility and look-ahead
+The action validates real Todo supported features before translating to `todo.update_item`.
 
-Calendar and widget density are separate concerns.
+## Home Assistant API findings
 
-### Calendar look-ahead
+Current documented Calendar WebSocket subscription:
 
-- global `lookahead_days` default = **30**
-- applies consistently to `grouped`, `timeline` and `day`
-- each configured calendar inherits the global value by default
-- each calendar may optionally enable its own `lookahead_days` override
-- local override field remains visible but disabled/greyed until override is enabled
+`calendar/event/subscribe`
 
-### Day-mode lookback
+- immediate current range result;
+- later updates when the entity changes;
+- `events: null` signals fetch failure;
+- exposed event fields are currently start, end, summary, description and location.
 
-Past-day navigation is a separate widget-instance concern from future calendar source look-ahead.
+Therefore JamesUI must not depend on source calendar UID/recurrence/reminder metadata in this frontend subscription path.
 
-- `lookback_days` default = **7** per Agenda widget instance
-- it defines how many local calendar days before today can be reached in `day` mode
-- `lookback_days = 0` means today is the earliest reachable day
-- horizontal previous-day navigation stops cleanly at the configured lower bound; it must not wrap or jump to another date
-- changing `lookback_days` does not change calendar future `lookahead_days`
-- exact allowed configuration bounds remain to be finalized in the formal spec
+Current Todo stream:
 
-### Task look-ahead
+`todo/item/subscribe`
 
-Tasks do not need a practical look-ahead restriction.
+- initial item list;
+- later list updates;
+- item model includes UID, summary, status, due, description and completed timestamp.
 
-- for schema consistency, task sources may expose `lookahead_days`
-- default/normal task value = `0`
-- for `todo.*`, `0` means **no look-ahead restriction / not applicable**, never “show zero tasks”
-- this control should not clutter normal task configuration unless a future source requires it
+`todo.update_item` supports rename, status, due date/datetime and description subject to the list's feature flags; current HA service logic also permits clearing supported due/description fields.
 
-## Calendar/task source enablement and presentation
+## Widget instances
 
-Calendar and task functionality are independently optional **per Agenda widget instance**.
+`widget.calendar-agenda` must support multiple independent instances.
 
-At least one content domain must remain enabled:
+Each instance owns its own:
 
-- `calendar_enabled = false` and `tasks_enabled = false` at the same time is an invalid Agenda configuration
-- configuration must prevent or reject saving an instance with both domains disabled
-- this validation is per widget instance and has no effect on the shared providers
+- stable instance ID;
+- selected calendars/lists;
+- calendar/task enablement;
+- mode;
+- lookahead/lookback;
+- visible-row settings;
+- task ordering;
+- all-day/location settings;
+- calendar rules;
+- task-list presentation;
+- advance notices;
+- transient UI and notice-dismiss state.
 
-### Calendar enablement
+Provider architecture remains shared.
 
-- the instance exposes a calendar enable/disable setting (working name `calendar_enabled`)
-- default is enabled
-- when disabled, that Agenda instance renders no calendar rows and opens no calendar-event detail interactions
-- calendar-specific configuration that has no effect while calendars are disabled remains understandable but disabled/greyed in configuration
-- disabling calendars in one Agenda instance must not disable `provider.calendar` globally and must not affect another Agenda instance
-- with calendars disabled and tasks enabled, the module acts as a task-only Agenda without requiring a second widget implementation
+Block 11 proves parallel independent widget `create()` instances directly. Generic loader/page orchestration for multiple configured widget instances remains Block 14.
 
-### Task enablement
+## Domain enablement
 
-- the instance exposes a task enable/disable setting (working name `tasks_enabled`)
-- default is enabled for the combined household Agenda unless the formal spec chooses a different property name
-- when disabled, that Agenda instance renders no task rows and exposes no task-completion interaction
-- task-specific configuration that has no effect while tasks are disabled remains understandable but disabled/greyed in configuration
-- disabling tasks in one Agenda instance must not disable `provider.tasks` globally and must not affect another Agenda instance
-- with tasks disabled and calendars enabled, the module acts as a calendar-only Agenda without requiring a second widget implementation
+Defaults:
 
-Each selected `todo.*` list can define restrained presentation for that widget instance:
+- `calendar_enabled = true`
+- `tasks_enabled = true`
 
-- default icon
-- default accent color
+Invalid:
 
-Examples include Einkauf, Haushalt or Arbeit. Block 11 does not require per-task keyword/title override rules unless a later real use case justifies them.
+- both false;
+- calendar enabled with no selected `calendar.*` source;
+- tasks enabled with no selected `todo.*` source.
 
-Task-list icon/accent settings are presentation concerns of the widget instance, not provider-domain data.
+Irrelevant child settings remain visible but disabled/greyed in the later configuration UI.
 
-## Visible-row modes and host sizing
+## Modes
 
-The Agenda supports:
+### `grouped`
 
-- `visible_items_mode = fixed`
-- `visible_items_mode = auto`
+- starts at Today;
+- day sections `Heute`, `Morgen`, then date;
+- no automatic past-day display.
 
-### `fixed`
+### `timeline`
 
-- default `max_visible_items = 5`
-- allowed range `3–8`
-- events and tasks count together toward the visible-row budget
+- starts at Today;
+- chronological future agenda;
+- no automatic past-day display.
 
-### `auto`
+### `day`
 
-- use as many complete fixed-height rows as fit below the widget header/controls inside the **height actually allocated by the host layout**
-- do not compress row height or show a partial row to squeeze in another item
-- `max_visible_items` remains visible but disabled/greyed because it is irrelevant in auto mode
-- recalculate when the allocated host height genuinely changes
-- additional items stay reachable through the widget's own vertical scrolling
+- one selected calendar day;
+- horizontal swipe previous/next calendar day;
+- vertical scroll within the day;
+- empty days remain reachable;
+- today header `Heute · So, 4. Oktober`;
+- other day `Mo, 5. Oktober`;
+- small previous/next controls supplement swipe;
+- no wrap beyond history boundary.
 
-### Layout responsibility
+Gesture direction locks after initial movement; exact threshold is an implementation constant, not a user setting.
 
-The Agenda does **not** decide whether the page itself is fixed or vertically scrollable. That belongs to the selected page layout; see `docs/JAMESUI_1_0_LAYOUT_PLANNING_NOTES.md`.
+## Lookahead/lookback
 
-The Agenda must always respect the host region it receives:
+Calendar lookahead per Agenda instance:
 
-- it may not enlarge its parent merely to expose more rows
-- in a bounded/fixed layout, overflow stays inside the Agenda
-- in a vertically scrollable layout, the layout may allocate a larger region, but the Agenda still obeys that allocation
-- manual maximum height is expressed later through the host layout's logical grid/span system where that layout uses a grid, not through arbitrary widget pixel values
+- default 30 days;
+- allowed 1–365 days;
+- optional per-calendar override;
+- override field disabled/greyed until override is enabled.
 
-Block 11 therefore implements a height-aware widget contract; Block 14 formalizes the Start layout/configuration and its lower-deck grid.
+Day-mode lookback:
 
-## Row geometry
+- default 7 days;
+- allowed 0–365 days;
+- applies only to `day`;
+- `0` means Today is earliest day.
 
-Rows remain visually stable:
+Tasks may retain schema `lookahead_days = 0`, where `0` means unrestricted/not applicable, never zero tasks.
 
-- equal fixed row height
-- stable time/date column
-- stable icon area
-- stable task-completion-control area where applicable
-- title gets all remaining width (`minmax(0, 1fr)` behavior)
-- long titles use ellipsis; font size does not shrink
-- icon/accent selection must not alter geometry
+## Event visibility
 
-### Optional location line
+Today in all three modes:
 
-`show_location` is a global widget option.
+- running event remains visible until actual end;
+- upcoming event visible;
+- ended timed event disappears from normal Today agenda.
 
-- disabled: no compact location line
-- enabled: reserve a consistent second-line region for rows so row heights do not jump
-- render location only when the event actually has one
-- never render fake placeholder text such as `Kein Ort`
+When browsing a past date in `day`, show the full event history for that historical day.
 
-## Timeline continuation / internal scrolling
+All-day event covering Today remains current for the whole local day.
 
-The Agenda uses the mockup's vertical point-and-line timeline.
+## All-day and multi-day
 
-For each displayed day:
+Per instance:
 
-- visible entries use points connected by the vertical line
-- if earlier entries for that day exist above the current visible portion, the line continues upward as a short dashed continuation instead of ending normally
-- if later entries for that day exist below the current visible portion, the line continues downward as a short dashed continuation
-- if no hidden entries exist in that direction, the timeline terminates normally
-- no permanent up/down arrow controls are required
-- vertical touch scrolling is the primary within-day/internal navigation
-- dashed continuation must not change row height or timeline alignment
+- `show_all_day = true` default;
+- all-day row label `Ganztägig`;
+- all-day event shown on every covered local date;
+- never invent `00:00`;
+- original full range retained in detail overlay.
 
-In `day` mode the dashed continuation refers only to hidden entries inside the current day; horizontal day navigation remains separate.
+Timed multi-day event:
+
+- start day shows real start time;
+- full intermediate day shows `laufend`;
+- end day shows `bis <end time>`;
+- remains one timed source event.
+
+Example: Fri 18:00 → Sun 10:00 gives `18:00`, `laufend`, `bis 10:00`.
+
+## Recurring events
+
+Every concrete recurring occurrence returned by HA is treated as its own occurrence. Same series identity alone never causes different dates to collapse.
+
+No recurrence editing in Block 11.
+
+## Duplicate calendar events
+
+Collapse when normalized:
+
+- title;
+- start;
+- end;
+- all-day status
+
+match across selected calendars.
+
+Location/description differences do not prevent collapse.
+
+All contributing source IDs remain as provenance. Conflicting optional source fields are not invented/merged arbitrarily.
 
 ## Task ordering
 
-Ordering is global across `grouped`, `timeline` and `day` within one widget instance.
+Per instance:
 
-Supported `task_order_mode` values:
+- `chronological`
+- `tasks_before`
+- `tasks_after`
 
-- `chronological` – timed tasks mix chronologically with events
-- `tasks_before` – all tasks of a day before calendar events
-- `tasks_after` – all tasks of a day after calendar events
-
-For `chronological` only:
+For chronological only:
 
 - `untimed_task_position = before | after`
-- default recommendation remains `after`
+- default `after`.
 
-If `tasks_before` or `tasks_after` is active, `untimed_task_position` has no effect and must be shown disabled/greyed rather than silently active.
+All-day-before-timed applies only within calendar events and does not override `tasks_before/tasks_after`.
 
-If tasks are disabled for the instance, all task-ordering controls are irrelevant and must be disabled/greyed.
+## Overdue tasks
 
-This dependency-aware configuration principle applies generally to later settings.
+Incomplete overdue task:
 
-## Task completion and overdue behavior
+- appears on its original due day when that day is viewed in `day` history;
+- also appears Today until completed;
+- does not appear on every intervening date;
+- original due value remains unchanged;
+- no warning color/badge/`seit X Tagen` treatment.
 
-When tasks are enabled for the instance:
+## Completion and Undo
 
-- task completion is available directly from the row
-- completed tasks disappear from the normal agenda immediately
-- completing a task offers a short-lived Undo action
-- tapping the rest of a task row opens a task detail view
-- overdue incomplete tasks are carried forward into JamesUI's `Heute` presentation until completed
-- carry-forward is presentation logic only: do not rewrite the real provider due date or recurrence
-- overdue carried-forward tasks look like ordinary current tasks; no warning color, badge or `seit X Tagen`
+- direct completion control on task row;
+- successful completion hides task optimistically;
+- Undo remains available about 5 seconds;
+- Undo sends only `status: needs_action` for original source + UID;
+- no old title/due/description rewrite;
+- multiple rapid completions retain independent Undo identities;
+- failed mutation rolls back optimistic state.
 
-## Task editing – deferred but binding
+## Task editing in Block 11
 
-The user wants tasks editable from JamesUI later.
+Editing is no longer deferred; it belongs in Block 11.
 
-Block 11 may remain display + complete + Undo, but the normalized task model must preserve truthful edit identity/context as available:
+Task detail overlay can edit, where source supports it:
 
-- source todo entity/list
-- stable task UID
-- title
-- due date/time
-- description/notes
-- status
-- other provider fields required for future updates
+- title;
+- due date;
+- due date/time;
+- clear due;
+- description;
+- clear description.
 
-Future editing must go through the provider/HA boundary, never direct raw HA access from the widget.
+Save sends only changed fields through `task.update`.
 
-## Event details and multi-day behavior
+Unsupported fields remain read-only/disabled rather than pretending they can be changed.
 
-Tapping a calendar event opens a shared detail overlay showing only real available fields, such as:
+Not included: create/delete/move/reorder.
 
-- title
-- date/time or all-day information
-- location
-- description
+## Row geometry and location
 
-No fake/missing-field placeholders.
+- fixed equal row height;
+- stable time/date area;
+- stable icon area;
+- stable task completion area;
+- title takes remaining width and ellipsizes;
+- no font shrinking;
+- icon/accent does not alter geometry.
 
-All-day behavior is confirmed:
+`show_location`:
 
-- global `show_all_day` default = `true` per widget instance
-- all-day events are shown as normal agenda rows and count toward the visible-row budget
-- the time area displays `Ganztägig`; no artificial clock time is invented
-- within a day, all-day calendar events are ordered before timed calendar events
-- task placement remains governed by the separate `task_order_mode`; the all-day rule must not silently override `tasks_before` / `tasks_after`
-- a multi-day all-day event is shown on every local calendar day it covers; each daily row remains `Ganztägig`
-- the detail overlay for a multi-day all-day event keeps the truthful original start/end range instead of pretending each daily row is a separate source event
-- `show_all_day = false` hides all-day calendar events from that Agenda instance
-- no per-calendar all-day override is required in Block 11 unless a later real use case justifies it
+- off: no location line;
+- on: reserve stable second-line area;
+- actual location only when present;
+- never fake `Kein Ort`.
 
-Timed events crossing local midnight are also day-aware:
+## Visible-row modes
 
-- a timed event that starts on one local day and ends after midnight on the next local day is shown on both affected days
-- on the start day, the compact time area shows the real start time, e.g. `22:00`
-- on the following day, the continuation row shows `bis <end time>`, e.g. `bis 01:30`
-- the event remains a timed event and must never be converted into an all-day event merely because it crosses midnight
-- both rows refer to the same normalized source event; the detail overlay always shows the truthful original start/end range
+`fixed`:
 
-## Calendar icon and accent rules
+- default 5;
+- allowed 3–8;
+- tasks/events count together.
 
-Each configured calendar can define presentation **per Agenda widget instance**:
+`auto`:
 
-- default icon
-- default accent color
+- use only complete rows that fit in host allocation;
+- never compress/crop a partial row;
+- recalc on host size change;
+- additional content internally scrolls;
+- if even one full row cannot fit in addition to required widget chrome, placement becomes `too_small`.
 
-Ordered event rules may override icon and/or accent color.
+Widget never enlarges parent to expose more content.
 
-Supported matching operators:
+## Timeline continuation
 
-- `ist genau`
-- `enthält`
-- `beginnt mit`
+- points on vertical line;
+- hidden earlier same-day content → short dashed continuation upward;
+- hidden later same-day content → dashed downward;
+- normal termination when no hidden content;
+- no permanent up/down arrows;
+- exact dash dimensions are visual implementation detail.
 
-Rules:
+## Calendar presentation rules
 
-- first matching rule wins
-- event title is searched by default
-- description may optionally be included per rule
-- location may optionally be included per rule
-- no regex is required in normal UI
-- rules should be reorderable
+Per selected calendar, per widget instance:
 
-Presentation priority:
+- default icon;
+- default accent.
 
-1. first matching event rule
-2. calendar default icon/accent
-3. neutral JamesUI fallback
+Ordered event rules can override icon/accent.
 
-Color remains restrained: icon/marker/fine accent only, not brightly colored full cards.
+Operators:
 
-Example requirement: waste calendar can use a neutral trash/recycling default while rules such as `Gelber Sack`, `Biotonne`, `Restmüll`, `Papier` override icon/color appropriately.
+- exact;
+- contains;
+- starts with.
 
-The shared icon registry may need additional semantic IDs (birthday, waste, recycling, paper, etc.); this must be done through the existing icon system, never ad hoc inline icons.
+Title searched by default; description/location optional per rule; first match wins; no regex in normal UI; rules reorderable.
 
-## Calendar reminder / advance-notice semantics – OPEN and important
+Priority:
 
-The user explicitly considers reminder lead time important. Example: an appointment intended to remind one week beforehand should ideally become visible/noticeable sufficiently early.
+1. first matching rule;
+2. calendar default;
+3. neutral fallback.
 
-Current rule:
+Color remains restrained to marker/icon/fine accent.
 
-- never fabricate reminder metadata
-- investigate supported Home Assistant/source APIs for real reminder/alarm metadata
-- preserve provider/capability model so truthful reminder metadata can be added later without redesign
-- if source reminder data is unavailable, evaluate an explicit JamesUI-owned advance-visibility/look-ahead feature as a separate product behavior, not as a fake source reminder
+Waste examples: Gelber Sack, Biotonne, Restmüll, Papier.
 
-This remains a high-priority unresolved design item.
+## Task-list presentation
 
-## Still open
+Each selected todo list may define default semantic icon + accent per Agenda instance. No task keyword rules required in Block 11.
 
-- exact capability names/shapes for calendar and task providers
-- exact Home Assistant calendar/todo query/subscription/refresh strategy
-- allowed bounds around the confirmed 30-day calendar default
-- allowed bounds around the confirmed 7-day `lookback_days` default
-- exact minimum usable Agenda host height in `auto` mode
-- exact dashed-continuation visual dimensions
-- exact `day` swipe threshold/snap behavior
-- exact task detail-overlay fields supported by HA source data
-- future task-editing block placement
-- reminder metadata feasibility/fallback
-- exact semantic icon additions required
-- behavior of timed source events that span more than two local calendar days, if such a real use case needs special presentation
+## JamesUI advance notices
+
+Source reminder metadata is not available through the consumed Calendar subscription API, so JamesUI never pretends to show source reminders.
+
+Instead, a clearly JamesUI-owned Vorlaufhinweis is supported.
+
+Hierarchy:
+
+- calendar default `advance_notice_days = 0..365`, with `0 = off`;
+- matching event rule may override with its own `0..365` value;
+- omitted rule value inherits calendar default;
+- explicit rule `0` disables notice for that match.
+
+Example:
+
+- calendar default off;
+- Zahnarzt → 7 days;
+- Gelber Sack → 1 day.
+
+The provider request horizon must extend far enough to discover the largest configured advance lead even when normal display lookahead is shorter.
+
+Notice behavior:
+
+- visible from lead threshold until event start;
+- disappears from notice area at event start;
+- actual event remains in normal Agenda;
+- user can dismiss it;
+- dismissed concrete occurrence does not reappear on that device for that widget instance.
+
+Display:
+
+- max 2 notices normally visible;
+- additional `+N weitere Hinweise`;
+- activation expands inside widget;
+- notices do not count toward `max_visible_items`;
+- they still consume real widget height;
+- expansion never grows host layout.
+
+Dismiss persistence is browser/device-local, versioned and scoped to widget instance. Because Calendar subscription payload has no source UID, concrete occurrence identity uses the normalized logical occurrence signature. Expired dismissal records are pruned.
+
+## Source errors and stale data
+
+One unavailable calendar/list:
+
+- show restrained source-specific notice;
+- keep healthy sources working;
+- do not fabricate content;
+- do not silently show stale data as current.
+
+Full HA outage:
+
+- overall Agenda unavailable state;
+- cached remote events/tasks are not shown as current.
+
+Empty healthy source is distinct from unavailable source.
+
+## Refresh strategy
+
+No periodic HA polling.
+
+Calendar:
+
+- `calendar/event/subscribe` range subscriptions;
+- identical range subscriptions may be shared/ref-counted;
+- rebuild only for changed ranges/config, reconnect or HA-local day rollover;
+- stale callbacks ignored via generation/source guards.
+
+Tasks:
+
+- one `todo/item/subscribe` per configured list;
+- semantic no-change suppression;
+- reconnect rebuilds current subscriptions.
+
+Local timers only for next meaningful UI boundary:
+
+- event start/end;
+- advance-notice threshold;
+- HA-local midnight;
+- Undo expiry.
+
+## Widget interaction
+
+Logical areas:
+
+- header/mode/day controls;
+- optional advance notices;
+- internally scrollable Agenda content;
+- transient feedback/Undo.
+
+Calendar row tap → event detail overlay.
+
+Task row:
+
+- dedicated completion control;
+- rest of row → task detail/edit overlay.
+
+Shared Overlay Service owns the overlay layer.
+
+## Accessibility
+
+- real interactive completion control;
+- keyboard-operable event/task rows;
+- previous/next day controls in addition to swipe;
+- no meaning conveyed by color alone;
+- meaningful accessible labels;
+- Reduced Motion respected.
+
+## Semantic icons
+
+No inline SVG special path.
+
+Expected candidates, only if actually needed:
+
+- `home.calendar`
+- `home.task`
+- `home.birthday`
+- `home.waste`
+- `home.recycling`
+- `home.paper`
+
+Use existing local icon registry/Tabler attribution contract.
+
+## Test expectations
+
+Calendar provider:
+
+- range validation/sharing;
+- HA timezone + DST;
+- malformed/all-day normalization;
+- source-specific failures;
+- reconnect/stale callback guards;
+- cleanup/no polling.
+
+Task provider:
+
+- initial/live streams;
+- UID/due/description/status normalization;
+- feature flags;
+- source failure isolation;
+- no-change suppression;
+- cleanup/no polling.
+
+Task action:
+
+- validation;
+- feature checks;
+- UID-based update;
+- rename/status/due/description + clear operations;
+- normalized action results.
+
+Widget:
+
+- parallel independent instances;
+- all modes;
+- Today/history/multi-day/all-day;
+- dedupe/provenance;
+- task ordering/carry-forward;
+- completion/Undo/editing;
+- advance notices;
+- source errors vs empty;
+- fixed/auto sizing;
+- swipe direction locking;
+- overlay ownership;
+- accessibility/cleanup.
+
+Architecture gates:
+
+- no raw HA in widget;
+- no Config Service/Router/Health/Registry/Loader coupling;
+- all task mutation via `task.update`;
+- no r11 coupling;
+- provider-owned subscriptions;
+- no Agenda-specific Core behavior.
 
 ## Gate
 
-No Block-11 product code from these notes alone. Resolve remaining design questions, write the binding Block-11 spec, get approval, then write/approve the detailed implementation plan before TDD implementation.
+Conversational design is complete.
+
+Next steps:
+
+1. user reviews and approves the written spec candidate;
+2. create detailed implementation plan under `docs/superpowers/plans/`;
+3. user approves plan;
+4. implement on isolated branch with TDD;
+5. whole-branch review + CI before merge.
