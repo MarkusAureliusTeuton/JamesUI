@@ -56,6 +56,18 @@ Two presentation modes must be supported by widget configuration:
 
 The user can switch between these modes later in configuration. Provider contracts/data stay identical; only widget presentation changes.
 
+### Visibility and look-ahead
+
+Visible row count and source look-ahead are separate concerns:
+
+- `max_visible_items` controls how many fixed-height agenda rows fit in the widget viewport at once
+- calendar `lookahead_days` controls how far future calendar events are loaded/made available for scrolling
+- a configured calendar may later override the global calendar look-ahead value if that option is enabled
+- task lists do not need a practical look-ahead limit; tasks remain available independent of calendar look-ahead
+- for schema/config consistency, task sources may still expose `lookahead_days`, but its default and normal value is `0`
+- for `todo.*`, `lookahead_days = 0` means **no look-ahead restriction / not applicable**, never “show zero tasks”
+- task look-ahead controls should not clutter the normal configuration UI unless a future source genuinely requires them
+
 ### Row geometry and density
 
 - agenda rows have a consistent fixed height within the selected presentation configuration
@@ -204,8 +216,8 @@ Future editing should use the provider/HA boundary rather than direct Home Assis
 
 - exact capability names/shapes for calendar and task providers
 - exact Home Assistant query/subscription strategy and refresh semantics
-- final date/look-ahead window defaults
-- whether look-ahead can be overridden per calendar
+- final calendar look-ahead default and allowed bounds
+- whether calendar look-ahead can be overridden per calendar
 - exact visible-row default and bounds
 - precise visual dimensions/style of dashed timeline continuation cues
 - task detail-overlay fields beyond currently available source data
