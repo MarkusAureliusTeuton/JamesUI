@@ -216,6 +216,8 @@ All-day behavior is confirmed:
 - global `show_all_day` default = `true`
 - all-day events are shown as normal agenda rows and count toward the visible-row budget
 - the time area displays `Ganztägig`; no artificial clock time is invented
+- within a day, all-day calendar events are ordered before timed calendar events
+- task placement remains governed by the separate global `task_order_mode`; the all-day rule must not silently override `tasks_before` / `tasks_after`
 - `show_all_day = false` hides all-day calendar events globally from the Agenda
 - no per-calendar all-day override is required in Block 11 unless a later real use case justifies it
 
@@ -280,7 +282,6 @@ This remains a high-priority unresolved design item.
 - future task-editing block placement
 - reminder metadata feasibility/fallback
 - exact semantic icon additions required
-- exact within-day position of all-day events relative to timed events/tasks
 
 ## Gate
 
