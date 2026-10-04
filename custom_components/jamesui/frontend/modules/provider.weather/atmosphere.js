@@ -1,8 +1,4 @@
-import { deepFreeze, finiteOrNull } from "./normalize.js";
-
-function stringOrNull(value) {
-  return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
-}
+import { deepFreeze, finiteOrNull, isoInstantOrNull } from "./normalize.js";
 
 export function sunPeriod(elevation, horizonState) {
   const numeric = finiteOrNull(elevation);
@@ -28,8 +24,8 @@ export function normalizeSun(entity) {
     elevation,
     azimuth: finiteOrNull(attributes.azimuth),
     period: sunPeriod(elevation, state),
-    next_rising: stringOrNull(attributes.next_rising),
-    next_setting: stringOrNull(attributes.next_setting),
+    next_rising: isoInstantOrNull(attributes.next_rising),
+    next_setting: isoInstantOrNull(attributes.next_setting),
   });
 }
 
