@@ -43,6 +43,35 @@ Block 11 is a combined household agenda, not calendar-only:
 
 No automatic inclusion of every discovered calendar/task list as visible content.
 
+## Widget instances and per-instance configuration
+
+`widget.calendar-agenda` must support multiple simultaneous widget instances. Reusing the same widget module on another page or in another slot must not reuse the first instance's settings implicitly.
+
+Each widget instance has its own stable instance ID and its own configuration, including as applicable:
+
+- selected calendars
+- selected task/todo lists
+- whether task functionality is enabled
+- presentation mode (`grouped`, `timeline`, `day`)
+- look-ahead presentation settings
+- visible-row mode / item count
+- task ordering
+- all-day visibility
+- location visibility
+- per-calendar presentation/rules
+- per-task-list presentation
+- other widget-specific settings introduced by the approved Block-11 spec
+
+Therefore, examples such as these must be possible without creating a second widget implementation:
+
+- Start page Agenda: family + waste calendars, household tasks, grouped mode
+- another page Agenda: work calendar only, tasks disabled, day mode
+- another Agenda instance: different calendar/task subset and independent density/look-ahead settings
+
+Providers remain shared data providers. Multiple Agenda widget instances consume the same normalized capabilities and independently filter/present them; they must not create duplicate provider architectures merely because the same widget module is instantiated more than once.
+
+This is consistent with the JamesUI configuration model's `widget_instances` concept and is a general architecture requirement, not an Agenda-only exception. The generic cross-page rule is also recorded in `docs/JAMESUI_1_0_LAYOUT_PLANNING_NOTES.md`.
+
 ## Agenda presentation
 
 Three presentation modes must be configurable:
@@ -83,6 +112,25 @@ Tasks do not need a practical look-ahead restriction.
 - default/normal task value = `0`
 - for `todo.*`, `0` means **no look-ahead restriction / not applicable**, never “show zero tasks”
 - this control should not clutter normal task configuration unless a future source requires it
+
+## Task source enablement and presentation
+
+Task functionality is optional **per Agenda widget instance**.
+
+- the instance exposes a task enable/disable setting (working name `tasks_enabled`)
+- default is enabled for the combined household Agenda unless the formal spec chooses a different property name
+- when disabled, that Agenda instance renders no task rows and exposes no task-completion interaction
+- task-specific configuration that has no effect while tasks are disabled remains understandable but disabled/greyed in configuration
+- disabling tasks in one Agenda instance must not disable `provider.tasks` globally and must not affect another Agenda instance
+
+Each selected `todo.*` list can define restrained presentation for that widget instance:
+
+- default icon
+- default accent color
+
+Examples include Einkauf, Haushalt or Arbeit. Block 11 does not require per-task keyword/title override rules unless a later real use case justifies them.
+
+Task-list icon/accent settings are presentation concerns of the widget instance, not provider-domain data.
 
 ## Visible-row modes and host sizing
 
@@ -157,7 +205,7 @@ In `day` mode the dashed continuation refers only to hidden entries inside the c
 
 ## Task ordering
 
-Ordering is global across `grouped`, `timeline` and `day`.
+Ordering is global across `grouped`, `timeline` and `day` within one widget instance.
 
 Supported `task_order_mode` values:
 
@@ -172,9 +220,13 @@ For `chronological` only:
 
 If `tasks_before` or `tasks_after` is active, `untimed_task_position` has no effect and must be shown disabled/greyed rather than silently active.
 
+If tasks are disabled for the instance, all task-ordering controls are irrelevant and must be disabled/greyed.
+
 This dependency-aware configuration principle applies generally to later settings.
 
 ## Task completion and overdue behavior
+
+When tasks are enabled for the instance:
 
 - task completion is available directly from the row
 - completed tasks disappear from the normal agenda immediately
@@ -213,14 +265,14 @@ No fake/missing-field placeholders.
 
 All-day behavior is confirmed:
 
-- global `show_all_day` default = `true`
+- global `show_all_day` default = `true` per widget instance
 - all-day events are shown as normal agenda rows and count toward the visible-row budget
 - the time area displays `Ganztägig`; no artificial clock time is invented
 - within a day, all-day calendar events are ordered before timed calendar events
-- task placement remains governed by the separate global `task_order_mode`; the all-day rule must not silently override `tasks_before` / `tasks_after`
+- task placement remains governed by the separate `task_order_mode`; the all-day rule must not silently override `tasks_before` / `tasks_after`
 - a multi-day all-day event is shown on every local calendar day it covers; each daily row remains `Ganztägig`
 - the detail overlay for a multi-day all-day event keeps the truthful original start/end range instead of pretending each daily row is a separate source event
-- `show_all_day = false` hides all-day calendar events globally from the Agenda
+- `show_all_day = false` hides all-day calendar events from that Agenda instance
 - no per-calendar all-day override is required in Block 11 unless a later real use case justifies it
 
 Timed events crossing local midnight are also day-aware:
@@ -233,7 +285,7 @@ Timed events crossing local midnight are also day-aware:
 
 ## Calendar icon and accent rules
 
-Each configured calendar can define:
+Each configured calendar can define presentation **per Agenda widget instance**:
 
 - default icon
 - default accent color
