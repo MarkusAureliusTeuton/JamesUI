@@ -115,6 +115,12 @@ jobs:
             tests/jamesui-weather-review-regressions.test.js \
             tests/jamesui-weather-timezone-metadata.test.js
 
+      - name: Test JamesUI Block 10 Weather Today
+        run: |
+          node --experimental-default-type=module --test \
+            tests/jamesui-weather-today-manifest-config.test.js \
+            tests/jamesui-weather-today-model.test.js
+
       - name: Validate Alpine atmosphere assets
         run: python -m unittest tests/test_alpine_assets.py
 
