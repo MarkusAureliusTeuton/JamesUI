@@ -1,6 +1,6 @@
 # JamesUI – Project Status / Chat Handover
 
-_Last updated: 2026-10-03_
+_Last updated: 2026-10-04_
 
 This file is the persistent **single source of truth for the current execution state**. Architecture details live in the approved specs, retained behavior in the baseline, and task-level decisions in the individual block plans.
 
@@ -31,6 +31,8 @@ Canonical documents:
 - Block 7 icon spec: `docs/superpowers/specs/2026-10-03-jamesui-1.0-block-7-icon-asset-system-design.md`
 - Block 8 layout spec: `docs/superpowers/specs/2026-10-03-jamesui-1.0-block-8-home-hero-deck-design.md`
 - Block 8 plan: `docs/superpowers/plans/2026-10-03-jamesui-1.0-block-8-home-hero-deck.md`
+- Block 9 weather spec: `docs/superpowers/specs/2026-10-03-jamesui-1.0-block-9-weather-provider-design.md`
+- Block 9 plan: `docs/superpowers/plans/2026-10-03-jamesui-1.0-block-9-weather-provider.md`
 
 ## 3. Current formal state
 
@@ -43,19 +45,20 @@ Canonical documents:
 - Block 6 – Design System + base components: ✅ PR #18
 - Block 7 – Icon Library + Asset Registry: ✅ PR #19
 - Block 8 – `layout.home-hero-deck`: ✅ PR #20
-- Block 9 – Weather provider: ⬜ not started
+- Block 9 – Weather provider: ✅ PR #21
+- Block 10 – Weather Today widget + forecast overlay: ⬜ not started
 
-Block 8 merge commit: `e13d8e386ee3bbbc5d86bd88c068315018fc4647`.
+Block 9 merge commit: `3f27f8d800534792c50c29e7e153045bc14a1352`.
 
 Validation evidence:
-- Block 8 final branch validation #301: success
-- Block 8 main validation #302: success
-- Whole-branch review found one Important content-growth issue; RED #300 proved it, the fix made the deck/right-main tracks content-growing, and #301 verified the final branch
-- no open Critical/Important findings remain
+- Block 9 final branch validation #336: success
+- Block 9 main validation #337: success
+- Whole-branch review found two timestamp-truthfulness regressions: parseable non-ISO Sun/Forecast timestamps could pass through `Date.parse()`; review CI #333 stayed red until strict ISO-instant normalization was added
+- final review after that fix has no open Critical/Important findings
 
-**Next formal gate:** Block 9 – Weather provider. Complete the required architectural design/spec and implementation-plan stages before product code.
+**Next formal gate:** Block 10 – Weather Today widget + forecast overlay. Design/spec first, then detailed implementation plan before product code.
 
-## 4. Platform completed through Block 8
+## 4. Platform completed through Block 9
 
 ### Core
 `custom_components/jamesui/frontend/core/` provides:
@@ -81,7 +84,7 @@ Lifecycle:
 - `update(nextContext, nextConfig)`
 - `destroy()`
 
-Module context after Block 8 is unchanged:
+Module context after Block 9 is unchanged:
 - layout/widget: `events`, `overlays`, `capabilities`, `actions`, `module`
 - provider/action: same five plus `homeAssistant`
 - no module receives Design System, Config Service, raw `hass`, Router, Health, Module Registry or Module Loader
@@ -95,7 +98,7 @@ Real actions:
 - `ha.service`
 - `scene.activate`
 
-All direct new-runtime HA access remains under `frontend/ha/`. Disconnected/unavailable state views deliberately expose no stale entity values.
+All direct new-runtime HA access remains under `frontend/ha/`. The adapter now also exposes a narrow validated `timeZone()` accessor for provider-side HA-local calendar semantics. Disconnected/unavailable state views deliberately expose no stale entity values.
 
 ## 5. Structured configuration
 
@@ -141,19 +144,10 @@ Existing large `assets/weather/*.svg` and Alpine assets remain untouched.
 Boundary:
 `custom_components/jamesui/frontend/modules/layout.home-hero-deck/`
 
-Files:
-- `manifest.js`
-- `index.js`
-- `styles.js`
-
 Contract:
 - module ID `layout.home-hero-deck`, type `layout`, version `1.0.0`
 - no module dependencies or capabilities
-- exactly four stable slots:
-  - `hero`
-  - `widget-left`
-  - `widget-right-main`
-  - `widget-right-footer`
+- exactly four stable slots: `hero`, `widget-left`, `widget-right-main`, `widget-right-footer`
 - explicit `getSlot()` / frozen `listSlots()` API
 - slot element identity and mounted children survive `update()`
 - strict config: optional `hero_ratio` only; default `0.42`, accepted `0.35–0.50`
@@ -168,16 +162,47 @@ Contract:
 - no automatic Start route composition yet
 - real Module Registry/Loader load/mount/update/reload/destroy compatibility is tested
 
-## 8. Production/reference runtime
+## 8. Block 9 – `provider.weather`
+
+Boundary:
+`custom_components/jamesui/frontend/modules/provider.weather/`
+
+Capabilities:
+- `weather.current`
+- `weather.daily`
+- `weather.hourly`
+- `weather.sun`
+- `weather.moon`
+- `weather.atmosphere`
+
+Contract/result:
+- explicit configured `weather.*` source never silently falls back; automatic mode chooses deterministically
+- current measurements are normalized as numbers + explicit units; missing values stay `null`
+- optional explicit outdoor-temperature source may override current temperature without collapsing the Weather source
+- real Home Assistant `daily`, `hourly` and `twice_daily` forecast subscriptions are normalized independently
+- Daily fallback priority is usable Daily → Twice-Daily → Hourly aggregation
+- concrete precipitation time is derived only from genuine Hourly forecast data
+- all forecast day/today grouping uses validated Home Assistant IANA timezone, not browser timezone
+- Sun capability exposes semantic `day | golden | twilight | night` period plus validated ISO rising/setting instants
+- Moon prefers a valid configured/discovered HA phase, otherwise uses a local calculation derived from SunCalc v1.9.0 with checked-in BSD-2-Clause attribution
+- local Moon calculation passed eight fixed 2026 primary-phase reference cases at the predeclared ±3 percentage-point illumination tolerance
+- atmosphere emits semantic weather class/period/scene key only; it does not know asset paths
+- one five-minute provider timer refreshes only time-derived cached values; it does not poll Home Assistant
+- stale forecast callbacks are isolated by generation/source guards
+- each capability has independent `available`, `unavailable` or `not_configured` semantics
+- strict ISO-instant validation prevents locale-dependent Sun/Forecast timestamp publication
+- no UI, DOM, CSS, icon/asset loading, raw `hass`, Config Service, r11 coupling or production bootstrap change
+
+## 9. Production/reference runtime
 
 Repository: `MarkusAureliusTeuton/JamesUI`
 Default branch: `main`
 Integration version: `0.5.1`
 Frontend revision: `0.5.1-r11`
 
-**r11 is still the running production/reference implementation.** `jamesui-entry.js` still loads the old panel/start bridge. The new Core/Design/Icon/Layout runtime is intentionally not wired into production yet. No cutover has occurred.
+**r11 is still the running production/reference implementation.** `jamesui-entry.js` still loads the old panel/start bridge. The new Core/Design/Icon/Layout/Weather-provider runtime is intentionally not wired into production yet. No cutover has occurred.
 
-## 9. Start direction to preserve/rebuild
+## 10. Start direction to preserve/rebuild
 
 - persistent bottom nav `Start | Haus | Klima | Medien | Tür`
 - Alpine/weather hero
@@ -193,7 +218,7 @@ Frontend revision: `0.5.1-r11`
 - no `Home`, `HEUTE & DANACH`, `ZUHAUSE` labels
 - never fake unavailable backend data
 
-## 10. Development rules
+## 11. Development rules
 
 1. Repository is source of truth.
 2. One roadmap block at a time.
@@ -206,6 +231,6 @@ Frontend revision: `0.5.1-r11`
 9. No monkey-patches, Prototype overrides, version-polish layers, duplicate implementations or permanent legacy shims.
 10. OnePlus/Fully portrait screenshot acceptance is required at major composed-UI milestones, not for infrastructure-only blocks.
 
-## 11. Next action
+## 12. Next action
 
-Start **Block 9 – Weather provider** design/planning only. It must publish normalized weather capabilities behind the existing provider/HA-adapter boundary. Do not implement the Weather Today widget/overlay (Block 10), Calendar/House/Dynamic Buttons, final Start composition, or production cutover inside Block 9.
+Start **Block 10 – Weather Today widget + forecast overlay** at the design/spec stage. It must consume Block-9 capabilities plus the existing Design/Icon/Overlay boundaries and mount into the Block-8 hero slot. Preserve the accepted Alpine/weather hero direction and temperature-tap overlay behavior without layout shift. Do not implement Calendar/House/Dynamic Buttons, final Start composition, or production cutover inside Block 10.
