@@ -49,7 +49,7 @@ function fakeCapabilities(seed = initialSnapshots()) {
   };
 }
 
-function fakeRuntime(now = "2026-10-04T10:34:20.250+02:00") {
+function fakeRuntime(now = new Date(2026, 9, 4, 10, 34, 20, 250)) {
   let current = new Date(now);
   const scheduled = [];
   const cleared = [];
@@ -168,7 +168,7 @@ test("clock callback reschedules from fresh time and repeated updates do not mul
   const widget = createWeatherTodayWidget(ctx, {}, runtime);
   widget.mount(target);
   const first = runtime.scheduled[0];
-  runtime.setNow("2026-10-04T10:35:00+02:00");
+  runtime.setNow(new Date(2026, 9, 4, 10, 35, 0, 0));
   first.callback();
   assert.equal(runtime.scheduled.length, 2);
   assert.equal(runtime.scheduled[1].ms, 60000);
@@ -204,7 +204,6 @@ test("update atomically rebinds changed registries/services while protecting a n
   assert.equal(oldOverlays.current, null);
 
   const unrelated = document.createElement("div");
-  unrelated.nodeType = 1;
   newOverlays.open({ id: "unrelated", content: unrelated });
   widget.destroy();
   assert.equal(newOverlays.current.id, "unrelated");
