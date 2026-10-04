@@ -5,6 +5,36 @@ _Status: active design notes; not yet the approved Block-11 spec or implementati
 
 This file is the persistent planning record for decisions made while designing Block 11. It exists so confirmed behavior and explicitly deferred requirements are not lost between chats. Once the Block-11 design is approved, these notes must be reconciled into the formal spec and the detailed implementation plan.
 
+## Persistent chat / AI working rules
+
+This file is also the persistent Block-11 handover for future JamesUI chats.
+
+Every future chat that continues Block 11 must:
+
+- read this file before proposing, changing or implementing Block-11 behavior
+- treat the repository as source of truth; do not rely on memory or old chat summaries when the repository contains the current decision
+- add newly confirmed Block-11 product decisions to this file during the design phase so they survive chat changes
+- add explicitly deferred or later-phase requirements to this file instead of leaving them only in chat
+- keep this file updated when a decision is changed or superseded; do not leave contradictory active requirements behind
+- reconcile these notes into the formal Block-11 spec before implementation planning, then into the implementation plan where execution detail belongs
+- not use this planning note as authorization to write Block-11 product code before the required spec/plan gates are approved
+
+AI/agent work on JamesUI must additionally preserve the project rules already established in the canonical repository documents:
+
+- German, concise, technical and direct communication
+- every JamesUI response starts with `✅ Fertig:`, `⚠️ Test nötig:` or `🚧 Nicht fertig:` and ends with a short summary
+- work one roadmap block at a time
+- inspect current repository state before changing code or architecture
+- edit the repository directly when GitHub access is available instead of giving the user unnecessary copy/paste work
+- use TDD for behavior changes; intentionally red tests never go to `main`
+- do not add monkey-patches, Prototype overrides, version-polish layers, parallel implementations or permanent legacy compatibility shims
+- keep r11 as production/reference only until the controlled cutover; new normal functionality belongs to the JamesUI 1.0 architecture
+- do not invent unavailable backend data or silently substitute fabricated values
+- preserve OnePlus Pad 2 portrait as the primary visual target; Fully is only the kiosk shell
+- record future-facing decisions and AI handling rules in the repository rather than depending on chat memory
+
+If these working rules later change, update this section in the same repository commit that changes the rule wherever practical.
+
 ## Scope direction
 
 Block 11 is expanding from the original calendar-only wording to a combined household agenda:
@@ -35,10 +65,27 @@ The user can switch between these modes later in configuration. Provider contrac
 - long titles are truncated cleanly with ellipsis; font size is not reduced to make them fit
 - `max_visible_items` / visible row count is configurable
 - events and tasks count together toward the visible item budget
-- additional items must remain reachable by a simple tablet gesture/scroll and also by a simple explicit navigation control where useful
+- additional items remain reachable through vertical touch scrolling/swiping
 - the widget must not compress rows or grow unpredictably because many items exist
 
-The exact default visible row count and final gesture/button mechanics remain to be chosen during the remaining design/visual acceptance work.
+The exact default visible row count and bounds remain to be chosen during the remaining design/visual acceptance work.
+
+### Timeline continuation instead of navigation arrows
+
+The agenda uses the vertical point-and-line timeline language from the approved mockup as both structure and continuation cue.
+
+For each displayed day:
+
+- visible agenda entries sit on the vertical timeline as points connected by a line
+- when no earlier item for that day exists outside the visible portion, the timeline may terminate normally at the first visible point
+- when earlier items for that day exist above the current visible portion, the timeline continues upward beyond the first visible point as a short dashed line rather than terminating with a point
+- when no later item for that day exists outside the visible portion, the timeline may terminate normally at the last visible point
+- when later items for that day exist below the current visible portion, the timeline continues downward beyond the last visible point as a short dashed line rather than terminating with a point
+- this dashed continuation is a visual indication that more entries exist before/after within that day
+- separate up/down navigation arrows are therefore not required for normal agenda navigation
+- vertical touch scrolling/swiping is the primary navigation mechanism
+
+The continuation treatment must remain visually restrained and must not change row height or timeline alignment.
 
 ## Task ordering
 
@@ -160,7 +207,7 @@ Future editing should use the provider/HA boundary rather than direct Home Assis
 - final date/look-ahead window defaults
 - whether look-ahead can be overridden per calendar
 - exact visible-row default and bounds
-- exact scroll/swipe plus explicit navigation-control behavior
+- precise visual dimensions/style of dashed timeline continuation cues
 - task detail-overlay fields beyond currently available source data
 - task-editing phase/block placement
 - reminder metadata feasibility and fallback strategy
