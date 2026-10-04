@@ -123,7 +123,8 @@ jobs:
             tests/jamesui-weather-today-overlay.test.js \
             tests/jamesui-weather-today-widget.test.js \
             tests/jamesui-weather-today-styles.test.js \
-            tests/jamesui-weather-today-loader.test.js
+            tests/jamesui-weather-today-loader.test.js \
+            tests/jamesui-weather-today-review-regressions.test.js
 
       - name: Validate Alpine atmosphere assets
         run: python -m unittest tests/test_alpine_assets.py
