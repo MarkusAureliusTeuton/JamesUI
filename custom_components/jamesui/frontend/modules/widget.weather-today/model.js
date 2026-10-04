@@ -7,7 +7,7 @@ const CONDITION_PRESENTATIONS = Object.freeze({
   cloudy: Object.freeze({ iconId: "weather.cloudy", label: "Bewölkt", emphasis: "normal" }),
   exceptional: Object.freeze({ iconId: "weather.cloudy", label: "Außergewöhnliche Wetterlage", emphasis: "normal" }),
   rainy: Object.freeze({ iconId: "weather.rain", label: "Regen", emphasis: "normal" }),
-  pouring: Object.freeze({ iconId: "weather.heavy-rain", label: "Starkregen", emphasis: "normal" }),
+  pouring: Object.freeze({ iconId: "weather.heavy-rain", label: "Starker Regen", emphasis: "alert" }),
   snowy: Object.freeze({ iconId: "weather.snow", label: "Schnee", emphasis: "normal" }),
   lightning: Object.freeze({ iconId: "weather.storm", label: "Gewitter", emphasis: "alert" }),
   "lightning-rainy": Object.freeze({ iconId: "weather.storm", label: "Gewitter mit Regen", emphasis: "alert" }),
