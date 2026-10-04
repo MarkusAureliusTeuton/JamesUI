@@ -71,7 +71,6 @@ The `day` mode must keep gesture directions semantically distinct:
 
 Visible row count and source look-ahead are separate concerns:
 
-- `max_visible_items` controls how many fixed-height agenda rows fit in the widget viewport at once
 - global calendar `lookahead_days` defaults to **30 days**
 - calendar `lookahead_days` controls how far future calendar events are loaded/made available for scrolling/day paging
 - every configured calendar inherits the global 30-day value by default
@@ -85,6 +84,38 @@ Visible row count and source look-ahead are separate concerns:
 
 The global/default calendar look-ahead applies consistently to `grouped`, `timeline` and `day` modes. Changing the presentation mode must not silently change provider query range.
 
+### Visible-row modes, auto sizing and bounded height
+
+The agenda supports two visible-row modes:
+
+- `fixed` – a configured number of rows is shown in the widget viewport
+- `auto` – the widget derives the number of fully visible rows from the vertical space actually allocated to it by the page layout
+
+For `fixed` mode:
+
+- default `max_visible_items = 5`
+- allowed range is `3–8`
+- events and tasks count together toward this visible item budget
+
+For `auto` mode:
+
+- the agenda uses as many complete fixed-height rows as fit below its own header/controls inside the allocated widget height
+- no row may be compressed or partially clipped merely to squeeze in another item
+- the fixed `max_visible_items` control is irrelevant and must remain visible but disabled/greyed in configuration
+- items beyond the calculated visible capacity remain reachable through the widget's internal vertical touch scrolling/swiping
+- recalculation follows a genuine change in the widget's allocated layout height; it must not resize the parent page to make more content fit
+
+The agenda widget must be height-constrained by its host/layout. It must never force the Start page to become taller merely because more agenda items exist.
+
+The user must later be able to set a manual maximum widget height through the Start page's shared layout-grid system rather than by entering arbitrary pixel values. The agenda's `auto` mode then fills the usable portion of that configured grid height with the maximum number of complete rows.
+
+This creates a deliberate responsibility split:
+
+- Block 11 defines a widget that behaves correctly inside a bounded height, including internal scrolling and automatic row-capacity calculation
+- Block 14 defines/configures the shared Start-page height grid, widget grid spans/max-heights and the composed non-scrollable tablet viewport
+
+The final OnePlus/Fully Start page is intended to fit inside the available tablet viewport without page-level vertical scrolling. Widgets therefore may not visually or logically extend below their allocated layout area. Internal widget scrolling is allowed where the widget's content exceeds its allocated height.
+
 ### Row geometry and density
 
 - agenda rows have a consistent fixed height within the selected presentation configuration
@@ -92,12 +123,8 @@ The global/default calendar look-ahead applies consistently to `grouped`, `timel
 - task completion control has stable reserved geometry where applicable
 - the remaining horizontal space belongs to the title
 - long titles are truncated cleanly with ellipsis; font size is not reduced to make them fit
-- `max_visible_items` / visible row count is configurable
-- events and tasks count together toward the visible item budget
 - additional items remain reachable through vertical touch scrolling/swiping
 - the widget must not compress rows or grow unpredictably because many items exist
-
-The exact default visible row count and bounds remain to be chosen during the remaining design/visual acceptance work.
 
 ### Timeline continuation instead of navigation arrows
 
@@ -236,7 +263,8 @@ Future editing should use the provider/HA boundary rather than direct Home Assis
 - exact capability names/shapes for calendar and task providers
 - exact Home Assistant query/subscription strategy and refresh semantics
 - allowed bounds for calendar look-ahead around the confirmed 30-day default
-- exact visible-row default and bounds
+- exact Start-page height-grid definition / grid unit count and how widget max-height spans are configured in Block 14
+- exact minimum usable widget height when `auto` mode cannot fit the normal number of agenda rows
 - precise visual dimensions/style of dashed timeline continuation cues
 - exact `day`-mode swipe threshold/snap behavior
 - task detail-overlay fields beyond currently available source data
