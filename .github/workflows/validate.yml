@@ -47,7 +47,8 @@ jobs:
             tests/jamesui-core-router.test.js \
             tests/jamesui-core-services.test.js \
             tests/jamesui-core-shell.test.js \
-            tests/jamesui-core.test.js
+            tests/jamesui-core.test.js \
+            tests/jamesui-overlay-dom-host.test.js
 
       - name: Test JamesUI module system
         run: |
