@@ -19,8 +19,9 @@ Default branch: `main`
 5. `docs/JAMESUI_1_0_NEXT_CHAT.md`
 6. `docs/superpowers/specs/2026-10-03-jamesui-1.0-block-8-home-hero-deck-design.md`
 7. `docs/superpowers/specs/2026-10-03-jamesui-1.0-block-9-weather-provider-design.md`
-8. `docs/superpowers/plans/2026-10-03-jamesui-1.0-block-9-weather-provider.md`
-9. inspect only files relevant to the active block
+8. `docs/superpowers/specs/2026-10-04-jamesui-1.0-block-10-weather-today-design.md`
+9. `docs/superpowers/plans/2026-10-04-jamesui-1.0-block-10-weather-today.md`
+10. inspect only files relevant to the active block
 
 ## Binding direction
 
@@ -46,22 +47,27 @@ Completed and merged:
 - Block 7 – Icon Library + Asset Registry ✅ PR #19
 - Block 8 – `layout.home-hero-deck` ✅ PR #20
 - Block 9 – `provider.weather` ✅ PR #21
+- Block 10 – `widget.weather-today` + forecast overlay ✅ PR #22
 
-Block 9 merge commit:
-`3f27f8d800534792c50c29e7e153045bc14a1352`
+Block 10 merge commit:
+`f8abbbb28588e210e87727f5fcb3a68984766887`
 
 Validation:
-- Block 9 final branch #336 success
-- Block 9 main #337 success
-- Whole-branch review found two timestamp-truthfulness issues; review CI #333 demonstrated them and the strict ISO-instant fix is included in #336
+- Block 10 final branch #378 success; full job rerun on unchanged head also passed
+- Block 10 main #379 success on the merge commit
+- whole-branch review found one Important `pouring` presentation mismatch; a focused RED regression preceded the fix to `Starker Regen` + alert emphasis
+- permanent architecture guards protect widget boundaries, local Alpine allowlist, Core weather neutrality and legacy production entry
 - no open Critical/Important findings
+- no deterministic browser/screenshot harness exists; screenshot-level Block-10 acceptance was not claimed. Full composed OnePlus/Fully portrait acceptance remains required at Block 14 / pre-cutover.
 
-**Next formal gate: Block 10 – Weather Today widget + forecast overlay.** No Block-10 product code has started.
+**Next formal gate: Block 11 – Calendar provider + Calendar Agenda widget.** No Block-11 product code has started.
 
 ## Current platform
 
 ### Core
 `frontend/core/` provides routes, persistent navigation, Router, Event Bus, Overlay Service, Health Service, Module Registry/Loader, Capability Registry, Action Registry, Config Service and composition with the Design System.
+
+The shell now generically mounts same-document DOM element content from Overlay Service descriptors. This is domain-neutral; Core has no Weather Today special case.
 
 ### Module context
 - layout/widget: `events`, `overlays`, `capabilities`, `actions`, `module`
@@ -80,50 +86,25 @@ One canonical Home Assistant `.storage` Store:
 - atomic/transactional writes and explicit migrations
 - local display calibration remains browser-local
 
-### Design System
-`frontend/design/` owns:
-- 62 shared `--jui-*` tokens
-- shared Surface/Button/Overlay/Dialog primitives
-- reduced-motion behavior
-- semantic icon sizes `sm | md | lg | xl | hero`
-- root-scoped styling only
+### Design System / icons
+`frontend/design/` owns the 62-token root-scoped design contract and shared Surface/Button/Overlay/Dialog primitives.
 
-### Icon system
-`frontend/icons/` owns one local immutable semantic registry.
-
-Contract:
-- exact initial 40 IDs across `nav.*`, `shell.*`, `weather.*`, `home.*`, `moon.*`
-- Tabler Icons v3.48.0 pinned source/style baseline
-- checked-in MIT attribution
-- JamesUI-specific weather/shutter/moon icons use the same 24×24 / 2.0 px / `currentColor` contract
-- SVG creation only through `createElementNS()`
-- no runtime Tabler/npm/CDN/fetch/icon-font/SVG-string/XML-parser dependency
-- Core navigation uses `nav.start`, `nav.house`, `nav.climate`, `nav.media`, `nav.door`
-
-Implementation ruling: `home.ventilation` uses Tabler `propeller`; the originally planned `fan` source name does not exist in v3.48.0.
+`frontend/icons/` owns the immutable local 40-ID semantic icon registry, using pinned Tabler v3.48.0 provenance plus JamesUI-specific weather/shutter/moon icons. No runtime CDN/npm/fetch/icon-font/SVG-string dependency.
 
 ### Block 8 layout
-Boundary:
-`frontend/modules/layout.home-hero-deck/`
+Boundary: `frontend/modules/layout.home-hero-deck/`
 
 Contract:
-- exact stable slots `hero`, `widget-left`, `widget-right-main`, `widget-right-footer`
-- `getSlot()` and frozen `listSlots()`
-- slot identity and children survive `update()`
-- optional strict `hero_ratio`; default `0.42`, range `0.35–0.50`
-- invalid updates are atomic
-- DOM uses `target.ownerDocument`; no module-context expansion
-- one continuous lower deck surface
-- two-column primary deck; right-main + right-footer stack
-- CSS-only `44rem` container fallback
-- lower content can grow the deck/scroll area when future widgets are taller than the initial viewport
-- shared Block-6 tokens only
-- real Registry/Loader lifecycle compatibility tested
-- no HA/config/domain/widget logic and no Core Start markup
+- stable slots `hero`, `widget-left`, `widget-right-main`, `widget-right-footer`
+- `getSlot()` / frozen `listSlots()`
+- strict optional `hero_ratio`, default `0.42`, range `0.35–0.50`
+- atomic updates preserve slot identity/children
+- continuous lower deck, two-column primary geometry, CSS-only `44rem` fallback
+- tall widget content grows deck/page scroll
+- no domain logic/Core Start markup
 
 ### Block 9 Weather provider
-Boundary:
-`frontend/modules/provider.weather/`
+Boundary: `frontend/modules/provider.weather/`
 
 Capabilities:
 - `weather.current`
@@ -134,55 +115,69 @@ Capabilities:
 - `weather.atmosphere`
 
 Important behavior:
-- explicit configured Weather source never silently falls back
-- automatic source selection is deterministic
-- genuine Daily/Hourly/Twice-Daily subscriptions use the HA adapter
-- Daily fallback priority is usable Daily → Twice-Daily → Hourly
-- exact rain time comes only from genuine Hourly data
-- forecast calendar-day logic uses HA IANA timezone, including DST/midnight cases
-- Sun publishes normalized state/period and strict ISO rising/setting instants
-- Moon phase prefers valid configured/discovered HA state, otherwise local verified calculation
-- Moon illumination is calculated locally; SunCalc v1.9.0 BSD-2-Clause provenance is checked in
-- local Moon calculation passed fixed 2026 reference cases at the predefined ±3 percentage-point illumination tolerance
-- atmosphere publishes semantic scene keys only and does not know asset paths
-- one five-minute timer refreshes only time-derived cached values, never polls HA
-- source-generation guards reject stale forecast callbacks
-- capabilities fail independently and never fabricate missing weather data
-- no DOM/UI/assets/raw HA/config/r11/production-entry coupling
+- deterministic source selection; explicit configured source never silently falls back
+- real Daily/Hourly/Twice-Daily HA forecast subscriptions
+- Daily fallback priority usable Daily → Twice-Daily → Hourly
+- exact rain start only from genuine Hourly data
+- validated additive timezone metadata supports truthful consumer formatting
+- day grouping uses HA IANA timezone
+- Sun strict ISO instants + semantic period
+- Moon prefers valid HA phase, otherwise verified local SunCalc-based fallback
+- atmosphere exposes semantic scene keys only
+- five-minute time-derived refresh, no HA polling
+- source-generation guards reject stale callbacks
+- no DOM/UI/assets/raw HA/config/r11 coupling
+
+### Block 10 Weather Today
+Boundary: `frontend/modules/widget.weather-today/`
+
+Important behavior:
+- consumes only the six Block-9 weather capabilities
+- strict empty V1 config; no direct HA
+- stable Alpine hero DOM
+- device-local German date + `HH:MM` clock with one aligned timeout
+- temperature is the accessible forecast trigger
+- truthful current condition, today high/low, genuine rain/time, wind/gust, sunrise/sunset and moon facts
+- exact eight-scene local Alpine asset allowlist + neutral fallback
+- seven restrained facts in one primary row with CSS container fallback
+- forecast overlay: up to 12 future Hourly + 7 current/future Daily entries, explicit HA timezone, clean empty states
+- live updates preserve important DOM identity
+- stale-safe overlay ownership and complete cleanup on update/reload/destroy
+- real Registry/Loader integration and capability ownership are tested
+- no Core weather branching, r11 copy, old weather SVG dependency, raw palette or remote assets
 
 ## r11 / cutover status
 
 r11 is **still the running production/reference frontend**.
 
-`jamesui-entry.js` still loads the old panel/start bridge. The new Core/Design/Icon/Layout/Weather runtime is not wired into production. Do not cut over before Blocks 19–20.
+`jamesui-entry.js` still loads the old panel/start bridge. The new Core/Design/Icon/Layout/Weather/Weather-Today runtime is not wired into production. Do not cut over before Blocks 19–20.
 
-## Block 10 boundary
+## Block 11 boundary
 
-Block 10 is **Weather Today widget + forecast overlay**.
+Block 11 is **Calendar provider + Calendar Agenda widget**.
 
-Goal:
-- rebuild the accepted Alpine/weather hero in the Block-8 `hero` slot
-- consume only Block-9 weather capabilities; no direct HA access
-- use shared Design System and semantic icons
-- weekday/date + large time
-- current temperature/condition, high/low, real rain/time only when Block 9 provides it
-- wind/storm/snow relevance, sunrise/sunset and moon information as appropriate
-- temperature interaction opens a forecast overlay through the existing Overlay Service without shifting the hero layout
-- preserve the visual intent: premium Alpine-Chic/architectural, near-black/anthracite, restrained champagne accents, no generic Lovelace/card look
-- atmosphere/background visuals must be driven by semantic capability/asset mappings rather than hard-coded fake weather data
-- missing capability fields produce deliberate empty/unavailable states, not fabricated values
+Initial goal:
+- use real configured Home Assistant calendar data only
+- define normalized Calendar capability contract before widget implementation
+- deterministic configured-calendar selection; no fabricated demo events
+- normalize event identity, start/end, all-day semantics, titles and source calendar
+- define explicit timezone/day-boundary behavior compatible with Home Assistant/local household semantics
+- deduplicate repeated/overlapping source representations where required by the retained UX
+- distinguish unavailable/not-configured/empty states
+- provider owns HA subscriptions/queries; widget consumes capabilities only
+- Calendar Agenda mounts in Block-8 `widget-left` later without final Start composition in Block 11
+- preserve premium quiet deck styling rather than generic HA cards
 
-Block 10 must **not** implement Calendar/House/Dynamic Buttons, final Start configuration/composition, or production cutover.
+Block 11 must **not** implement House Quick, Dynamic Buttons, final Start composition, production bootstrap switch or cutover.
 
-Before Block-10 product code:
-1. read current status/foundation/roadmap/baseline plus Block-8 and Block-9 contracts
-2. inspect Block-9 capability shapes, Overlay Service, Design/Icon APIs and relevant accepted r11 hero behavior only as visual evidence
-3. brainstorm and write the Block-10 design/spec
-4. get user spec approval
+Before Block-11 product code:
+1. read current status/foundation/roadmap/baseline and Blocks 8–10 contracts
+2. inspect existing Config Store data-source shape, HA adapter calendar support/gaps and retained r11 calendar behavior as evidence
+3. brainstorm 2–3 provider/widget boundary approaches if architecture choices remain
+4. write and get approval for the binding Block-11 design/spec
 5. write the detailed implementation plan
-6. get user plan approval
-7. implement on an isolated branch with TDD
-8. plan a OnePlus/Fully portrait visual acceptance checkpoint when enough of the composed hero is visible
+6. get plan approval
+7. implement in an isolated branch with TDD, whole-branch review and fresh CI
 
 ## Working preferences
 
@@ -203,11 +198,11 @@ Before Block-10 product code:
 ```text
 Wir setzen mein Projekt JamesUI aus dem Repository MarkusAureliusTeuton/JamesUI fort.
 
-Bitte arbeite nicht aus Erinnerung, sondern lies zuerst PROJECT_STATUS.md, die Foundation-Spec, die Execution Roadmap, die Baseline und JAMESUI_1_0_NEXT_CHAT.md. Lies für den aktuellen Plattformstand außerdem die Block-8-Spec sowie Block-9-Spec und Block-9-Plan.
+Bitte arbeite nicht aus Erinnerung, sondern lies zuerst PROJECT_STATUS.md, die Foundation-Spec, die Execution Roadmap, die Baseline und JAMESUI_1_0_NEXT_CHAT.md. Lies für den aktuellen Plattformstand außerdem die Block-8-, Block-9- und Block-10-Spec sowie den Block-10-Plan.
 
-Variante B ist verbindlich. Blocks 0 bis 9 sind abgeschlossen, reviewed, grün und auf main. r11 läuft weiterhin produktiv; der neue Core ist noch nicht in den Panel-Bootstrap geschaltet.
+Variante B ist verbindlich. Blocks 0 bis 10 sind abgeschlossen, reviewed, grün und auf main. Block 10 wurde über PR #22 mit Merge f8abbbb28588e210e87727f5fcb3a68984766887 integriert; Main-CI #379 ist grün. r11 läuft weiterhin produktiv; der neue Core ist noch nicht in den Panel-Bootstrap geschaltet.
 
-Nächster Gate: Block 10 – Weather Today widget + forecast overlay. Beginne mit der vorgesehenen Design-/Spec-Stufe und schreibe noch keinen Block-10-Produktcode vor meiner Freigabe. Das Widget konsumiert ausschließlich die Block-9-Capabilities und nutzt die bestehenden Design/Icon/Overlay-Grenzen. Calendar, House Quick, Dynamic Buttons und finaler Start-Aufbau gehören in spätere Blöcke.
+Nächster Gate: Block 11 – Calendar provider + Calendar Agenda widget. Beginne mit Repo-/Vertragsanalyse und der vorgesehenen Design-/Spec-Stufe. Schreibe noch keinen Block-11-Produktcode vor meiner Freigabe. Der Provider soll reale Home-Assistant-Kalenderdaten normalisieren; das Widget konsumiert nur Capabilities. House Quick, Dynamic Buttons, finaler Start-Aufbau und Cutover gehören in spätere Blöcke.
 
 Wichtig: Deutsch, kurz und technisch sauber. Repository direkt bearbeiten, wenn GitHub-Zugriff vorhanden ist. TDD für Verhaltensänderungen; absichtlich rote Tests niemals nach main. Keine Monkey-Patches, Prototype-Overrides, Versions-Polish-Dateien, parallelen Implementierungen oder dauerhaften Legacy-Krücken. OnePlus Pad 2 Hochformat ist das primäre Ziel; Fully ist nur die Kiosk-Hülle.
 ```
