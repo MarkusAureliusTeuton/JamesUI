@@ -145,6 +145,7 @@ jobs:
             tests/jamesui-task-update-manifest-config.test.js \
             tests/jamesui-task-update-action.test.js \
             tests/jamesui-task-update-loader.test.js \
+            tests/jamesui-task-update-review-regressions.test.js \
             tests/jamesui-calendar-agenda-manifest-config.test.js \
             tests/jamesui-calendar-agenda-presentation.test.js \
             tests/jamesui-calendar-agenda-model.test.js \
