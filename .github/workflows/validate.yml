@@ -6,11 +6,13 @@ on:
     paths-ignore:
       - "**/*.md"
   pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
     paths-ignore:
       - "**/*.md"
 
 jobs:
   validate:
+    if: github.event_name == 'push' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -125,6 +127,36 @@ jobs:
             tests/jamesui-weather-today-styles.test.js \
             tests/jamesui-weather-today-loader.test.js \
             tests/jamesui-weather-today-review-regressions.test.js
+
+      - name: Test JamesUI Block 11 Calendar Tasks Agenda
+        run: |
+          python -m unittest tests/test_block11_architecture.py
+          node --experimental-default-type=module --test \
+            tests/jamesui-zoned-time.test.js \
+            tests/jamesui-calendar-manifest-config.test.js \
+            tests/jamesui-calendar-normalize.test.js \
+            tests/jamesui-calendar-provider.test.js \
+            tests/jamesui-calendar-loader.test.js \
+            tests/jamesui-todo-features.test.js \
+            tests/jamesui-tasks-manifest-config.test.js \
+            tests/jamesui-tasks-normalize.test.js \
+            tests/jamesui-tasks-provider.test.js \
+            tests/jamesui-tasks-loader.test.js \
+            tests/jamesui-task-update-manifest-config.test.js \
+            tests/jamesui-task-update-action.test.js \
+            tests/jamesui-task-update-loader.test.js \
+            tests/jamesui-task-update-review-regressions.test.js \
+            tests/jamesui-calendar-agenda-manifest-config.test.js \
+            tests/jamesui-calendar-agenda-presentation.test.js \
+            tests/jamesui-calendar-agenda-model.test.js \
+            tests/jamesui-calendar-agenda-notices.test.js \
+            tests/jamesui-calendar-agenda-overlay.test.js \
+            tests/jamesui-calendar-agenda-task-edit.test.js \
+            tests/jamesui-calendar-agenda-sizing-gesture.test.js \
+            tests/jamesui-calendar-agenda-styles.test.js \
+            tests/jamesui-calendar-agenda-widget.test.js \
+            tests/jamesui-calendar-agenda-widget-regressions.test.js \
+            tests/jamesui-block11-loader.test.js
 
       - name: Validate Alpine atmosphere assets
         run: python -m unittest tests/test_alpine_assets.py
