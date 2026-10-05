@@ -66,6 +66,12 @@ const EXPECTED_CATALOG = Object.freeze({
   "home.media": ["tabler", "device-speaker"],
   "home.device": ["tabler", "device-desktop"],
   "home.energy": ["tabler", "bolt"],
+  "home.calendar": ["tabler", "calendar"],
+  "home.task": ["tabler", "checkbox"],
+  "home.birthday": ["tabler", "cake"],
+  "home.waste": ["tabler", "trash"],
+  "home.recycling": ["tabler", "recycle"],
+  "home.paper": ["tabler", "file-text"],
   "moon.new": ["jamesui", null],
   "moon.waxing-crescent": ["jamesui", null],
   "moon.first-quarter": ["jamesui", null],
@@ -130,11 +136,11 @@ test("returns false/null for syntactically valid unknown IDs", () => {
   assert.equal(registry.getIconDefinition("home.window"), null);
 });
 
-test("exports the exact curated 40-icon production catalog", () => {
+test("exports the exact curated 46-icon production catalog", () => {
   const expectedIds = Object.keys(EXPECTED_CATALOG).sort();
   assert.equal(Object.isFrozen(ICON_REGISTRY), true);
   assert.deepEqual([...listIconIds()].sort(), expectedIds);
-  assert.equal(listIconIds().length, 40);
+  assert.equal(listIconIds().length, 46);
   for (const id of expectedIds) {
     assert.equal(hasIcon(id), true);
     const definition = getIconDefinition(id);
