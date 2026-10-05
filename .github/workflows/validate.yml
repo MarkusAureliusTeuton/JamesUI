@@ -126,6 +126,13 @@ jobs:
             tests/jamesui-weather-today-loader.test.js \
             tests/jamesui-weather-today-review-regressions.test.js
 
+      - name: Test JamesUI Block 11 Calendar Tasks Agenda
+        run: |
+          node --experimental-default-type=module --test \
+            tests/jamesui-zoned-time.test.js \
+            tests/jamesui-calendar-manifest-config.test.js \
+            tests/jamesui-calendar-normalize.test.js
+
       - name: Validate Alpine atmosphere assets
         run: python -m unittest tests/test_alpine_assets.py
 
