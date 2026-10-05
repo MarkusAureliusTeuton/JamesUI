@@ -299,8 +299,7 @@ test("failed completion does not hide task and external completion wins an in-fl
   fixture.capabilities.publish("tasks.items", available("tasks.items", tasksValue([task("a", "Aufgabe", "completed")]), "provider.tasks"));
   assert.equal(root.querySelectorAll("[data-jui-agenda-row]").length, 0);
   resolveAction({ status: "error", type: "task.update", value: null, error: new Error("boom") });
-  await Promise.resolve();
-  await Promise.resolve();
+  await new Promise((resolve) => setImmediate(resolve));
   assert.equal(root.querySelectorAll("[data-jui-agenda-row]").length, 0);
   assert.match(root.querySelector('[data-jui-agenda-action-feedback=""]').textContent, /nicht gespeichert/i);
   fixture.widget.destroy();
