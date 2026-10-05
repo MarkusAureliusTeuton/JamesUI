@@ -133,7 +133,10 @@ jobs:
             tests/jamesui-calendar-manifest-config.test.js \
             tests/jamesui-calendar-normalize.test.js \
             tests/jamesui-calendar-provider.test.js \
-            tests/jamesui-calendar-loader.test.js
+            tests/jamesui-calendar-loader.test.js \
+            tests/jamesui-todo-features.test.js \
+            tests/jamesui-tasks-manifest-config.test.js \
+            tests/jamesui-tasks-normalize.test.js
 
       - name: Validate Alpine atmosphere assets
         run: python -m unittest tests/test_alpine_assets.py
