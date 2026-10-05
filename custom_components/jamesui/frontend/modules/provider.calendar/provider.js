@@ -80,7 +80,7 @@ export function createCalendarProvider(initialContext, initialConfig) {
   const rangeKey = (range) => `${range.entity_id}\u0000${range.start_date}\u0000${range.end_date}`;
 
   const notifyConsumer = (consumer) => {
-    if (!consumer.active || consumer.generation !== serviceGeneration) return;
+    if (!consumer.active || !consumer.ready || consumer.generation !== serviceGeneration) return;
     if (consumer.records.some((record) => record.status === "pending")) return;
     const sources = {};
     for (const record of consumer.records) {
@@ -216,6 +216,7 @@ export function createCalendarProvider(initialContext, initialConfig) {
 
         const consumer = {
           active: true,
+          ready: false,
           generation,
           listener,
           records: [],
@@ -246,6 +247,7 @@ export function createCalendarProvider(initialContext, initialConfig) {
           consumer.records.push(record);
           if (created) startRemote(record);
         }
+        consumer.ready = true;
         notifyConsumer(consumer);
 
         let active = true;
