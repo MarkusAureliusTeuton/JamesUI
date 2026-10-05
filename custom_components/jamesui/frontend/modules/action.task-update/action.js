@@ -49,7 +49,7 @@ function normalizeAction(action) {
   }
   if (Object.hasOwn(action.patch, "due")) {
     const due = action.patch.due;
-    if (!isPlainObject(due) || !new Set(["kind", "value"]).has("kind")) return null;
+    if (!isPlainObject(due)) return null;
     const dueKeys = Object.keys(due);
     if (dueKeys.some((key) => key !== "kind" && key !== "value") || !Object.hasOwn(due, "kind") || !Object.hasOwn(due, "value")) return null;
     if (due.kind === "date") {
@@ -175,6 +175,10 @@ function createHandler(homeAssistant) {
   };
 }
 
+function registerFor(context) {
+  return context.actions.register("task.update", createHandler(context.homeAssistant));
+}
+
 export function createTaskUpdateAction(initialContext, initialConfig) {
   let context = requireContext(initialContext);
   let config = validateTaskUpdateConfig(initialConfig);
@@ -182,15 +186,11 @@ export function createTaskUpdateAction(initialContext, initialConfig) {
   let mounted = false;
   let destroyed = false;
 
-  const register = () => {
-    unregister = context.actions.register("task.update", createHandler(context.homeAssistant));
-  };
-
   return Object.freeze({
     mount() {
       if (destroyed || mounted) return false;
       mounted = true;
-      register();
+      unregister = registerFor(context);
       return true;
     },
     update(nextContext, nextConfig) {
@@ -202,16 +202,42 @@ export function createTaskUpdateAction(initialContext, initialConfig) {
         config = validatedConfig;
         return true;
       }
-      unregister?.();
+
+      const previousContext = context;
+      const previousConfig = config;
+      const actionsChanged = validatedContext.actions !== previousContext.actions;
+      const homeAssistantChanged = validatedContext.homeAssistant !== previousContext.homeAssistant;
+
+      if (!actionsChanged && !homeAssistantChanged) {
+        context = validatedContext;
+        config = validatedConfig;
+        return true;
+      }
+
+      if (actionsChanged) {
+        const nextUnregister = registerFor(validatedContext);
+        unregister?.();
+        context = validatedContext;
+        config = validatedConfig;
+        unregister = nextUnregister;
+        return true;
+      }
+
+      const previousUnregister = unregister;
+      previousUnregister?.();
       unregister = null;
-      context = validatedContext;
-      config = validatedConfig;
       try {
-        register();
+        const nextUnregister = registerFor(validatedContext);
+        context = validatedContext;
+        config = validatedConfig;
+        unregister = nextUnregister;
+        return true;
       } catch (error) {
+        context = previousContext;
+        config = previousConfig;
+        unregister = registerFor(previousContext);
         throw error;
       }
-      return true;
     },
     destroy() {
       if (destroyed) return false;
