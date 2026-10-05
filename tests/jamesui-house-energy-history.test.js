@@ -1,0 +1,11 @@
+import test from 'node:test'; import assert from 'node:assert/strict';
+import { normalizePowerWatts, timeWeightedAverageWatts } from '../custom_components/jamesui/frontend/modules/provider.house-energy/history.js';
+const m=60_000; const sample=(minutes,value)=>({s:String(value),lu:(minutes*m)/1000});
+test('normalizes W and kW only',()=>{assert.equal(normalizePowerWatts('123.5','W'),123.5);assert.equal(normalizePowerWatts('1.5','kW'),1500);assert.equal(normalizePowerWatts('1','MW'),null);assert.equal(normalizePowerWatts('x','W'),null);});
+test('computes piecewise constant time weighted average',()=>{const r=timeWeightedAverageWatts([sample(0,0),sample(10,3000)],{start_ms:0,end_ms:15*m,unit:'W'});assert.deepEqual(r,{quality:'full',average_power_w:1000,reason:null});});
+test('clamps state before start and extends last valid state to end',()=>{const history=[sample(-5,1000),sample(5,2000)];const r=timeWeightedAverageWatts(history,{start_ms:0,end_ms:10*m,unit:'W'});assert.equal(r.quality,'full');assert.equal(r.average_power_w,1500);});
+test('converts kW samples during integration',()=>{const r=timeWeightedAverageWatts([sample(0,1),sample(5,2)],{start_ms:0,end_ms:10*m,unit:'kW'});assert.equal(r.average_power_w,1500);});
+test('unknown or unavailable gaps make history insufficient',()=>{const r=timeWeightedAverageWatts([sample(0,1000),sample(5,'unknown'),sample(10,2000)],{start_ms:0,end_ms:15*m,unit:'W'});assert.equal(r.quality,'insufficient');assert.equal(r.average_power_w,null);assert.match(r.reason,/unavailable/);});
+test('requires a state covering the start boundary',()=>{const r=timeWeightedAverageWatts([sample(5,1000)],{start_ms:0,end_ms:10*m,unit:'W'});assert.equal(r.quality,'insufficient');assert.equal(r.reason,'start_state_missing');});
+test('malformed non finite samples are never silently averaged',()=>{const r=timeWeightedAverageWatts([{s:'1000',lu:0},{s:'NaN',lu:300}],{start_ms:0,end_ms:10*m,unit:'W'});assert.equal(r.quality,'insufficient');assert.equal(r.average_power_w,null);});
+test('rejects invalid range or unsupported unit as insufficient',()=>{assert.equal(timeWeightedAverageWatts([],{start_ms:10,end_ms:5,unit:'W'}).quality,'insufficient');assert.equal(timeWeightedAverageWatts([sample(0,1)],{start_ms:0,end_ms:m,unit:'MW'}).quality,'insufficient');});
