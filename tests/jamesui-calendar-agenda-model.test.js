@@ -192,6 +192,7 @@ test("task assignment hides completed, carries overdue only to Today and respect
 });
 
 test("chronological ordering uses untimed placement, all-day bucket, times and configured source order deterministically", () => {
+  const orderingNow = "2026-10-04T06:00:00.000Z"; // 08:00 local; all tested timed rows are still current/future
   const cfg = config({
     presentation_mode: "day",
     show_location: true,
@@ -211,13 +212,13 @@ test("chronological ordering uses untimed placement, all-day bucket, times and c
       task("todo.second", "b", "Task 09 B", { kind: "datetime", value: "2026-10-04T07:00:00Z" }),
     ]),
   });
-  const model = buildAgendaModel({ config: cfg, today_key: TODAY, now: NOW, selected_day: TODAY, calendar_snapshot: cal, tasks_snapshot: tasks });
+  const model = buildAgendaModel({ config: cfg, today_key: TODAY, now: orderingNow, selected_day: TODAY, calendar_snapshot: cal, tasks_snapshot: tasks });
   assert.deepEqual(model.sections[0].rows.map((row) => row.title), ["Ganztag", "Task 09 A", "Task 09 B", "Termin 10", "Ohne Zeit"]);
   assert.equal(model.sections[0].rows.every((row) => row.reserve_location_line === true), true);
 
   const before = buildAgendaModel({
     config: config({ presentation_mode: "day", task_order_mode: "tasks_before", calendars: [{ entity_id: "calendar.family" }], task_lists: [{ entity_id: "todo.first" }, { entity_id: "todo.second" }] }),
-    today_key: TODAY, now: NOW, selected_day: TODAY, calendar_snapshot: cal, tasks_snapshot: tasks,
+    today_key: TODAY, now: orderingNow, selected_day: TODAY, calendar_snapshot: cal, tasks_snapshot: tasks,
   });
   assert.deepEqual(before.sections[0].rows.map((row) => row.kind), ["task", "task", "task", "event", "event"]);
 });
