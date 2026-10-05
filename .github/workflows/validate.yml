@@ -6,11 +6,13 @@ on:
     paths-ignore:
       - "**/*.md"
   pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
     paths-ignore:
       - "**/*.md"
 
 jobs:
   validate:
+    if: github.event_name == 'push' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
