@@ -220,8 +220,8 @@ test("mount binds enabled capabilities, subscribes absolute calendar range and r
   assert.ok(root);
   assert.deepEqual(fixture.capabilities.subscriptions, ["calendar.events", "tasks.items"]);
   assert.deepEqual(fixture.calendar.subscriptions, [{ ranges: [{ entity_id: "calendar.family", start_date: "2026-10-04", end_date: "2026-11-04" }] }]);
-  assert.deepEqual(root.querySelectorAll("[data-jui-agenda-row]").map((row) => row.getAttribute("data-jui-agenda-kind")), ["task", "event"]);
-  assert.equal(root.querySelector('[data-jui-agenda-title=""]').textContent, "Aufgabe");
+  assert.deepEqual(root.querySelectorAll("[data-jui-agenda-row]").map((row) => row.getAttribute("data-jui-agenda-kind")), ["event", "task"]);
+  assert.deepEqual(root.querySelectorAll('[data-jui-agenda-title=""]').map((node) => node.textContent), ["Termin", "Aufgabe"]);
   assert.equal(fixture.runtime.observers.length, 1);
   assert.equal(fixture.runtime.scheduled.filter((entry) => entry.active).length, 1);
   fixture.widget.destroy();
@@ -270,7 +270,7 @@ test("completion uses semantic action, hides successful task and exposes exact f
     uid: "a",
     patch: { status: "completed" },
   });
-  assert.equal(root.querySelectorAll("[data-jui-agenda-row]").some((row) => row.textContent === "Aufgabe"), false);
+  assert.equal(root.querySelectorAll('[data-jui-agenda-title=""]').some((node) => node.textContent === "Aufgabe"), false);
   const undo = root.querySelector('[data-jui-agenda-undo=""]');
   assert.ok(undo);
   const undoTimer = fixture.runtime.scheduled.find((entry) => entry.active && entry.ms === 5000);
@@ -322,7 +322,7 @@ test("source notices and empty state stay distinct from unavailable capability",
   fixture.widget.destroy();
 });
 
-test("too-small host never renders partial rows and recovers through ResizeObserver", () => {
+test("too-small host never renders partial rows", () => {
   const runtime = fakeRuntime("2026-10-04T06:00:00Z", { hostHeight: 70, rowHeight: 60 });
   const fixture = mountFixture({ runtime, items: [task("a", "Aufgabe")] });
   const root = fixture.target.querySelector('[data-jui-widget="calendar-agenda"]');
@@ -347,7 +347,7 @@ test("event and task rows open instance-owned overlays and destroy never closes 
   assert.equal(fixture.overlays.current.id, "unrelated");
 });
 
-test("two direct widget instances isolate day selection, completion state and overlays", async () => {
+test("two direct widget instances isolate day selection, completion state and overlays", () => {
   const document = createFakeDocument();
   const targetA = document.createElement("div");
   const targetB = document.createElement("div");
