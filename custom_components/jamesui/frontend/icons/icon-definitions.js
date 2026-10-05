@@ -81,6 +81,12 @@ const PROPELLER = [
 const DEVICE_SPEAKER = [p("M5 5a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2l0 -14"), p("M9 14a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"), p("M12 7l0 .01")];
 const DEVICE_DESKTOP = [p("M3 5a1 1 0 0 1 1 -1h16a1 1 0 0 1 1 1v10a1 1 0 0 1 -1 1h-16a1 1 0 0 1 -1 -1v-10"), p("M7 20h10"), p("M9 16v4"), p("M15 16v4")];
 const BOLT = [p("M13 3l0 7l6 0l-8 11l0 -7l-6 0l8 -11")];
+const CALENDAR = [p("M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z"), p("M16 3v4"), p("M8 3v4"), p("M4 11h16")];
+const CHECKBOX = [p("M9 11l3 3l8 -8"), p("M20 12v6a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h9")];
+const CAKE = [p("M3 20h18"), p("M5 20v-8a3 3 0 0 1 3 -3h8a3 3 0 0 1 3 3v8"), p("M8 3v3"), p("M12 3v3"), p("M16 3v3"), p("M5 14l1 .5c.6 .3 1.4 .3 2 0l.5 -.25c.6 -.3 1.4 -.3 2 0l1 .5c.6 .3 1.4 .3 2 0l1 -.5c.6 -.3 1.4 -.3 2 0l.5 .25c.6 .3 1.4 .3 2 0l1 -.5")];
+const TRASH = [p("M4 7h16"), p("M10 11v6"), p("M14 11v6"), p("M5 7l1 14h12l1 -14"), p("M9 7v-3h6v3")];
+const RECYCLE = [p("M12 17l-2 2l2 2"), p("M10 19h6.5a2.5 2.5 0 0 0 2.15 -3.77l-1.15 -1.98"), p("M8.5 11l-2.5 -.7l-.7 2.5"), p("M6 10.3l3.25 -5.63a2.5 2.5 0 0 1 4.3 0l1.15 2"), p("M15.5 9l2.5 -.7l.7 2.5"), p("M18 8.3l-3.25 5.63a2.5 2.5 0 0 1 -4.3 0l-1.15 -2")];
+const FILE_TEXT = [p("M14 3v4a1 1 0 0 0 1 1h4"), p("M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z"), p("M9 9h1"), p("M9 13h6"), p("M9 17h6")];
 
 const PARTLY_CLOUDY = [circle(7.5, 7.5, 3), p("M7 17h10a3 3 0 0 0 0 -6h-.7a4.5 4.5 0 0 0 -8.5 1.4a2.7 2.7 0 0 0 -.8 4.6")];
 const HEAVY_RAIN = [p("M6.5 15.5h11a3.5 3.5 0 0 0 .2 -7a5.5 5.5 0 0 0 -10.5 -1.1a4.2 4.2 0 0 0 -.7 8.1"), p("M8 18l-1 3"), p("M12 18l-1 3"), p("M16 18l-1 3")];
@@ -120,6 +126,12 @@ export const ICON_DEFINITIONS = deepFreeze([
   tabler("home.media", "device-speaker", DEVICE_SPEAKER),
   tabler("home.device", "device-desktop", DEVICE_DESKTOP),
   tabler("home.energy", "bolt", BOLT),
+  tabler("home.calendar", "calendar", CALENDAR),
+  tabler("home.task", "checkbox", CHECKBOX),
+  tabler("home.birthday", "cake", CAKE),
+  tabler("home.waste", "trash", TRASH),
+  tabler("home.recycling", "recycle", RECYCLE),
+  tabler("home.paper", "file-text", FILE_TEXT),
   jamesui("moon.new", [...MOON_OUTER, circle(12, 12, 5.5)]),
   jamesui("moon.waxing-crescent", [...MOON_OUTER, p("M8 4c7 4 7 12 0 16")]),
   jamesui("moon.first-quarter", [...MOON_OUTER, p("M12 3v18"), p("M12 12h3")]),
