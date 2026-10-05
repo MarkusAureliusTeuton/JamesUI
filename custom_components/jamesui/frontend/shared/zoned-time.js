@@ -51,6 +51,10 @@ function sameLocalParts(a, b) {
     && a.second === b.second;
 }
 
+function wallTimeValue(parts) {
+  return Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+}
+
 function pad(value) {
   return String(value).padStart(2, "0");
 }
@@ -99,27 +103,38 @@ export function zonedLocalToInstant(
 
   const [year, month, day] = dateKey.split("-").map(Number);
   const desired = { year, month, day, hour, minute, second };
-  const naiveUtc = Date.UTC(year, month - 1, day, hour, minute, second);
+  const naiveUtc = wallTimeValue(desired);
   const offsets = new Set();
 
   for (let deltaHours = -36; deltaHours <= 36; deltaHours += 6) {
     const probeMs = naiveUtc + deltaHours * 60 * 60 * 1000;
     const parts = localParts(new Date(probeMs), timeZone);
     if (!parts) continue;
-    const projectedUtc = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
-    offsets.add(projectedUtc - probeMs);
+    offsets.add(wallTimeValue(parts) - probeMs);
   }
 
-  const candidates = [];
+  const exactCandidates = [];
+  const compatibleGapCandidates = [];
   for (const offset of offsets) {
     const candidateMs = naiveUtc - offset;
     const candidate = new Date(candidateMs);
     const projected = localParts(candidate, timeZone);
-    if (projected && sameLocalParts(projected, desired)) candidates.push(candidate);
+    if (!projected) continue;
+    if (sameLocalParts(projected, desired)) {
+      exactCandidates.push(candidate);
+      continue;
+    }
+    const wallDelta = wallTimeValue(projected) - naiveUtc;
+    if (wallDelta > 0) compatibleGapCandidates.push({ candidate, wallDelta });
   }
-  if (!candidates.length) return null;
-  candidates.sort((a, b) => a - b);
-  return candidates[0].toISOString();
+
+  if (exactCandidates.length) {
+    exactCandidates.sort((a, b) => a - b);
+    return exactCandidates[0].toISOString();
+  }
+  if (!compatibleGapCandidates.length) return null;
+  compatibleGapCandidates.sort((a, b) => a.wallDelta - b.wallDelta || a.candidate - b.candidate);
+  return compatibleGapCandidates[0].candidate.toISOString();
 }
 
 export function zonedStartOfDate(dateKey, timeZone) {
