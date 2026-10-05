@@ -1,0 +1,49 @@
+import { validateHouseLightingConfig } from "./config.js";
+import { normalizeLightGroup } from "./normalize.js";
+
+function requireContext(context){
+  if(!context?.capabilities||typeof context.capabilities.register!=="function") throw new TypeError("house lighting provider requires capabilities");
+  for(const method of ["connectionState","getState","subscribeEntity","subscribeConnection"]){ if(!context.homeAssistant||typeof context.homeAssistant[method]!=="function") throw new TypeError(`house lighting provider requires homeAssistant.${method}`); }
+  return context;
+}
+function invoke(fn){try{fn?.();}catch{/* best effort */}}
+
+export function createHouseLightingProvider(initialContext, initialConfig){
+  let context=requireContext(initialContext); let config=validateHouseLightingConfig(initialConfig); let mounted=false; let destroyed=false;
+  let lightsHandle=null; let ambientHandle=null; let connectionUnsubscribe=null; const entityUnsubscribes=new Map();
+  const publishOne=(handle,entries,emptyReason)=>{
+    if(entries.length===0){handle.notConfigured(emptyReason);return;}
+    if(context.homeAssistant.connectionState()!=="connected"){handle.unavailable("home_assistant_disconnected");return;}
+    handle.available(normalizeLightGroup(entries,(id)=>context.homeAssistant.getState(id)));
+  };
+  const publish=()=>{if(!mounted)return; publishOne(lightsHandle,config.lights,"no_lights"); publishOne(ambientHandle,config.ambient_lights,"no_ambient_lights");};
+  const unbind=()=>{invoke(connectionUnsubscribe);connectionUnsubscribe=null;for(const fn of entityUnsubscribes.values())invoke(fn);entityUnsubscribes.clear();};
+  const bind=()=>{
+    const ids=new Set([...config.lights,...config.ambient_lights].map((item)=>item.state.entity_id));
+    for(const id of ids) entityUnsubscribes.set(id,context.homeAssistant.subscribeEntity(id,()=>publish(),{emitCurrent:false}));
+    connectionUnsubscribe=context.homeAssistant.subscribeConnection(()=>publish(),{emitCurrent:false});
+  };
+  const register=()=>{lightsHandle=context.capabilities.register("provider.house-lighting","house.lights");ambientHandle=context.capabilities.register("provider.house-lighting","house.ambientLights");};
+  return Object.freeze({
+    mount(){if(destroyed||mounted)return false;mounted=true;register();bind();publish();return true;},
+    update(nextContext,nextConfig){
+      if(destroyed)throw new Error("house lighting provider is destroyed");
+      const c=requireContext(nextContext), cfg=validateHouseLightingConfig(nextConfig);
+      if(!mounted){context=c;config=cfg;return true;}
+      const sameRegistry=c.capabilities===context.capabilities;
+      let replacementLights=null,replacementAmbient=null;
+      if(!sameRegistry){
+        replacementLights=c.capabilities.register("provider.house-lighting","house.lights");
+        try{replacementAmbient=c.capabilities.register("provider.house-lighting","house.ambientLights");}
+        catch(error){replacementLights.unregister();throw error;}
+      }
+      const previousLights=lightsHandle, previousAmbient=ambientHandle;
+      unbind();context=c;config=cfg;
+      if(!sameRegistry){lightsHandle=replacementLights;ambientHandle=replacementAmbient;}
+      bind();publish();
+      if(!sameRegistry){previousLights?.unregister();previousAmbient?.unregister();}
+      return true;
+    },
+    destroy(){if(destroyed)return false;destroyed=true;unbind();lightsHandle?.unregister();ambientHandle?.unregister();lightsHandle=null;ambientHandle=null;mounted=false;return true;},
+  });
+}

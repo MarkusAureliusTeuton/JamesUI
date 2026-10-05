@@ -158,6 +158,27 @@ jobs:
             tests/jamesui-calendar-agenda-widget-regressions.test.js \
             tests/jamesui-block11-loader.test.js
 
+      - name: Test JamesUI Block 12 House Quick
+        run: |
+          python -m unittest tests/test_block12_architecture.py
+          node --experimental-default-type=module --test \
+            tests/jamesui-house-source.test.js \
+            tests/jamesui-house-heating-manifest-config.test.js \
+            tests/jamesui-house-heating-provider.test.js \
+            tests/jamesui-house-lighting-manifest-config.test.js \
+            tests/jamesui-house-lighting-provider.test.js \
+            tests/jamesui-house-devices-manifest-config.test.js \
+            tests/jamesui-house-devices-provider.test.js \
+            tests/jamesui-house-energy-manifest-config.test.js \
+            tests/jamesui-house-energy-history.test.js \
+            tests/jamesui-house-energy-provider.test.js \
+            tests/jamesui-house-quick-manifest-config.test.js \
+            tests/jamesui-house-quick-model.test.js \
+            tests/jamesui-house-quick-widget.test.js \
+            tests/jamesui-house-quick-styles.test.js \
+            tests/jamesui-house-quick-review-regressions.test.js \
+            tests/jamesui-block12-loader.test.js
+
       - name: Validate Alpine atmosphere assets
         run: python -m unittest tests/test_alpine_assets.py
 
