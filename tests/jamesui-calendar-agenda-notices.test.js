@@ -183,11 +183,11 @@ test("dismissed eligible occurrence is filtered and pruning removes expired reco
   const future = timed("Future", "2026-10-11T08:00:00Z", "2026-10-11T09:00:00Z");
   const store = createNoticeDismissalStore({ storage, instance_id: cfg.instance_id, now: "2026-10-07T08:00:00Z" });
   store.dismiss(logicalEventKey(dismissed), eventStartInstant(dismissed, TZ));
-  store.dismiss(logicalEventKey(future), eventStartInstant(future, TZ));
 
   const notices = buildAdvanceNotices({ events: [dismissed, future], config: cfg, time_zone: TZ, now: "2026-10-07T08:00:00Z", dismissal_store: store, expanded: true });
   assert.deepEqual(notices.all.map((notice) => notice.title), ["Future"]);
 
+  store.dismiss(logicalEventKey(future), eventStartInstant(future, TZ));
   assert.equal(store.prune("2026-10-10T08:00:00Z"), 1);
   assert.equal(store.isDismissed(logicalEventKey(dismissed), "2026-10-10T08:00:00Z"), false);
   assert.equal(store.isDismissed(logicalEventKey(future), "2026-10-10T08:00:00Z"), true);
