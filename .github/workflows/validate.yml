@@ -130,6 +130,7 @@ jobs:
 
       - name: Test JamesUI Block 11 Calendar Tasks Agenda
         run: |
+          python -m unittest tests/test_block11_architecture.py
           node --experimental-default-type=module --test \
             tests/jamesui-zoned-time.test.js \
             tests/jamesui-calendar-manifest-config.test.js \
@@ -153,7 +154,8 @@ jobs:
             tests/jamesui-calendar-agenda-sizing-gesture.test.js \
             tests/jamesui-calendar-agenda-styles.test.js \
             tests/jamesui-calendar-agenda-widget.test.js \
-            tests/jamesui-calendar-agenda-widget-regressions.test.js
+            tests/jamesui-calendar-agenda-widget-regressions.test.js \
+            tests/jamesui-block11-loader.test.js
 
       - name: Validate Alpine atmosphere assets
         run: python -m unittest tests/test_alpine_assets.py
