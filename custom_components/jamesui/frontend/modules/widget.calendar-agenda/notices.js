@@ -99,6 +99,8 @@ export function createNoticeDismissalStore({ storage = null, instance_id: instan
   if (pruneState(state, now) > 0) persist();
 
   return Object.freeze({
+    instance_id: instanceId,
+
     isDismissed(key, at) {
       if (typeof key !== "string" || !key || !validInstant(at)) return false;
       const expiry = state.instances[instanceId]?.[key];
