@@ -152,7 +152,8 @@ jobs:
             tests/jamesui-calendar-agenda-task-edit.test.js \
             tests/jamesui-calendar-agenda-sizing-gesture.test.js \
             tests/jamesui-calendar-agenda-styles.test.js \
-            tests/jamesui-calendar-agenda-widget.test.js
+            tests/jamesui-calendar-agenda-widget.test.js \
+            tests/jamesui-calendar-agenda-widget-regressions.test.js
 
       - name: Validate Alpine atmosphere assets
         run: python -m unittest tests/test_alpine_assets.py
