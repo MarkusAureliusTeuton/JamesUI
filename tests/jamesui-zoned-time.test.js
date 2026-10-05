@@ -37,14 +37,21 @@ test("resolves Berlin local midnight correctly across autumn DST", () => {
   assert.equal(zonedStartOfDate("2026-10-26", "Europe/Berlin"), "2026-10-25T23:00:00.000Z");
 });
 
-test("resolves arbitrary valid local wall time and rejects nonexistent local wall time", () => {
+test("uses Temporal-compatible disambiguation for ambiguous and nonexistent Berlin wall times", () => {
   assert.equal(
-    zonedLocalToInstant({ dateKey: "2026-03-28", hour: 10, minute: 30 }, "Europe/Berlin"),
-    "2026-03-28T09:30:00.000Z",
+    zonedLocalToInstant({ dateKey: "2026-10-25", hour: 2, minute: 30 }, "Europe/Berlin"),
+    "2026-10-25T00:30:00.000Z",
   );
   assert.equal(
     zonedLocalToInstant({ dateKey: "2026-03-29", hour: 2, minute: 30 }, "Europe/Berlin"),
-    null,
+    "2026-03-29T01:30:00.000Z",
+  );
+});
+
+test("resolves arbitrary valid local wall time", () => {
+  assert.equal(
+    zonedLocalToInstant({ dateKey: "2026-03-28", hour: 10, minute: 30 }, "Europe/Berlin"),
+    "2026-03-28T09:30:00.000Z",
   );
 });
 
