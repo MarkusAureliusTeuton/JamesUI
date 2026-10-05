@@ -1,15 +1,15 @@
 # JamesUI – Project Status / Chat Handover
 
-_Last updated: 2026-10-04_
+_Last updated: 2026-10-05_
 
-This file is the persistent **single source of truth for the current execution state**. Architecture details live in the approved specs, retained behavior in the baseline, and task-level decisions in the individual block plans.
+This file is the persistent **single source of truth for the current execution state**. Architecture details live in approved specs, retained behavior in the baseline, and block-specific implementation detail in plans/tests.
 
 ## 1. Product goal
 
 JamesUI is the permanent wall-tablet interface for the KNX/Home Assistant home.
 
 Primary target:
-- OnePlus Pad 2 in portrait, normally through Fully
+- OnePlus Pad 2 portrait, normally through Fully
 - fixed navigation `Start | Haus | Klima | Medien | Tür`
 - important household information visible at a glance
 - fast controls plus deeper pages when needed
@@ -28,12 +28,9 @@ Canonical documents:
 - Roadmap: `docs/JAMESUI_1_0_EXECUTION_ROADMAP.md`
 - Baseline: `docs/JAMESUI_1_0_BASELINE.md`
 - Fresh-chat handover: `docs/JAMESUI_1_0_NEXT_CHAT.md`
-- Block 8 layout spec: `docs/superpowers/specs/2026-10-03-jamesui-1.0-block-8-home-hero-deck-design.md`
-- Block 8 plan: `docs/superpowers/plans/2026-10-03-jamesui-1.0-block-8-home-hero-deck.md`
-- Block 9 weather spec: `docs/superpowers/specs/2026-10-03-jamesui-1.0-block-9-weather-provider-design.md`
-- Block 9 plan: `docs/superpowers/plans/2026-10-03-jamesui-1.0-block-9-weather-provider.md`
-- Block 10 Weather Today spec: `docs/superpowers/specs/2026-10-04-jamesui-1.0-block-10-weather-today-design.md`
-- Block 10 plan: `docs/superpowers/plans/2026-10-04-jamesui-1.0-block-10-weather-today.md`
+- Cross-block layout rules: `docs/JAMESUI_1_0_LAYOUT_PLANNING_NOTES.md`
+- Block 11 spec: `docs/superpowers/specs/2026-10-04-jamesui-1.0-block-11-calendar-tasks-agenda-design.md`
+- Block 11 plan: `docs/superpowers/plans/2026-10-04-jamesui-1.0-block-11-calendar-tasks-agenda.md`
 
 ## 3. Current formal state
 
@@ -48,41 +45,28 @@ Canonical documents:
 - Block 8 – `layout.home-hero-deck`: ✅ PR #20
 - Block 9 – Weather provider: ✅ PR #21
 - Block 10 – Weather Today widget + forecast overlay: ✅ PR #22
-- Block 11 – Calendar provider + Calendar Agenda widget: ⬜ not started
+- Block 11 – Calendar/task providers + Agenda widget: ✅ PR #23
+- Block 12 – House capability providers + House Quick widget: ⬜ not started
 
-Block 10 merge commit: `f8abbbb28588e210e87727f5fcb3a68984766887`.
+Block 11 merge commit: `63e0b8dc6072eed885f591161180f7082f6f7f2c`.
 
-Validation evidence:
-- Block 10 final branch validation #378: success; final verification was rerun on the unchanged head and passed all workflow steps again
-- Block 10 main validation #379: success on the merge commit
-- whole-branch review found one Important presentation mismatch: `pouring` used `Starkregen` with normal emphasis instead of approved `Starker Regen` + alert emphasis; review regression was RED before the minimal fix and remains permanently gated
-- permanent Block-10 architecture guards now protect widget file boundaries, local Alpine asset allowlist, Core weather neutrality, legacy production entry and shared overlay stacking
+Block 11 verification evidence:
+- final unchanged feature head: `4f9c6959f15a5eb1e21ab38d6c30cc913219626d`
+- final branch validation: run `37284834614` – success
+- merge/main validation: run `37285828629` – success
+- whole-branch review found one Important lifecycle issue in `action.task-update`: registry rebinding could lose the old registration if the new registry rejected registration
+- that issue was fixed atomically and is permanently covered by `tests/jamesui-task-update-review-regressions.test.js`
+- permanent Block-11 integration and architecture gates are active
 - no open Critical/Important review findings remain
-- no deterministic browser/screenshot harness exists in the repository; Block-10 visual acceptance was therefore structural DOM/CSS review only. Full composed OnePlus Pad 2 / Fully screenshot acceptance remains mandatory at Block 14 / pre-cutover.
+- no open pull requests remain after PR #23 merge
 
-**Next formal gate:** Block 11 – Calendar provider + Calendar Agenda widget. Use design/spec and detailed implementation-plan gates before product code where the block introduces architectural/domain contracts.
+**Next formal gate:** Block 12 – House capability providers + House Quick widget. Inspect retained r11 house/status behavior and current HA/KNX-facing data before defining provider/widget contracts. Do not fold Dynamic Buttons, final Start composition or cutover into Block 12.
 
-## 4. Platform completed through Block 10
+## 4. Platform completed through Block 11
 
-### Core
-`custom_components/jamesui/frontend/core/` provides:
-- routes `home | house | climate | media | door`
-- persistent bottom navigation
-- Router
-- Event Bus for transient technical/UI/lifecycle events only
-- Overlay Service
-- Health Service
-- Module Registry + versioned Module Loader
-- Capability Registry
-- Action Registry
-- Home Assistant Adapter reference
-- Config Service reference
-- internally composed root-scoped Design System
+### Core and module contract
 
-Block 10 adds one **generic** Core shell capability: Overlay Service descriptors may contain same-document DOM element content. The shell still contains no weather vocabulary or widget-specific branches. Shared overlay stacking remains in Design with `z-index: 100`, above sticky bottom navigation.
-
-### Module contract
-Types: `layout`, `widget`, `provider`, `action`.
+Module types: `layout`, `widget`, `provider`, `action`.
 
 Lifecycle:
 - `create(context, config)`
@@ -90,90 +74,73 @@ Lifecycle:
 - `update(nextContext, nextConfig)`
 - `destroy()`
 
-Module context after Block 10 is unchanged:
+Context:
 - layout/widget: `events`, `overlays`, `capabilities`, `actions`, `module`
 - provider/action: same five plus `homeAssistant`
-- no module receives Design System, Config Service, raw `hass`, Router, Health, Module Registry or Module Loader
-- configuration enters modules through lifecycle config arguments
+- no normal module receives raw `hass`, Router, Health, Config Service, Design System, Module Registry or Module Loader
 
-### Actions and HA boundary
-Real actions:
+Core owns routing, persistent navigation, Event Bus, Overlay Service, Health Service, Module Registry/Loader, Capability Registry, Action Registry, HA Adapter and Config Service references. Domain behavior stays outside Core.
+
+### Actions and Home Assistant boundary
+
+Registered semantic/generic actions now include:
 - `navigate`
 - `url.open`
 - `entity.toggle`
 - `ha.service`
 - `scene.activate`
+- `task.update`
 
-All direct new-runtime HA access remains under `frontend/ha/`. The adapter exposes a narrow validated `timeZone()` accessor for provider-side HA-local calendar semantics. Disconnected/unavailable state views deliberately expose no stale entity values.
+Calendar/task widgets never call Todo services directly. `task.update` owns Todo mutation translation and feature validation.
 
-## 5. Structured configuration
+### Structured configuration
 
-Canonical persistence is one Home Assistant `.storage` Store:
+Canonical persistence remains one Home Assistant `.storage` Store:
 - key `jamesui.config`
 - schema version `1`
 - atomic writes
-
-Top-level sections:
-`pages`, `layouts`, `widget_instances`, `dynamic_buttons`, `data_sources`, `module_settings`.
-
-The Config Service is transactional and migratable. All 15 retained r11 values have deterministic mappings. Temporary r11 config GET/UPDATE compatibility points at the same Store, not a second persistence source.
+- top-level sections: `pages`, `layouts`, `widget_instances`, `dynamic_buttons`, `data_sources`, `module_settings`
 
 Device-local display calibration remains browser-local under `jamesui-display-calibration`.
 
-## 6. Visual foundation
+## 5. Visual foundation
 
 ### Design System
+
 Boundary: `custom_components/jamesui/frontend/design/`
 
 - frozen 62-token `--jui-*` contract
 - shared Surface/Button/Overlay/Dialog primitives
 - root-scoped CSS only
 - reduced-motion support
-- semantic icon sizes 16 / 20 / 24 / 32 / 48 px
 - no `!important`, data-image hacks, direct HA access or scattered palette constants
 
 ### Icon system
+
 Boundary: `custom_components/jamesui/frontend/icons/`
 
-- exactly 40 initial semantic IDs
+- exactly **46** semantic IDs after Block 11
+- original 40 IDs preserved
+- Block 11 adds `home.calendar`, `home.task`, `home.birthday`, `home.waste`, `home.recycling`, `home.paper`
 - Tabler Icons v3.48.0 pinned source/style baseline with checked-in MIT attribution
-- JamesUI-specific weather/shutter/moon definitions in the same 24×24 / 2px / `currentColor` contract
 - SVG DOM creation only through `createElementNS()`
 - no runtime npm/CDN/fetch/icon-font/SVG-string dependency
-- fixed Core navigation uses `nav.start`, `nav.house`, `nav.climate`, `nav.media`, `nav.door`
-- `home.ventilation` uses source icon `propeller`; Tabler `fan` does not exist in pinned v3.48.0
 
-Existing large `assets/weather/*.svg` and Alpine assets remain retained; the new Weather Today widget uses only its explicit local Alpine allowlist.
+## 6. Start foundation already rebuilt
 
-## 7. Block 8 – `layout.home-hero-deck`
+### Block 8 – `layout.home-hero-deck`
 
-Boundary:
-`custom_components/jamesui/frontend/modules/layout.home-hero-deck/`
+Stable slots:
+- `hero`
+- `widget-left`
+- `widget-right-main`
+- `widget-right-footer`
 
-Contract:
-- module ID `layout.home-hero-deck`, type `layout`, version `1.0.0`
-- no module dependencies or capabilities
-- exactly four stable slots: `hero`, `widget-left`, `widget-right-main`, `widget-right-footer`
-- explicit `getSlot()` / frozen `listSlots()` API
-- slot element identity and mounted children survive `update()`
-- strict config: optional `hero_ratio` only; default `0.42`, accepted `0.35–0.50`
-- invalid config update is atomic
-- DOM is created from `target.ownerDocument`; module context was not expanded
-- one continuous lower deck surface, not three layout-level cards
-- two-column primary deck; right side stacks main + footer
-- CSS container fallback at `44rem`, preserving semantic order
-- deck/right-main grid minima allow tall future widget content to grow the surface and page scroll instead of overflowing outside a fixed background
-- styling consumes Block-6 tokens only
-- no HA, Config Service, capability/action/provider/widget business logic
-- no automatic Start route composition yet
-- real Module Registry/Loader load/mount/update/reload/destroy compatibility is tested
+The layout provides structure only. Final Start composition/grid sizing remains Block 14.
 
-## 8. Block 9 – `provider.weather`
+### Blocks 9–10 – Weather
 
-Boundary:
-`custom_components/jamesui/frontend/modules/provider.weather/`
-
-Capabilities:
+`provider.weather` exposes:
 - `weather.current`
 - `weather.daily`
 - `weather.hourly`
@@ -181,88 +148,78 @@ Capabilities:
 - `weather.moon`
 - `weather.atmosphere`
 
-Contract/result:
-- explicit configured `weather.*` source never silently falls back; automatic mode chooses deterministically
-- current measurements are normalized as numbers + explicit units; missing values stay `null`
-- optional explicit outdoor-temperature source may override current temperature without collapsing the Weather source
-- real Home Assistant `daily`, `hourly` and `twice_daily` forecast subscriptions are normalized independently
-- Daily fallback priority is usable Daily → Twice-Daily → Hourly aggregation
-- concrete precipitation time is derived only from genuine Hourly forecast data
-- all forecast day/today grouping uses validated Home Assistant IANA timezone, not browser timezone
-- available current/hourly/daily/sun capability values expose validated additive `time_zone` metadata where truthful formatting needs it
-- Sun capability exposes semantic `day | golden | twilight | night` period plus validated ISO rising/setting instants
-- Moon prefers a valid configured/discovered HA phase, otherwise uses a local calculation derived from SunCalc v1.9.0 with checked-in BSD-2-Clause attribution
-- atmosphere emits semantic weather class/period/scene key only; it does not know asset paths
-- one five-minute provider timer refreshes only time-derived cached values; it does not poll Home Assistant
-- stale forecast callbacks are isolated by generation/source guards
-- strict ISO-instant validation prevents locale-dependent Sun/Forecast timestamp publication
-- no UI, DOM, CSS, icon/asset loading, raw `hass`, Config Service, r11 coupling or production bootstrap change
+`widget.weather-today` consumes only those capabilities, owns the Alpine/weather presentation and forecast overlay, and has no raw HA access.
 
-## 9. Block 10 – `widget.weather-today`
+No deterministic screenshot harness exists yet; composed OnePlus Pad 2 / Fully screenshot acceptance remains mandatory at Block 14 / pre-cutover.
 
-Boundary:
-`custom_components/jamesui/frontend/modules/widget.weather-today/`
+## 7. Block 11 – Calendar, Tasks and Agenda
 
-Contract/result:
-- consumes exactly `weather.current`, `weather.daily`, `weather.hourly`, `weather.sun`, `weather.moon`, `weather.atmosphere`
-- strict empty V1 config; no direct Home Assistant access
-- stable hero DOM with device-local German date + `HH:MM` clock and one minute-aligned self-rescheduling timer
-- current temperature is an accessible forecast trigger and remains usable when current weather is unavailable but forecast data exists
-- current condition uses semantic local weather/moon icons only; unknown conditions do not invent icons or polished backend-state labels
-- real current-day high/low only; tomorrow is never mislabeled as today
-- precipitation start time is displayed only when Block 9 supplied a genuine Hourly-derived instant
-- wind/gust, sunrise, sunset and moon facts fail independently and never fabricate missing values
-- exact local Alpine background allowlist: clear/cloudy/rain/snow day, fog, dusk, clear/cloudy night; unknown scene uses neutral dark fallback
-- facts form one restrained information row at primary geometry with deterministic CSS container wrapping on narrow widths
-- forecast overlay shows up to 12 future Hourly entries and up to 7 current/future Daily entries, with explicit HA-timezone formatting and empty/unavailable states
-- live capability updates mutate existing hero/forecast DOM instead of rebuilding the layout
-- overlay ownership is stale-safe and cannot close a newer unrelated overlay
-- loader load/update/reload/destroy integration is permanently tested with declared capability ownership
-- no r11 selector/copy, raw palette, remote asset, old weather-SVG dependency, Config Service, Router/Health or Core weather special case
+Boundaries:
+- `custom_components/jamesui/frontend/modules/provider.calendar/`
+- `custom_components/jamesui/frontend/modules/provider.tasks/`
+- `custom_components/jamesui/frontend/modules/action.task-update/`
+- `custom_components/jamesui/frontend/modules/widget.calendar-agenda/`
+- shared time/Todo helpers under `frontend/shared/`
 
-Visual acceptance note:
-- automated DOM/CSS/architecture gates cover hierarchy structure, seven-fact treatment, local scene allowlist, neutral fallback and modal stacking
-- no deterministic screenshot harness is present, so screenshot-level OnePlus/Fully acceptance was **not** claimed for Block 10
-- composed portrait screenshot acceptance is still required at Block 14 / pre-cutover
+Delivered:
+- explicit configured `calendar.*` sources through `calendar.events`
+- range-based calendar subscriptions with HA-timezone/DST-safe boundaries, sharing/ref-counting, source failure isolation and stale-callback guards
+- explicit configured `todo.*` sources through live `tasks.items` snapshots
+- semantic Todo feature handling and UID-based task identity
+- dedicated `task.update` action with safe rename/status/due/description updates and clear operations
+- Agenda modes `grouped`, `timeline`, `day`
+- Today/history semantics, all-day and timed multi-day projection, duplicate collapse with provenance
+- task ordering, overdue carry-forward, direct completion, exact 5 s Undo and source-supported task editing
+- JamesUI-owned advance notices with local instance-scoped dismissal persistence
+- fixed/auto complete-row sizing, internal overflow, `too_small` handling and day swipe/navigation
+- source-specific unavailable vs healthy-empty states
+- instance-safe widget implementation proven by direct parallel-instance tests
+- generic multi-instance Loader/page orchestration intentionally remains Block 14
 
-## 10. Production/reference runtime
+No Calendar mutation, task create/delete/move/reorder, source reminder import, House Quick, Dynamic Buttons, final Start composition or production cutover was added.
+
+## 8. Production/reference runtime
 
 Repository: `MarkusAureliusTeuton/JamesUI`
 Default branch: `main`
 Integration version: `0.5.1`
 Frontend revision: `0.5.1-r11`
 
-**r11 is still the running production/reference implementation.** `jamesui-entry.js` still loads the old panel/start bridge. The new Core/Design/Icon/Layout/Weather-provider/Weather-Today runtime is intentionally not wired into production yet. No cutover has occurred.
+**r11 is still production/reference.** `jamesui-entry.js` still loads the old production bridge. The new modular runtime is intentionally not wired into production yet. No cutover has occurred.
 
-## 11. Start direction to preserve/rebuild
+The retained baseline therefore remains valid and did not require a Block-11 change.
+
+## 9. Start direction to preserve/rebuild
 
 - persistent bottom nav `Start | Haus | Klima | Medien | Tür`
 - Alpine/weather hero
 - weekday/date + large time
-- current temperature/weather, high/low, real rain/time where supported
-- wind/storm/snow relevance, sunrise/sunset, moon
-- temperature tap opens forecast overlay without layout shift
-- no standalone 3-day row
+- current temperature/weather plus truthful weather facts
 - one lower dark/translucent deck extending to navigation
-- Calendar left
+- Agenda left
 - House Quick right/main
 - four Dynamic Buttons right/footer
-- no `Home`, `HEUTE & DANACH`, `ZUHAUSE` labels
 - never fake unavailable backend data
 
-## 12. Development rules
+Cross-page page-scroll/grid/widget-instance rules remain binding in `docs/JAMESUI_1_0_LAYOUT_PLANNING_NOTES.md`.
+
+## 10. Development rules
 
 1. Repository is source of truth.
 2. One roadmap block at a time.
-3. Detailed design/spec when architecture requires it, then detailed implementation plan before product code.
+3. Design/spec where domain/architecture requires it, then detailed implementation plan before product code.
 4. Isolated implementation branch.
 5. TDD for behavior changes; intentionally red tests never go to `main`.
-6. Approved green work merges to `main` without repeated repository confirmation.
-7. Whole-branch review and independent main-CI verification before completion claims.
-8. Update status/roadmap/handover after merged work.
-9. No monkey-patches, Prototype overrides, version-polish layers, duplicate implementations or permanent legacy shims.
-10. OnePlus/Fully portrait screenshot acceptance is required at major composed-UI milestones; do not claim it when no deterministic screenshot run occurred.
+6. Keep draft PRs from generating intentional-red CI noise; trigger full CI only at meaningful green checkpoints.
+7. Whole-branch review and fresh unchanged-head validation before merge.
+8. Verify main CI after merge before completion claims.
+9. Update status/roadmap/handover after merged work.
+10. No monkey-patches, Prototype overrides, version-polish layers, duplicate implementations or permanent legacy shims.
+11. OnePlus/Fully portrait screenshot acceptance is required at major composed-UI milestones; do not claim it without a deterministic or explicit visual run.
+12. Keep GitHub/tool traffic compact: inspect targeted files/steps rather than repeatedly streaming full logs.
 
-## 13. Next action
+## 11. Next action
 
-Start **Block 11 – Calendar provider + Calendar Agenda widget**. First inspect the approved foundation, current Config/HA/Capability boundaries and retained real calendar behavior. Define the Calendar capability/data normalization and widget boundary before product code, including configured-calendar selection, event normalization/deduplication, timezone/day handling and clean unavailable/empty states. Do not implement House Quick, Dynamic Buttons, final Start composition or production cutover inside Block 11.
+Start **Block 12 – House capability providers + House Quick widget**.
+
+First inspect current repository contracts and retained r11 house/status behavior. Define truthful house-state capability boundaries and quick-action ownership before product code. Preserve the existing Block-14 ownership of final Start composition/grid and the Block-13 ownership of Dynamic Buttons.
