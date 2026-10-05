@@ -116,19 +116,25 @@ Do not implement Dynamic Buttons (Block 13), final Start composition/grid (Block
 
 ## Working preferences / AI rules
 
-- German, concise, technical, direct
-- every JamesUI response begins `✅ Fertig:`, `⚠️ Test nötig:` or `🚧 Nicht fertig:`
-- every response ends with a short summary
-- repository edits directly through GitHub when available
-- repository is source of truth; do not work from old chat memory when current docs exist
-- one roadmap block at a time
-- TDD for behavior changes; intentionally red tests never to `main`
-- draft PRs should not spam failed-CI mails for intentional RED states
-- approved green work may be merged without repeated repository confirmation
-- no monkey-patches, Prototype overrides, version-polish files, parallel implementations or permanent legacy shims
-- OnePlus Pad 2 portrait is primary visual target; Fully is only the kiosk shell
-- persist confirmed product/cross-block decisions in the appropriate repository document
-- keep tool traffic compact: prefer targeted files/failed steps over repeatedly streaming full logs
+- German, concise, technical, direct.
+- Every JamesUI response begins `✅ Fertig:`, `⚠️ Test nötig:` or `🚧 Nicht fertig:`.
+- Every response ends with a short summary.
+- Repository edits directly through GitHub when available; do not give the user manual copy/paste instructions for changes the assistant can perform itself.
+- The repository is the source of truth; do not work from old chat memory when current repository documents exist.
+- Do not re-ask decisions that are already settled in the current conversation or repository.
+- During design/clarification, ask only one genuinely open product/design question at a time.
+- Short approvals such as `ok`, `passt`, `ja` or `freigegeben` apply to the immediately preceding concrete proposal/gate unless the context clearly says otherwise; do not ask for the same approval again.
+- Work one roadmap block at a time.
+- TDD is mandatory for behavior changes; intentionally red tests never go to `main`.
+- Draft PRs should not spam failed-CI mails for intentional RED states; run full CI at meaningful green checkpoints.
+- Approved green work may be merged without repeated repository confirmation when the user has already given the relevant merge/plan approval.
+- No monkey-patches, Prototype overrides, version-polish files/layers, parallel implementations or permanent legacy shims.
+- OnePlus Pad 2 portrait is the primary visual target; Fully is only the kiosk shell.
+- Persist confirmed product/cross-block decisions in the appropriate repository document, but batch conversational design decisions where frequent repository writes would slow the discussion.
+- Keep tool traffic compact to protect the input stream: prefer targeted file reads, targeted failed steps and compact status checks over full logs or repeated broad repository reads.
+- Bundle related repository/tool work into meaningful checkpoints instead of narrating every micro-step or emitting a status message after every individual tool call.
+- When debugging CI, read the smallest failing step/log segment that can identify the cause; do not stream complete logs unless necessary.
+- After a merged block, update status/roadmap/handover documentation once in a clean consolidated pass and verify there are no stale active statements for the completed block.
 
 ## Fresh-chat prompt
 
@@ -141,5 +147,5 @@ Variante B ist verbindlich. Blocks 0–11 sind abgeschlossen und auf main. Block
 
 Nächster Gate ist Block 12: House capability providers + House Quick widget. Prüfe zuerst den aktuellen Repository-Stand und das retained r11-Haus/Status-Verhalten. Definiere saubere Capability-/Action-/Widget-Grenzen, bevor Produktcode geschrieben wird. Dynamic Buttons gehören in Block 13, finale Start-Komposition/Grid/Multi-Instance-Orchestrierung in Block 14.
 
-Wichtig: Deutsch, kurz und technisch sauber. Repository direkt bearbeiten, wenn GitHub-Zugriff vorhanden ist. TDD für Verhaltensänderungen; rote Tests nie nach main. Keine Monkey-Patches, Prototype-Overrides, Versions-Polish-Dateien, parallelen Implementierungen oder dauerhaften Legacy-Krücken. OnePlus Pad 2 Hochformat ist das primäre Ziel; Fully ist nur die Kiosk-Hülle. Halte Tool-/Log-Ausgaben kompakt, damit der Input-Stream stabil bleibt.
+Wichtig: Deutsch, kurz und technisch sauber. Repository direkt bearbeiten, wenn GitHub-Zugriff vorhanden ist; keine manuellen Copy/Paste-Anweisungen für Änderungen, die du selbst ausführen kannst. Bereits entschiedene Fragen nicht erneut stellen. Bei offenen Designfragen immer nur eine Frage gleichzeitig. Kurze Antworten wie ok/passt/freigegeben gelten als Freigabe des unmittelbar vorherigen konkreten Vorschlags. TDD für Verhaltensänderungen; rote Tests nie nach main. Keine Monkey-Patches, Prototype-Overrides, Versions-Polish-Dateien, parallelen Implementierungen oder dauerhaften Legacy-Krücken. OnePlus Pad 2 Hochformat ist das primäre Ziel; Fully ist nur die Kiosk-Hülle. Halte Tool-/Log-Ausgaben kompakt, bündele Repo-Arbeit in sinnvolle Schritte und lies bei CI-Fehlern nur den kleinsten nötigen Fehlerausschnitt, damit der Input-Stream stabil bleibt.
 ```
