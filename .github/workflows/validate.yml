@@ -143,7 +143,9 @@ jobs:
             tests/jamesui-tasks-loader.test.js \
             tests/jamesui-task-update-manifest-config.test.js \
             tests/jamesui-task-update-action.test.js \
-            tests/jamesui-task-update-loader.test.js
+            tests/jamesui-task-update-loader.test.js \
+            tests/jamesui-calendar-agenda-manifest-config.test.js \
+            tests/jamesui-calendar-agenda-presentation.test.js
 
       - name: Validate Alpine atmosphere assets
         run: python -m unittest tests/test_alpine_assets.py
