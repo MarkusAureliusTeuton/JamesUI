@@ -8,7 +8,9 @@ function requireContext(context) {
   }
   return context;
 }
-function invoke(unsubscribe) { try { unsubscribe?.(); } catch { /* cleanup is best effort */ } }
+function invoke(unsubscribe) {
+  try { unsubscribe?.(); } catch { /* cleanup is best effort */ }
+}
 
 export function createHouseHeatingProvider(initialContext, initialConfig) {
   let context = requireContext(initialContext);
@@ -32,6 +34,7 @@ export function createHouseHeatingProvider(initialContext, initialConfig) {
     for (const unsubscribe of entityUnsubscribes.values()) invoke(unsubscribe);
     entityUnsubscribes.clear();
   };
+
   const bindSubscriptions = () => {
     const ids = new Set();
     for (const zone of config.zones) {
@@ -40,9 +43,12 @@ export function createHouseHeatingProvider(initialContext, initialConfig) {
       ids.add(zone.heating_demand.entity_id);
       ids.add(zone.auto_regulation_enabled.entity_id);
     }
-    for (const id of ids) entityUnsubscribes.set(id, context.homeAssistant.subscribeEntity(id, () => publish(), { emitCurrent: false }));
+    for (const id of ids) {
+      entityUnsubscribes.set(id, context.homeAssistant.subscribeEntity(id, () => publish(), { emitCurrent: false }));
+    }
     connectionUnsubscribe = context.homeAssistant.subscribeConnection(() => publish(), { emitCurrent: false });
   };
+
   const registerHandle = () => { handle = context.capabilities.register("provider.house-heating", "house.heatingZones"); };
 
   return Object.freeze({
@@ -60,13 +66,17 @@ export function createHouseHeatingProvider(initialContext, initialConfig) {
       const validatedConfig = validateHouseHeatingConfig(nextConfig);
       if (!mounted) { context = validatedContext; config = validatedConfig; return true; }
       const sameRegistry = validatedContext.capabilities === context.capabilities;
+      const replacementHandle = sameRegistry
+        ? null
+        : validatedContext.capabilities.register("provider.house-heating", "house.heatingZones");
+      const previousHandle = handle;
       unbindSubscriptions();
-      if (!sameRegistry) { handle?.unregister(); handle = null; }
       context = validatedContext;
       config = validatedConfig;
-      if (!sameRegistry) registerHandle();
+      if (!sameRegistry) handle = replacementHandle;
       bindSubscriptions();
       publish();
+      if (!sameRegistry) previousHandle?.unregister();
       return true;
     },
     destroy() {

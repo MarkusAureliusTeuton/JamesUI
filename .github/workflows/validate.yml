@@ -176,6 +176,7 @@ jobs:
             tests/jamesui-house-quick-model.test.js \
             tests/jamesui-house-quick-widget.test.js \
             tests/jamesui-house-quick-styles.test.js \
+            tests/jamesui-house-quick-review-regressions.test.js \
             tests/jamesui-block12-loader.test.js
 
       - name: Validate Alpine atmosphere assets
