@@ -282,11 +282,21 @@ export function createHouseEnergyProvider(initialContext, initialConfig) {
       const validatedContext = requireContext(nextContext);
       const validatedConfig = validateHouseEnergyConfig(nextConfig);
       if (!mounted) { context = validatedContext; config = validatedConfig; return true; }
+      const previousContext = context;
+      const previousConfig = config;
       unbindRuntime();
       context = validatedContext;
       config = validatedConfig;
-      bindRuntime();
-      return true;
+      try {
+        bindRuntime();
+        return true;
+      } catch (error) {
+        try { unbindRuntime(); } catch { /* best-effort cleanup of partial next runtime */ }
+        context = previousContext;
+        config = previousConfig;
+        bindRuntime();
+        throw error;
+      }
     },
     destroy() { if (destroyed) return false; destroyed = true; if (mounted) unbindRuntime(); mounted = false; return true; },
   });
