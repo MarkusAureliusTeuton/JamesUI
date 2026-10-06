@@ -93,11 +93,21 @@ export function createHouseHeatingProvider(initialContext, initialConfig) {
         config = validatedConfig;
         return true;
       }
+      const previousContext = context;
+      const previousConfig = config;
       unbindRuntime();
       context = validatedContext;
       config = validatedConfig;
-      bindRuntime();
-      return true;
+      try {
+        bindRuntime();
+        return true;
+      } catch (error) {
+        try { unbindRuntime(); } catch { /* best-effort cleanup of partial next runtime */ }
+        context = previousContext;
+        config = previousConfig;
+        bindRuntime();
+        throw error;
+      }
     },
     destroy() {
       if (destroyed) return false;
