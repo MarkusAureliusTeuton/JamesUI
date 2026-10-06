@@ -135,3 +135,17 @@ test("validates updates before rebinding and cleans all subscriptions", () => {
   assert.equal(h.unregisters.get("house.lights"), 1);
   assert.equal(h.unregisters.get("house.ambientLights"), 1);
 });
+
+
+test("restores the old lighting runtime when a new capability registry rejects rebind", () => {
+  const h = makeHarness({ "light.a": entity("light.a", "off") });
+  const provider = createHouseLightingProvider(h.context, { lights: [light("a")], ambient_lights: [] });
+  provider.mount();
+  const before = h.homeAssistant.activeEntitySubscriptions();
+  const rejecting = { ...h.context, capabilities: { register() { throw new Error("registry rejected binding"); } } };
+  assert.throws(() => provider.update(rejecting, { lights: [light("a")], ambient_lights: [] }), /registry rejected binding/);
+  assert.equal(h.homeAssistant.activeEntitySubscriptions(), before);
+  h.homeAssistant.setState(entity("light.a", "on"));
+  assert.equal(h.latest("house.lights").value.on_count, 1);
+  provider.destroy();
+});
