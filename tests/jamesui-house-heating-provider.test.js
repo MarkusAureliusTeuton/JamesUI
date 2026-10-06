@@ -193,3 +193,17 @@ test("validates update before replacing the mounted runtime and destroy cleans u
   assert.equal(h.unregisterCount, 1);
   assert.equal(provider.destroy(), false);
 });
+
+
+test("restores the old heating runtime when a new capability registry rejects rebind", () => {
+  const h = makeHarness(healthyStates("living", 21, 22, false, true));
+  const provider = createHouseHeatingProvider(h.context, { zones: [zone("living")] });
+  provider.mount();
+  const before = h.homeAssistant.activeEntitySubscriptions();
+  const rejecting = { ...h.context, capabilities: { register() { throw new Error("registry rejected binding"); } } };
+  assert.throws(() => provider.update(rejecting, { zones: [zone("living")] }), /registry rejected binding/);
+  assert.equal(h.homeAssistant.activeEntitySubscriptions(), before);
+  h.homeAssistant.setState(entity("sensor.living_current", "22.5"));
+  assert.equal(h.latest.value.zones[0].current_temperature_c, 22.5);
+  provider.destroy();
+});
