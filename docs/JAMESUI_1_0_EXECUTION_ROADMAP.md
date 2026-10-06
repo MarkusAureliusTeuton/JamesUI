@@ -1,7 +1,7 @@
 # JamesUI 1.0 – Execution Roadmap
 
-_Status: foundation architecture approved; Blocks 0–11 complete and validated; next gate Block 12_
-_Date: 2026-10-05_
+_Status: foundation architecture approved; Blocks 0–12 complete and validated; next gate Block 13_
+_Date: 2026-10-06_
 
 This document defines the implementation order for JamesUI 1.0 using **Variant B: clean foundation + controlled cutover**. r11 remains the running design/reference runtime until the cutover gate.
 
@@ -94,11 +94,32 @@ Whole-branch review found one Important `task.update` registry-rebinding lifecyc
 
 No Calendar mutation, task create/delete/move/reorder, source reminder import, House Quick, Dynamic Buttons, final Start composition or cutover was included.
 
-### Block 12 – House capability providers + House Quick widget ⬜
+### Block 12 – House capability providers + House Quick widget ✅
 
-Goal: aggregate real house state into capability providers and present a compact House Quick widget with truthful status and quick controls through semantic/generic actions.
+Spec: `docs/superpowers/specs/2026-10-05-jamesui-1.0-block-12-house-capabilities-house-quick-design.md`
 
-**Next gate:** inspect retained r11 house/status behavior, current HA/KNX entities and existing Capability/Action boundaries; then define the smallest clean provider/widget contracts before product code. Keep Dynamic Buttons in Block 13 and final Start composition/grid in Block 14.
+Plan: `docs/superpowers/plans/2026-10-05-jamesui-1.0-block-12-house-capabilities-house-quick.md`
+
+Result: PR #25, merge `04e6beb8614d69c1dbd397391d136b28b492aedc`.
+
+Final unchanged branch head `966569786771b194dcfc5caee30e9cd1ee73de29` passed run `37441731886`; merged `main` passed run `37441814856`.
+
+Delivered:
+- explicit House source-binding primitives with truthful unavailable semantics
+- `provider.house-heating` / `house.heatingZones` for KNX-defined zones
+- `provider.house-lighting` / `house.lights` + `house.ambientLights` with mutually exclusive source assignment
+- `provider.house-devices` / `house.devices` with activity, update, warning, fault and reachability aggregation
+- `provider.house-energy` / `house.energy` as a query capability with current power, HA-history-backed time-weighted trailing averages and 60 s refresh
+- `widget.house-quick` as status + semantic navigation only; no direct HA/control path
+- button priority `critical > warning > active > neutral`; unreachable is warning, updates are informational
+- heating activity follows auto regulation; heating demand remains informational
+- energy source/window/warning/critical thresholds are configurable per button; multiple energy buttons and heating-zone buttons are supported
+- arbitrary per-instance button subset/order and direct multi-instance isolation
+- permanent Block-12 architecture, loader and CI gates
+
+Whole-branch review issues around provider rebind failure and critical-status clarity were fixed and covered by regression tests before merge. No Critical/Important findings remain.
+
+Windows/doors, ventilation, scenes, detail pages, final Start composition/grid, generic Loader/page multi-instance orchestration and production cutover remain out of scope.
 
 ### Block 13 – Dynamic Buttons module ⬜
 Configurable reusable action buttons for entity toggle, HA service, scene, navigation and URL.
@@ -153,7 +174,7 @@ Delete old monolith/patch/demo/compatibility paths and enforce permanent archite
 | 9 Weather provider | ✅ |
 | 10 Weather widget | ✅ |
 | 11 Calendar/tasks agenda | ✅ |
-| 12 House Quick | ⬜ |
+| 12 House Quick | ✅ |
 | 13 Dynamic Buttons | ⬜ |
 | 14 Start config | ⬜ |
 | 15 Haus migration | ⬜ |
@@ -164,4 +185,4 @@ Delete old monolith/patch/demo/compatibility paths and enforce permanent archite
 | 20 Cutover | ⬜ |
 | 21 Legacy deletion/gate | ⬜ |
 
-**Current summary:** Blocks 0–11 are complete, reviewed, green and merged. Block 12 is the next formal gate. r11 remains production/reference; no cutover has occurred.
+**Current summary:** Blocks 0–12 are complete, reviewed, green and merged. Block 13 Dynamic Buttons is the next formal gate. r11 remains production/reference; no cutover has occurred.

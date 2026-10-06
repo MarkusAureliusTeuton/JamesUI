@@ -1,6 +1,6 @@
 # JamesUI – Project Status / Chat Handover
 
-_Last updated: 2026-10-05_
+_Last updated: 2026-10-06_
 
 This file is the persistent **single source of truth for the current execution state**. Architecture details live in approved specs, retained behavior in the baseline, and block-specific implementation detail in plans/tests.
 
@@ -31,6 +31,8 @@ Canonical documents:
 - Cross-block layout rules: `docs/JAMESUI_1_0_LAYOUT_PLANNING_NOTES.md`
 - Block 11 spec: `docs/superpowers/specs/2026-10-04-jamesui-1.0-block-11-calendar-tasks-agenda-design.md`
 - Block 11 plan: `docs/superpowers/plans/2026-10-04-jamesui-1.0-block-11-calendar-tasks-agenda.md`
+- Block 12 spec: `docs/superpowers/specs/2026-10-05-jamesui-1.0-block-12-house-capabilities-house-quick-design.md`
+- Block 12 plan: `docs/superpowers/plans/2026-10-05-jamesui-1.0-block-12-house-capabilities-house-quick.md`
 
 ## 3. Current formal state
 
@@ -46,7 +48,7 @@ Canonical documents:
 - Block 9 – Weather provider: ✅ PR #21
 - Block 10 – Weather Today widget + forecast overlay: ✅ PR #22
 - Block 11 – Calendar/task providers + Agenda widget: ✅ PR #23
-- Block 12 – House capability providers + House Quick widget: ⬜ not started
+- Block 12 – House capability providers + House Quick widget: ✅ PR #25
 
 Block 11 merge commit: `63e0b8dc6072eed885f591161180f7082f6f7f2c`.
 
@@ -60,9 +62,20 @@ Block 11 verification evidence:
 - no open Critical/Important review findings remain
 - no open pull requests remain after PR #23 merge
 
-**Next formal gate:** Block 12 – House capability providers + House Quick widget. Inspect retained r11 house/status behavior and current HA/KNX-facing data before defining provider/widget contracts. Do not fold Dynamic Buttons, final Start composition or cutover into Block 12.
+Block 12 merge commit: `04e6beb8614d69c1dbd397391d136b28b492aedc`.
 
-## 4. Platform completed through Block 11
+Block 12 verification evidence:
+- final unchanged feature head: `966569786771b194dcfc5caee30e9cd1ee73de29`
+- final branch validation: run `37441731886` – success
+- merge/main validation: run `37441814856` – success
+- whole-branch review fixes preserved provider runtime on failed rebind and clarified critical House Quick status semantics
+- permanent Block-12 integration, architecture and regression coverage is active
+- no open Critical/Important review findings remain
+- PR #25 is merged
+
+**Next formal gate:** Block 13 – Dynamic Buttons module. Keep final Start composition/grid and generic page/widget multi-instance orchestration in Block 14; no production cutover yet.
+
+## 4. Platform completed through Block 12
 
 ### Core and module contract
 
@@ -178,7 +191,32 @@ Delivered:
 
 No Calendar mutation, task create/delete/move/reorder, source reminder import, House Quick, Dynamic Buttons, final Start composition or production cutover was added.
 
-## 8. Production/reference runtime
+## 8. Block 12 – House capabilities and House Quick
+
+Boundaries:
+- `provider.house-heating` → `house.heatingZones`
+- `provider.house-lighting` → `house.lights`, `house.ambientLights`
+- `provider.house-devices` → `house.devices`
+- `provider.house-energy` → `house.energy`
+- `widget.house-quick` consumes only capabilities/actions
+
+Delivered:
+- explicit source assignment only; no runtime name heuristics or auto-discovery
+- KNX-owned heating zones with actual temperature, target temperature, heating demand and auto-regulation state
+- heating button activity driven by auto regulation, not heating demand
+- disjoint normal/ambient lighting groups with `x von y an` aggregation
+- normalized household-device activity/update/warning/fault/reachability aggregation
+- update availability is informational; unreachable sources produce warning; faults are critical
+- configurable energy buttons with independent source, trailing window and warning/critical thresholds
+- provider-owned HA history queries with time-weighted averages, 60 s sliding refresh and stale-response protection
+- shared status priority `critical > warning > active > neutral`
+- arbitrary per-instance button subset/order plus multiple heating-zone and energy buttons
+- semantic navigation through Action Registry only; House Quick performs no direct control
+- direct multi-instance widget isolation; generic Loader/page instance orchestration remains Block 14
+
+Windows/doors, ventilation, scenes, direct controls, detail pages, final Start composition and production cutover remain out of Block 12.
+
+## 9. Production/reference runtime
 
 Repository: `MarkusAureliusTeuton/JamesUI`
 Default branch: `main`
@@ -189,7 +227,7 @@ Frontend revision: `0.5.1-r11`
 
 The retained baseline therefore remains valid and did not require a Block-11 change.
 
-## 9. Start direction to preserve/rebuild
+## 10. Start direction to preserve/rebuild
 
 - persistent bottom nav `Start | Haus | Klima | Medien | Tür`
 - Alpine/weather hero
@@ -203,7 +241,7 @@ The retained baseline therefore remains valid and did not require a Block-11 cha
 
 Cross-page page-scroll/grid/widget-instance rules remain binding in `docs/JAMESUI_1_0_LAYOUT_PLANNING_NOTES.md`.
 
-## 10. Development rules
+## 11. Development rules
 
 1. Repository is source of truth.
 2. One roadmap block at a time.
@@ -218,8 +256,8 @@ Cross-page page-scroll/grid/widget-instance rules remain binding in `docs/JAMESU
 11. OnePlus/Fully portrait screenshot acceptance is required at major composed-UI milestones; do not claim it without a deterministic or explicit visual run.
 12. Keep GitHub/tool traffic compact: inspect targeted files/steps rather than repeatedly streaming full logs.
 
-## 11. Next action
+## 12. Next action
 
-Start **Block 12 – House capability providers + House Quick widget**.
+Start **Block 13 – Dynamic Buttons module**.
 
-First inspect current repository contracts and retained r11 house/status behavior. Define truthful house-state capability boundaries and quick-action ownership before product code. Preserve the existing Block-14 ownership of final Start composition/grid and the Block-13 ownership of Dynamic Buttons.
+Inspect the current Action Registry, structured `dynamic_buttons` config area and retained r11 scene/quick-button behavior. Define a reusable configurable action-button contract without folding final Start placement/grid into Block 13. Block 14 still owns final Start composition and generic instance orchestration.

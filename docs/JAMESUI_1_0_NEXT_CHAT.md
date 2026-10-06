@@ -1,6 +1,6 @@
 # JamesUI 1.0 – Next Chat / New ChatGPT Project Handover
 
-_Date: 2026-10-05_
+_Date: 2026-10-06_
 
 Use this document to start a fresh JamesUI conversation without relying on old chat history. The repository is the source of truth.
 
@@ -20,7 +20,9 @@ Default branch: `main`
 6. `docs/JAMESUI_1_0_LAYOUT_PLANNING_NOTES.md`
 7. `docs/superpowers/specs/2026-10-04-jamesui-1.0-block-11-calendar-tasks-agenda-design.md`
 8. `docs/superpowers/plans/2026-10-04-jamesui-1.0-block-11-calendar-tasks-agenda.md`
-9. inspect only files relevant to the active block
+9. `docs/superpowers/specs/2026-10-05-jamesui-1.0-block-12-house-capabilities-house-quick-design.md`
+10. `docs/superpowers/plans/2026-10-05-jamesui-1.0-block-12-house-capabilities-house-quick.md`
+11. inspect only files relevant to the active block
 
 `docs/JAMESUI_1_0_BLOCK_11_PLANNING_NOTES.md` is now a historical planning record; the approved Block-11 spec/plan and merged code/tests are binding.
 
@@ -49,13 +51,17 @@ Completed and merged:
 - Block 9 – `provider.weather` ✅ PR #21
 - Block 10 – `widget.weather-today` + forecast overlay ✅ PR #22
 - Block 11 – Calendar/task providers + `widget.calendar-agenda` ✅ PR #23
+- Block 12 – House capability providers + `widget.house-quick` ✅ PR #25
 
 Block 11 merge: `63e0b8dc6072eed885f591161180f7082f6f7f2c`.
 Final branch run `37284834614` and merged-main run `37285828629` both passed.
 
+Block 12 merge: `04e6beb8614d69c1dbd397391d136b28b492aedc`.
+Final unchanged head `966569786771b194dcfc5caee30e9cd1ee73de29`; branch run `37441731886` and merged-main run `37441814856` both passed.
+
 r11 is still production/reference. The new runtime has not been cut over.
 
-**Next formal gate: Block 12 – House capability providers + House Quick widget. No Block-12 product code has started.**
+**Next formal gate: Block 13 – Dynamic Buttons module. Block 12 is complete and merged.**
 
 ## Current architecture
 
@@ -97,22 +103,34 @@ Important:
 - Start remains `layout.home-hero-deck`: hero above, lower widget deck below
 - final Start lower-deck grid, generic widget-instance placement and composed OnePlus/Fully acceptance remain Block 14
 
-## Block 12 gate
+## Completed Block-12 contracts to preserve
 
-Block 12 should add **House capability providers + House Quick widget**, not final Start composition.
+- House Quick is status + navigation, never direct control.
+- `house.heatingZones`, `house.lights`, `house.ambientLights`, `house.devices`, `house.energy` are the five approved capabilities.
+- House sources are explicit; runtime name heuristics/auto-discovery are forbidden.
+- Heating zones are KNX-defined objects; JamesUI does not average rooms or derive setpoints.
+- Heating active state follows auto regulation, not heating demand.
+- Normal and ambient lighting are disjoint and render `x von y an`.
+- Device updates are informational; warning/unreachable are warning; faults are critical.
+- Energy is provider-owned history/query data; thresholds/windows are per House Quick energy button.
+- Energy averages are time-weighted, history-backed and refreshed every 60 s while subscribed.
+- Shared status priority is `critical > warning > active > neutral`.
+- Each House Quick instance owns its own button subset/order; generic page/Loader orchestration remains Block 14.
+- Semantic button navigation goes through Action Registry only.
 
-Proceed in this order:
-1. inspect current repository contracts and retained r11 house/status behavior
-2. identify the real HA/KNX-backed entities/data needed for the compact House Quick presentation
-3. separate read capabilities from user actions; do not leak raw HA into the widget
-4. clarify only genuinely open product decisions, one at a time
-5. compare architectural approaches where there is a real ownership choice
-6. write/approve a Block-12 design/spec if the provider/widget contract is architectural enough to require it
-7. create/approve a detailed implementation plan before product code
-8. implement on an isolated branch with TDD
-9. whole-branch review, fresh unchanged-head CI, merge, then verify main CI
+## Block 13 gate
 
-Do not implement Dynamic Buttons (Block 13), final Start composition/grid (Block 14), later page migrations or production cutover inside Block 12.
+Block 13 should add the **Dynamic Buttons module**, not final Start composition.
+
+Start by inspecting:
+1. current Action Registry/action-provider contracts
+2. structured `dynamic_buttons` configuration ownership
+3. retained r11 scene/quick-button behavior as behavior reference only
+4. which action types and button states belong in the reusable module versus later page composition
+
+Clarify genuine product questions one at a time, approve design/spec if architectural, then create the detailed implementation plan before product code.
+
+Do not pull final Start placement/grid, generic page/widget instance orchestration (Block 14), later page migrations or production cutover into Block 13.
 
 ## Working preferences / AI rules
 
@@ -141,11 +159,11 @@ Do not implement Dynamic Buttons (Block 13), final Start composition/grid (Block
 ```text
 Wir setzen mein Projekt JamesUI aus dem Repository MarkusAureliusTeuton/JamesUI fort.
 
-Arbeite nicht aus Erinnerung. Lies zuerst PROJECT_STATUS.md, die Foundation-Spec, die Execution Roadmap, die Baseline, JAMESUI_1_0_NEXT_CHAT.md und JAMESUI_1_0_LAYOUT_PLANNING_NOTES.md. Lies danach die Block-11-Spec/den Block-11-Plan als zuletzt abgeschlossenen Architekturblock und nur die Dateien, die du für den aktiven Block brauchst.
+Arbeite nicht aus Erinnerung. Lies zuerst PROJECT_STATUS.md, die Foundation-Spec, die Execution Roadmap, die Baseline, JAMESUI_1_0_NEXT_CHAT.md und JAMESUI_1_0_LAYOUT_PLANNING_NOTES.md. Lies danach die Block-12-Spec/den Block-12-Plan als zuletzt abgeschlossenen Architekturblock und nur die Dateien, die du für den aktiven Block brauchst.
 
-Variante B ist verbindlich. Blocks 0–11 sind abgeschlossen und auf main. Block 11 wurde mit PR #23 gemergt; finaler Branch- und main-CI waren grün. r11 läuft weiterhin produktiv; kein Cutover.
+Variante B ist verbindlich. Blocks 0–12 sind abgeschlossen und auf main. Block 12 wurde mit PR #25 gemergt; finaler unveränderter Branch-Head und main-CI waren grün. r11 läuft weiterhin produktiv; kein Cutover.
 
-Nächster Gate ist Block 12: House capability providers + House Quick widget. Prüfe zuerst den aktuellen Repository-Stand und das retained r11-Haus/Status-Verhalten. Definiere saubere Capability-/Action-/Widget-Grenzen, bevor Produktcode geschrieben wird. Dynamic Buttons gehören in Block 13, finale Start-Komposition/Grid/Multi-Instance-Orchestrierung in Block 14.
+Nächster Gate ist Block 13: Dynamic Buttons. Prüfe zuerst Action Registry, `dynamic_buttons`-Config und retained r11-Szenen/Quick-Button-Verhalten. Definiere den wiederverwendbaren Button-/Action-Vertrag, bevor Produktcode geschrieben wird. Finale Start-Komposition/Grid/Multi-Instance-Orchestrierung bleibt Block 14.
 
 Wichtig: Deutsch, kurz und technisch sauber. Repository direkt bearbeiten, wenn GitHub-Zugriff vorhanden ist; keine manuellen Copy/Paste-Anweisungen für Änderungen, die du selbst ausführen kannst. Bereits entschiedene Fragen nicht erneut stellen. Bei offenen Designfragen immer nur eine Frage gleichzeitig. Kurze Antworten wie ok/passt/freigegeben gelten als Freigabe des unmittelbar vorherigen konkreten Vorschlags. TDD für Verhaltensänderungen; rote Tests nie nach main. Keine Monkey-Patches, Prototype-Overrides, Versions-Polish-Dateien, parallelen Implementierungen oder dauerhaften Legacy-Krücken. OnePlus Pad 2 Hochformat ist das primäre Ziel; Fully ist nur die Kiosk-Hülle. Halte Tool-/Log-Ausgaben kompakt, bündele Repo-Arbeit in sinnvolle Schritte und lies bei CI-Fehlern nur den kleinsten nötigen Fehlerausschnitt, damit der Input-Stream stabil bleibt.
 ```
