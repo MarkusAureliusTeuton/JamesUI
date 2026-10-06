@@ -7,7 +7,7 @@ import { HOUSE_QUICK_STYLES } from "./styles.js";
 const STATUS_LABELS = Object.freeze({
   active: "Aktiv",
   warning: "Warnung",
-  critical: "Störung",
+  critical: "Kritisch",
 });
 
 function validateContext(context) {
