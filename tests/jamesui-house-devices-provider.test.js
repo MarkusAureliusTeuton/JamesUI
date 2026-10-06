@@ -139,3 +139,17 @@ test("reconnects, validates updates before rebind and destroys cleanly", () => {
   assert.equal(h.homeAssistant.activeEntitySubscriptions(), 0);
   assert.equal(h.unregisterCount, 1);
 });
+
+
+test("restores the old devices runtime when a new capability registry rejects rebind", () => {
+  const h = makeHarness({ "sensor.washer_status": entity("sensor.washer_status", "ready"), "binary_sensor.washer_active": entity("binary_sensor.washer_active", "off") });
+  const provider = createHouseDevicesProvider(h.context, { devices: [device("washer")] });
+  provider.mount();
+  const before = h.homeAssistant.activeEntitySubscriptions();
+  const rejecting = { ...h.context, capabilities: { register() { throw new Error("registry rejected binding"); } } };
+  assert.throws(() => provider.update(rejecting, { devices: [device("washer")] }), /registry rejected binding/);
+  assert.equal(h.homeAssistant.activeEntitySubscriptions(), before);
+  h.homeAssistant.setState(entity("binary_sensor.washer_active", "on"));
+  assert.equal(h.latest.value.active_count, 1);
+  provider.destroy();
+});
