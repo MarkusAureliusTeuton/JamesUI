@@ -259,3 +259,20 @@ test("update validates before rebinding and destroy releases capability subscrip
   assert.equal(host.children.length, 0);
   assert.equal(widget.destroy(), false);
 });
+
+
+test("critical energy state uses a generic critical label rather than claiming a device fault", () => {
+  const service = energyService({ results: [
+    { request_id: "energy", source_id: "house", window_minutes: 15, current_power_w: 6000, average_power_w: 6000, quality: "full", reason: null },
+  ] });
+  const caps = capabilityHarness({ ...baseSnapshots(), "house.energy": available("house.energy", service.value) });
+  const widget = createHouseQuickWidget(context(caps).value, { buttons: [
+    { id: "energy", type: "energy", source_id: "house", average_window_minutes: 15, warning_threshold_w: 3000, critical_threshold_w: 5000 },
+  ] });
+  const host = target();
+  widget.mount(host);
+  const labels = findAll(host, "data-jui-house-quick-status-label");
+  assert.equal(labels.length, 1);
+  assert.equal(labels[0].textContent, "Kritisch");
+  widget.destroy();
+});
