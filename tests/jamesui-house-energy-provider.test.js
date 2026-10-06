@@ -192,3 +192,16 @@ test("refreshes a sliding window on the 60 second timer without a source state c
   assert.equal(timers[0].active, false);
   provider.destroy();
 });
+
+
+test("restores the old energy runtime when a new capability registry rejects rebind", () => {
+  const h = makeHarness({ "sensor.house_power": entity("sensor.house_power", 1000) });
+  const provider = createHouseEnergyProvider(h.context, { sources: [source()] });
+  provider.mount();
+  const before = h.homeAssistant.activeEntitySubscriptions();
+  const rejecting = { ...h.context, capabilities: { register() { throw new Error("registry rejected binding"); } } };
+  assert.throws(() => provider.update(rejecting, { sources: [source()] }), /registry rejected binding/);
+  assert.equal(h.homeAssistant.activeEntitySubscriptions(), before);
+  assert.equal(h.latest.status, "available");
+  provider.destroy();
+});
