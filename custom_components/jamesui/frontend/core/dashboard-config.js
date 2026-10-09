@@ -2,8 +2,6 @@ import { GRID_COLUMNS, validateGrid, previewGridPlacement } from "./grid-placeme
 
 // Page-level model only. Persistence stays in the single Config Service.
 // Legacy/unconfigured pages are not silently treated as dashboard pages.
-const hasOwn = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
-
 function record(value, label) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new TypeError(`${label} must be an object`);
