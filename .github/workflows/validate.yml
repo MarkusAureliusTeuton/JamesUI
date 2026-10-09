@@ -178,6 +178,19 @@ jobs:
             tests/jamesui-house-quick-styles.test.js \
             tests/jamesui-block12-loader.test.js
 
+      - name: Test JamesUI Block 13 Dynamic Buttons
+        run: |
+          python -m unittest tests/test_block13_architecture.py
+          node --experimental-default-type=module --test \
+            tests/jamesui-control-state-manifest-config.test.js \
+            tests/jamesui-control-state-normalize.test.js \
+            tests/jamesui-control-state-provider.test.js \
+            tests/jamesui-dynamic-buttons-config.test.js \
+            tests/jamesui-dynamic-buttons-model.test.js \
+            tests/jamesui-dynamic-buttons-widget.test.js \
+            tests/jamesui-dynamic-buttons-styles.test.js \
+            tests/jamesui-block13-loader.test.js
+
       - name: Validate Alpine atmosphere assets
         run: python -m unittest tests/test_alpine_assets.py
 
