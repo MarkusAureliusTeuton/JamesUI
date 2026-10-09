@@ -12,7 +12,7 @@ const entryUrl = new URL(
   import.meta.url,
 ).href;
 
-const SLOT_NAMES = ["hero", "widget-left", "widget-right-main", "widget-right-footer"];
+const SLOT_NAMES = ["hero", "content"];
 
 test("real home hero deck runs through Registry and Loader without Core changes", async () => {
   const registry = createModuleRegistry();
