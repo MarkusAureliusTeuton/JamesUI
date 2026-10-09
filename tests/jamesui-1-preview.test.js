@@ -52,3 +52,42 @@ test("Block 14 preview loads a configured weather provider without fabricated en
     preview.destroy();
   }
 });
+
+test("preview renders the four Start widgets from persisted instances", async () => {
+  const document = createFakeDocument();
+  const preview = createJamesUI1Preview({ document });
+  const modules = [
+    "widget.calendar-agenda", "widget.house-quick", "widget.dynamic-buttons",
+  ];
+  const elements = modules.map((moduleId, index) => ({
+    id: "start-" + index, kind: "widget", ref_id: "instance-" + index,
+    column: 1 + index * 4, row: 1, column_span: 4, row_span: 3,
+  }));
+  const config = {
+    schema_version: 1,
+    pages: {
+      home: { kind: "dashboard", layout_id: "main", hero_widget_id: "weather", elements },
+    },
+    layouts: { main: { kind: "hero-deck", scroll: "fixed", hero_ratio: 0.42 } },
+    widget_instances: {
+      weather: { module_id: "widget.weather-today", config: {} },
+      ...Object.fromEntries(modules.map((moduleId, index) =>
+        ["instance-" + index, { module_id: moduleId, config: {} }])),
+    },
+    dynamic_buttons: {}, data_sources: {}, module_settings: {},
+  };
+  preview.core.hass = {
+    connected: true, states: {},
+    callWS: async () => ({ config }),
+  };
+  const target = document.createElement("div");
+  try {
+    assert.equal(await preview.mount(target), true);
+    assert.ok(target.querySelector('[data-jui-layout="home-hero-deck"]'));
+    assert.ok(target.querySelector('[data-role="bottom-navigation"]'));
+    assert.equal(target.querySelectorAll("[data-jui-dashboard-item]").length, 3);
+    assert.equal(preview.core.moduleLoader.isLoaded("dashboard:home:hero"), true);
+  } finally {
+    preview.destroy();
+  }
+});
