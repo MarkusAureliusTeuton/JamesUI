@@ -105,7 +105,7 @@ export function createDashboardPageComposer({ document, moduleLoader, getConfig,
     const gridHost = layout.getSlot("content");
     const hosts = createDashboardWidgetHosts({
       moduleLoader,
-      getConfig: (id) => getConfig().widget_instances[id],
+      getConfig: (id) => (editor?.active ? editor.workingConfig() : getConfig()).widget_instances[id],
       getButtonDefinitions: () => getConfig().dynamic_buttons,
     });
     grid = createDashboardGrid({ document, createItemHost: hosts });
