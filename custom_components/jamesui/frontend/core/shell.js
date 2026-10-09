@@ -149,13 +149,13 @@ export function createAppShell({ document, router, overlays, health, getContext,
     navigation.style.position = "sticky";
     navigation.style.bottom = "0";
 
-    for (const route of CORE_ROUTES) {
+    // Unmigrated routes stay registered but must not look actionable.\n    for (const route of CORE_ROUTES) {
       const button = createButton(document, { label: route.label, variant: "ghost", size: "md" });
       const iconId = NAV_ICON_IDS[route.id];
       if (!iconId) throw new Error(`Missing navigation icon for route: ${route.id}`);
       button.prepend(createIcon(document, iconId, { size: "md" }));
       button.dataset.routeId = route.id;
-      const listener = () => router.navigate(route.id);
+      const available = route.id === "home";\n      button.disabled = !available;\n      if (!available) {\n        button.setAttribute("aria-label", `${route.label} – noch nicht verfügbar`);\n        button.title = `${route.label} – noch nicht verfügbar`;\n      }\n      const listener = () => { if (available) router.navigate(route.id); };
       button.addEventListener("click", listener);
       navBindings.push({ button, listener });
       navigation.appendChild(button);
