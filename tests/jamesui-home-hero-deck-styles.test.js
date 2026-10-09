@@ -11,8 +11,8 @@ test("defines one root-scoped token-driven hero/deck stylesheet", () => {
   assert.equal(typeof HOME_HERO_DECK_STYLES, "string");
   assert.match(HOME_HERO_DECK_STYLES, /\[data-jui-layout="home-hero-deck"\]\s*\{/);
   assert.match(HOME_HERO_DECK_STYLES, /container-type:\s*inline-size/);
-  assert.match(HOME_HERO_DECK_STYLES, /grid-template-rows:\\s*var\\(--jui-home-hero-ratio\\)\\s+minmax\\(0,\\s*1fr\\)/);
-  assert.match(HOME_HERO_DECK_STYLES, /\\[data-jui-layout-slot="content"\\][^{]*\\{[^}]*overflow:\\s*hidden/s);
+  assert.match(HOME_HERO_DECK_STYLES, /grid-template-rows:\s*var\(--jui-home-hero-ratio\)\s+minmax\(0,\s*1fr\)/);
+  assert.match(HOME_HERO_DECK_STYLES, /\[data-jui-layout-slot="content"\][^{]*\{[^}]*overflow:\s*hidden/s);
   assert.match(HOME_HERO_DECK_STYLES, /@container\s*\(max-width:\s*44rem\)/);
 
   for (const token of [
