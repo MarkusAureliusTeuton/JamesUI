@@ -355,3 +355,9 @@ Read the completed Block-13 spec/plan and the cross-block layout planning notes,
 - Failed preview startup now cancels/destroys all pending or loaded modules, not only successfully mounted providers.
 - Added regression: invalid `provider.house-lighting` config after valid weather provider must reject and unload weather.
 - New CI pending. No fabricated HA entities, no actual HA/OnePlus Pad 2/Fully Kiosk testing.
+
+### Block 14 migrated weather binding (2026-10-09)
+
+- Canonical backend migration stores legacy weather entity IDs at `data_sources.weather` (not `data_sources.provider.weather`).
+- Preview now reads `data_sources.weather` when no explicit `provider.weather` entry exists, preserving migrated weather entity settings without modifying r11.
+- Added regression test with `weather.home`; CI pending. No other entity IDs were inferred.
