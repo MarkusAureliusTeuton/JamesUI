@@ -82,6 +82,24 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             require_admin=False,
         )
 
+    if PREVIEW_PANEL_URL not in hass.data.get("frontend_panels", {}):
+        async_register_built_in_panel(
+            hass,
+            component_name="custom",
+            sidebar_title=None,
+            sidebar_icon=None,
+            frontend_url_path=PREVIEW_PANEL_URL,
+            config={
+                "_panel_custom": {
+                    "name": PREVIEW_PANEL_ELEMENT,
+                    "embed_iframe": False,
+                    "trust_external": False,
+                    "js_url": f"{STATIC_URL}/jamesui-1-preview-entry.js?v={FRONTEND_REVISION}",
+                }
+            },
+            require_admin=True,
+        )
+
     return True
 
 
