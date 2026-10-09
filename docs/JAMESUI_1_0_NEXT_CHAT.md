@@ -152,6 +152,10 @@ Start by inspecting:
 
 Block 14 must settle the real logical grid/spans from available space and widget minimums, provide generic multi-instance creation/config resolution, compose Start, and perform the next composed OnePlus/Fully visual acceptance. Do not pull Haus/Media/Climate/Door migrations or production cutover forward.
 
+## Approved early cutover order (2026-10-09)
+
+Execute **14 → 19 → 20 → 21 → 15 → 16 → 17 → 18**. Block 14 delivers the reusable Start dashboard. Block 19 proves the reduced Start-first release on OnePlus/Fully, routes and data integrity, and a documented rollback; Block 20 switches production; Block 21 deletes r11. Haus, Media, Climate and Door pages are implemented afterwards on clean 1.0. Unimplemented routes must not pretend to work or display fake data. No permanent dual runtime. This order overrides older statements that every secondary page must precede cutover.
+
 ## Working preferences / AI rules
 
 - German, concise, technical, direct.
@@ -183,7 +187,7 @@ Arbeite nicht aus Erinnerung. Lies zuerst PROJECT_STATUS.md, die Foundation-Spec
 
 Variante B ist verbindlich. Blocks 0–13 sind abgeschlossen und auf main. Block 13 wurde mit PR #26 gemergt; finaler unveränderter Feature-Head `ff0c15fa452a0511ff9df25a444b5444720945b0` und main-CI waren grün. r11 läuft weiterhin produktiv; kein Cutover.
 
-Nächster Gate ist Block 14: Start configuration experience. Prüfe zuerst `layout.home-hero-deck`, die Layout Planning Notes, den strukturierten Config Store und die fertigen Weather/Agenda/House-Quick/Dynamic-Buttons-Verträge. Definiere die finale Start-Komposition, das reale OnePlus-Pad-2-Hochformat-Grid und die generische Multi-Instance-/Config-Auflösung. Spätere Haus-/Media-/Klima-/Tür-Migrationen und Cutover bleiben außerhalb Block 14.
+Nächster Gate ist Block 14: Start configuration experience. Prüfe zuerst `layout.home-hero-deck`, die Layout Planning Notes, den strukturierten Config Store und die fertigen Weather/Agenda/House-Quick/Dynamic-Buttons-Verträge. Definiere die finale Start-Komposition, das reale OnePlus-Pad-2-Hochformat-Grid und die generische Multi-Instance-/Config-Auflösung. Spätere Haus-/Media-/Klima-/Tür-Migrationen bleiben außerhalb Block 14. Neue verbindliche Reihenfolge: 14 → 19 → 20 → 21 → 15 → 16 → 17 → 18; früher Start-first-Cutover mit ehrlicher Behandlung noch fehlender Seiten, anschließend vollständige Löschung von r11.
 
 Wichtig: Deutsch, kurz und technisch sauber. Repository direkt bearbeiten, wenn GitHub-Zugriff vorhanden ist; keine manuellen Copy/Paste-Anweisungen für Änderungen, die du selbst ausführen kannst. Bereits entschiedene Fragen nicht erneut stellen. Bei offenen Designfragen immer nur eine Frage gleichzeitig. Kurze Antworten wie ok/passt/freigegeben gelten als Freigabe des unmittelbar vorherigen konkreten Vorschlags. TDD für Verhaltensänderungen; rote Tests nie nach main. Keine Monkey-Patches, Prototype-Overrides, Versions-Polish-Dateien, parallelen Implementierungen oder dauerhaften Legacy-Krücken. OnePlus Pad 2 Hochformat ist das primäre Ziel; Fully ist nur die Kiosk-Hülle. Halte Tool-/Log-Ausgaben kompakt, bündele Repo-Arbeit in sinnvolle Schritte und lies bei CI-Fehlern nur den kleinsten nötigen Fehlerausschnitt, damit der Input-Stream stabil bleibt.
 ```
