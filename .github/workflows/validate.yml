@@ -103,6 +103,21 @@ jobs:
             tests/jamesui-home-hero-deck-styles.test.js \
             tests/jamesui-home-hero-deck-loader.test.js
 
+      - name: Test JamesUI Block 14 dashboard
+        run: |
+          node --experimental-default-type=module --test \
+            tests/jamesui-grid-placement.test.js \
+            tests/jamesui-dashboard-config.test.js \
+            tests/jamesui-dashboard-controller.test.js \
+            tests/jamesui-dashboard-grid.test.js \
+            tests/jamesui-dashboard-widget-hosts.test.js \
+            tests/jamesui-dashboard-page-composer.test.js \
+            tests/jamesui-dashboard-edit-session.test.js \
+            tests/jamesui-dashboard-editor-toolbar.test.js \
+            tests/jamesui-dashboard-touch-editor.test.js \
+            tests/jamesui-dashboard-touch-events.test.js \
+            tests/jamesui-dashboard-catalog.test.js
+
       - name: Test JamesUI Block 9 weather provider
         run: |
           node --experimental-default-type=module --test \
@@ -204,5 +219,3 @@ jobs:
 
       - name: Test Start calendar and scene data
         run: node --experimental-default-type=module --test tests/jamesui-home-data.test.js
-
-  # Block 14 uses the same validation pipeline in draft PRs; no skipped checks.
