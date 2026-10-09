@@ -113,3 +113,30 @@ test("configured invalid hero fails visibly instead of presenting a false succes
     preview.destroy();
   }
 });
+
+test("failed provider startup leaves no provider runtimes behind", async () => {
+  const document = createFakeDocument();
+  const preview = createJamesUI1Preview({ document });
+  const config = {
+    schema_version: 1,
+    pages: { home: { kind: "dashboard", layout_id: "main", elements: [] } },
+    layouts: { main: { kind: "hero-deck", scroll: "fixed", hero_ratio: 0.42 } },
+    widget_instances: {}, dynamic_buttons: {},
+    data_sources: {
+      "provider.weather": { config: {} },
+      "provider.house-lighting": { config: {} },
+    },
+    module_settings: {},
+  };
+  preview.core.hass = { connected: true, states: {}, callWS: async () => ({ config }) };
+  try {
+    await assert.rejects(
+      () => preview.mount(document.createElement("div")),
+      /Unable to load configured provider: provider.house-lighting/,
+    );
+    assert.equal(preview.core.moduleLoader.isLoaded("provider.weather"), false);
+    assert.equal(preview.core.moduleLoader.isLoaded("provider.house-lighting"), false);
+  } finally {
+    preview.destroy();
+  }
+});
