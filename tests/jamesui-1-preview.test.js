@@ -61,7 +61,7 @@ test("preview renders the four Start widgets from persisted instances", async ()
   ];
   const elements = modules.map((moduleId, index) => ({
     id: "start-" + index, kind: "widget", ref_id: "instance-" + index,
-    column: 1 + index * 4, row: 1, column_span: 4, row_span: 3,
+    column: index * 4, row: 0, column_span: 4, row_span: 3,
   }));
   const config = {
     schema_version: 1,
