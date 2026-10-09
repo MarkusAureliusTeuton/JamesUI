@@ -33,3 +33,8 @@ Stand: 2026-10-09. Arbeitsstand des Draft-PR #27, keine Freigabe oder Tablet-Abn
 - Soll: Bei ungültiger gespeicherter Provider-Konfiguration darf keine teilweise aktive Dashboard-Laufzeit zurückbleiben.
 - Ist: Fehlerpfad räumt alle geladenen und ausstehenden Module auf; Regressionstest ergänzt, neue CI ausstehend.
 - Reale HA-Entitäten müssen später explizit zugeordnet und am Zielgerät getestet werden.
+
+## Wetter-Datenquelle (2026-10-09)
+
+- Soll: Bereits konfigurierte r11-Wetter-Entitäten aus der kanonischen Migration wiederverwenden, ohne künstliche HA-IDs.
+- Ist: Preview berücksichtigt `data_sources.weather` als Fallback für `provider.weather`; Regressionstest ergänzt, CI ausstehend.
