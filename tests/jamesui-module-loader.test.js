@@ -222,3 +222,68 @@ test("failed reload is isolated and leaves no stale old runtime", async () => {
   assert.equal(loader.isLoaded("provider.reload"), false);
   assert.equal(health.get("module:provider.reload").status, "error");
 });
+
+
+test("Block 14 loads separate widget occurrences with independent lifecycles and module identity", async () => {
+  const observations = [];
+  const { registry, loader } = setup({
+    importer: async () => ({
+      create(context, config) {
+        const instanceId = context.instanceId;
+        observations.push(["create", instanceId, context.moduleId, config.value]);
+        return {
+          mount() { observations.push(["mount", instanceId]); },
+          update(_context, next) { observations.push(["update", instanceId, next.value]); },
+          destroy() { observations.push(["destroy", instanceId]); },
+        };
+      },
+    }),
+    getContext: ({ id, instanceId }) => ({ instanceId, moduleId: id }),
+  });
+  registry.register(manifest("widget.multiple"), { entryUrl: "https://example.test/multi.js" });
+  assert.equal(await loader.load("widget.multiple", { instanceId: "calendar.a", config: { value: "A" } }), true);
+  assert.equal(await loader.load("widget.multiple", { instanceId: "calendar.b", config: { value: "B" } }), true);
+  assert.equal(loader.isLoaded("calendar.a"), true);
+  assert.equal(loader.isLoaded("calendar.b"), true);
+  assert.equal(loader.mount("calendar.a", {}), true);
+  assert.equal(loader.mount("calendar.b", {}), true);
+  assert.equal(loader.update("calendar.b", { value: "B2" }), true);
+  assert.equal(loader.destroy("calendar.a"), true);
+  assert.equal(loader.isLoaded("calendar.b"), true);
+  assert.deepEqual(observations, [
+    ["create", "calendar.a", "widget.multiple", "A"],
+    ["create", "calendar.b", "widget.multiple", "B"],
+    ["mount", "calendar.a"],
+    ["mount", "calendar.b"],
+    ["update", "calendar.b", "B2"],
+    ["destroy", "calendar.a"],
+  ]);
+  loader.destroyAll();
+});
+
+test("Block 14 rejects ambiguous instance reuse and prevents provider duplicate instances", async () => {
+  const { registry, loader } = setup({
+    importer: async () => ({ create: () => ({ mount() {}, update() {}, destroy() {} }) }),
+  });
+  registry.register(manifest("widget.one"), { entryUrl: "https://example.test/one.js" });
+  registry.register(manifest("widget.two"), { entryUrl: "https://example.test/two.js" });
+  registry.register(manifest("provider.one", "provider"), { entryUrl: "https://example.test/prov.js" });
+  assert.equal(await loader.load("widget.one", { instanceId: "shared" }), true);
+  assert.equal(await loader.load("widget.two", { instanceId: "shared" }), false);
+  assert.equal(await loader.load("provider.one", { instanceId: "provider.duplicate" }), false);
+  assert.equal(await loader.load("provider.one"), true);
+  loader.destroyAll();
+});
+
+test("Block 14 cancels pending instance loads on teardown", async () => {
+  let resolveImport;
+  const { registry, loader } = setup({
+    importer: () => new Promise((resolve) => { resolveImport = resolve; }),
+  });
+  registry.register(manifest("widget.late"), { entryUrl: "https://example.test/late.js" });
+  const load = loader.load("widget.late", { instanceId: "late.a" });
+  loader.destroyAll();
+  resolveImport({ create: () => ({ mount() {}, update() {}, destroy() {} }) });
+  assert.equal(await load, false);
+  assert.equal(loader.isLoaded("late.a"), false);
+});
