@@ -51,28 +51,28 @@ export function createJamesUI1Preview({ document = globalThis.document } = {}) {
         throw new Error("No configured JamesUI 1.0 dashboard. Existing r11 data is not auto-migrated.");
       }
       try {
-      // Provider definitions come from the canonical persisted data_sources section.
-      // Missing entries remain unavailable; never invent Home Assistant entity bindings.
-      for (const [manifest] of registered) {
-        if (manifest.type !== "provider") continue;
-        const source = config.data_sources[manifest.id];
-        if (!source) continue;
-        const instanceConfig = source.config ?? source;
-        if (!await core.moduleLoader.load(manifest.id, { config: instanceConfig })) {
-          throw new Error(`Unable to load configured provider: ${manifest.id}`);
+        // Provider definitions come from the canonical persisted data_sources section.
+        // Missing entries remain unavailable; never invent Home Assistant entity bindings.
+        for (const [manifest] of registered) {
+          if (manifest.type !== "provider") continue;
+          const source = config.data_sources[manifest.id];
+          if (!source) continue;
+          const instanceConfig = source.config ?? source;
+          if (!await core.moduleLoader.load(manifest.id, { config: instanceConfig })) {
+            throw new Error(`Unable to load configured provider: ${manifest.id}`);
         }
-        if (!core.moduleLoader.mount(manifest.id, target)) {
-          throw new Error(`Unable to mount configured provider: ${manifest.id}`);
+          if (!core.moduleLoader.mount(manifest.id, target)) {
+            throw new Error(`Unable to mount configured provider: ${manifest.id}`);
         }
-        activeProviders.push(manifest.id);
-      }
-      core.mount(target);
-      const page = target.querySelector('[data-role="page-region"]') ??
+          activeProviders.push(manifest.id);
+        }
+        core.mount(target);
+        const page = target.querySelector('[data-role="page-region"]') ??
         target.querySelector("main");
-      if (!page) throw new Error("Preview shell has no page host");
-      await composer.mount(page, "home");
-      mounted = true;
-      return true;
+        if (!page) throw new Error("Preview shell has no page host");
+        await composer.mount(page, "home");
+        mounted = true;
+        return true;
       } catch (error) {
         composer.destroy();
         for (const id of activeProviders.splice(0)) core.moduleLoader.destroy(id);
