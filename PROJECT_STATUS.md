@@ -348,3 +348,10 @@ Read the completed Block-13 spec/plan and the cross-block layout planning notes,
 - HA panel now retains `hass`, `narrow`, `route`, and `panel` across asynchronous preview startup.
 - Configured providers remain opt-in via persisted `data_sources`; there is no invented HA entity mapping.
 - Automated tests are not a real Home Assistant or Fully Kiosk acceptance. PR #27 remains draft and r11 unchanged.
+
+### Block 14 provider startup rollback (2026-10-09)
+
+- `5da8c3de` CI confirmed green.
+- Failed preview startup now cancels/destroys all pending or loaded modules, not only successfully mounted providers.
+- Added regression: invalid `provider.house-lighting` config after valid weather provider must reject and unload weather.
+- New CI pending. No fabricated HA entities, no actual HA/OnePlus Pad 2/Fully Kiosk testing.
