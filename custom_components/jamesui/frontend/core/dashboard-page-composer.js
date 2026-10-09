@@ -6,7 +6,7 @@ import { createDashboardTouchEditor } from "./dashboard-touch-editor.js";
 import { bindDashboardTouchEvents } from "./dashboard-touch-events.js";
 import { createDashboardHeroLayout } from "../modules/dashboard-layout-factory.js";
 import { createDashboardGrid } from "./dashboard-grid.js";
-import { createDashboardWidgetHosts } from "./dashboard-widget-hosts.js";
+import { createDashboardWidgetHosts } from "../modules/dashboard-widget-hosts.js";
 import { validateDashboardPage } from "./dashboard-config.js";
 
 // Page composition owns one layout instance, one grid and the weather hero.
