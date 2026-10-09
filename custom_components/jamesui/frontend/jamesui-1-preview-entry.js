@@ -8,15 +8,27 @@
       this.attachShadow({ mode: "open" });
       this._preview = null;
       this._hass = null;
+      this._narrow = undefined;
+      this._route = undefined;
+      this._panel = undefined;
       this._generation = 0;
     }
     set hass(value) {
       this._hass = value;
       if (this._preview) this._preview.core.hass = value;
     }
-    set narrow(value) { if (this._preview) this._preview.core.narrow = value; }
-    set route(value) { if (this._preview) this._preview.core.route = value; }
-    set panel(value) { if (this._preview) this._preview.core.panel = value; }
+    set narrow(value) {
+      this._narrow = value;
+      if (this._preview) this._preview.core.narrow = value;
+    }
+    set route(value) {
+      this._route = value;
+      if (this._preview) this._preview.core.route = value;
+    }
+    set panel(value) {
+      this._panel = value;
+      if (this._preview) this._preview.core.panel = value;
+    }
     connectedCallback() {
       const generation = ++this._generation;
       const root = this.shadowRoot;
@@ -28,6 +40,9 @@
         const preview = createJamesUI1Preview({ document: root.ownerDocument });
         this._preview = preview;
         if (this._hass) preview.core.hass = this._hass;
+        if (this._narrow !== undefined) preview.core.narrow = this._narrow;
+        if (this._route !== undefined) preview.core.route = this._route;
+        if (this._panel !== undefined) preview.core.panel = this._panel;
         try {
           await preview.mount(host);
         } catch (error) {
