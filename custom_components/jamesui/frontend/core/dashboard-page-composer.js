@@ -61,8 +61,8 @@ export function createDashboardPageComposer({ document, moduleLoader, getConfig,
       touch?.destroy(); touch = null;
       if (toolbar?.root?.parentNode) toolbar.root.parentNode.removeChild(toolbar.root);
       toolbar = null; editor = null; gridRoot = null;
-    if (catalogView?.root?.parentNode) catalogView.root.parentNode.removeChild(catalogView.root);
-    catalogView = null;
+      if (catalogView?.root?.parentNode) catalogView.root.parentNode.removeChild(catalogView.root);
+      catalogView = null;
       grid?.destroy();
       grid = null;
       if (hero) moduleLoader.destroy(hero);
@@ -87,7 +87,11 @@ export function createDashboardPageComposer({ document, moduleLoader, getConfig,
           if (loaded) moduleLoader.destroy(heroId);
           return false;
         }
-        if (loaded) moduleLoader.mount(heroId, heroSlot);
+        if (!loaded || !moduleLoader.mount(heroId, heroSlot)) {
+          moduleLoader.destroy(heroId);
+          hero = null;
+          throw new Error(`Failed to mount dashboard hero widget: ${definition.module_id}`);
+        }
       }
       if (token !== generation) return false;
     } else {
