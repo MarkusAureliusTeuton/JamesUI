@@ -3,13 +3,16 @@ import assert from "node:assert/strict";
 import { createJamesUI1Preview } from "../custom_components/jamesui/frontend/jamesui-1-preview.js";
 import { createFakeDocument } from "./helpers/fake-dom.js";
 
-test("Block 14 preview registers actual widget modules but never mounts r11", () => {
+test("Block 14 preview registers widgets and matching providers but never mounts r11", () => {
   const document = createFakeDocument();
   const preview = createJamesUI1Preview({ document });
   const ids = preview.core.moduleRegistry.list().map((item) => item.manifest.id);
   assert.deepEqual(ids, [
     "widget.weather-today", "widget.calendar-agenda",
     "widget.house-quick", "widget.dynamic-buttons",
+    "provider.weather", "provider.calendar", "provider.tasks",
+    "provider.house-heating", "provider.house-lighting",
+    "provider.house-devices", "provider.house-energy", "provider.control-state",
   ]);
   assert.equal(preview.core.config.snapshot(), null);
   preview.destroy();
