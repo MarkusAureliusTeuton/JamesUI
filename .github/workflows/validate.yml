@@ -116,7 +116,8 @@ jobs:
             tests/jamesui-dashboard-editor-toolbar.test.js \
             tests/jamesui-dashboard-touch-editor.test.js \
             tests/jamesui-dashboard-touch-events.test.js \
-            tests/jamesui-dashboard-catalog.test.js
+            tests/jamesui-dashboard-catalog.test.js \
+            tests/jamesui-1-preview.test.js
 
       - name: Test JamesUI Block 9 weather provider
         run: |
