@@ -24,6 +24,8 @@ from .const import (
     PANEL_ICON,
     PANEL_TITLE,
     PANEL_URL,
+    PREVIEW_PANEL_URL,
+    PREVIEW_PANEL_ELEMENT,
     STATIC_URL,
     VERSION,
 )
