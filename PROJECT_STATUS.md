@@ -334,3 +334,10 @@ Read the completed Block-13 spec/plan and the cross-block layout planning notes,
 - Added a composed preview regression test with configured Weather Today hero, Calendar Agenda, House Quick and Dynamic Buttons widget instances.
 - Test checks the hero-deck layout, fixed bottom navigation, grid host count and weather hero module lifecycle; latest CI still pending.
 - No real HA entity data or physical tablet interaction was tested. r11 remains unaffected.
+
+### Block 14 composition CI and error handling (2026-10-09)
+
+- Four-widget Start composition regression is green at `57b12772` after correcting zero-based grid coordinates in the test.
+- Composer now rejects an unregistered or unmountable configured hero widget instead of silently treating an incomplete page as successful.
+- Added regression coverage for invalid hero configuration; latest CI still pending.
+- HA/OnePlus/Fully tests remain outstanding; PR #27 stays draft.
