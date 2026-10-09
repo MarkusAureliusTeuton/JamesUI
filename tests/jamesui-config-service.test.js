@@ -110,3 +110,54 @@ test("destroy clears subscribers and prevents future remote operations", async (
   await assert.rejects(() => service.replace(config("later")), /destroyed/i);
   assert.equal(homeAssistant.calls.length, 1);
 });
+
+
+test("Block 14 update serializes dashboard edits and preserves other sections", async () => {
+  const ha = fakeHomeAssistant();
+  ha.setHandler(async (message) => ({ config: message.config ?? config("initial") }));
+  const service = createConfigService({ homeAssistant: ha });
+  await service.load();
+  const first = service.update((value) => {
+    value.pages.start = { kind: "dashboard", elements: [] };
+    return value;
+  });
+  const second = service.update((value) => {
+    assert.ok(value.pages.start);
+    value.layouts.start = { kind: "hero-deck" };
+    return value;
+  });
+  await Promise.all([first, second]);
+  assert.deepEqual(service.snapshot().pages.start, { kind: "dashboard", elements: [] });
+  assert.deepEqual(service.snapshot().layouts.start, { kind: "hero-deck" });
+  assert.equal(ha.calls.filter((call) => call.type === "jamesui/config/replace").length, 2);
+});
+
+test("Block 14 rejected update leaves last snapshot intact and queue operational", async () => {
+  const ha = fakeHomeAssistant();
+  ha.setHandler(async (msg) => msg.type === "jamesui/config/get"
+    ? { config: config("safe") }
+    : Promise.reject(new Error("backend refused")));
+  const service = createConfigService({ homeAssistant: ha });
+  await service.load();
+  await assert.rejects(service.update((value) => {
+    value.pages.home.label = "not-saved";
+    return value;
+  }), /backend refused/);
+  assert.equal(service.snapshot().pages.home.label, "safe");
+  assert.equal(await service.update(() => null), null);
+  assert.equal(service.snapshot().pages.home.label, "safe");
+});
+
+test("Block 14 stale remote load cannot overwrite a newer replacement", async () => {
+  const ha = fakeHomeAssistant();
+  let finishLoad;
+  ha.setHandler((message) => message.type === "jamesui/config/get"
+    ? new Promise((resolve) => { finishLoad = resolve; })
+    : Promise.resolve({ config: message.config }));
+  const service = createConfigService({ homeAssistant: ha });
+  const older = service.load();
+  await service.replace(config("newer"));
+  finishLoad({ config: config("stale") });
+  await older;
+  assert.equal(service.snapshot().pages.home.label, "newer");
+});
