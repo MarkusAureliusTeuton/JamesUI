@@ -21,3 +21,9 @@ Stand: 2026-10-09. Arbeitsstand des Draft-PR #27, keine Freigabe oder Tablet-Abn
 - Die vier Start-Widgets sind im Modulregister vorhanden. Vollständige Widget-/Provider-Interaktion unter realen HA-Daten ist noch nicht abgenommen.
 - Die Dashboard-Hülle ist auf feste Höhe ausgelegt; sichtbare Widget-Anordnung und Touch-Bedienung im Hochformat sind noch nicht praktisch validiert.
 - CI ist eine technische Prüfung und kein Ersatz für einen Home-Assistant-/Fully-Kiosk-Test.
+
+## Bootstrap-Abnahme (2026-10-09)
+
+- Automatisierte Vorschau-Tests inklusive HA-Panel-Eigenschaften (`hass`, `narrow`, `route`, `panel`) erfolgreich: CI `4ee13127`.
+- Home-Assistant-Instanz, reale Entitäten, Tablet-Hochformat und Fully Kiosk: weiterhin **nicht getestet**.
+- Produktiv-Umschaltung auf JamesUI 1.0: **nicht freigegeben**.
