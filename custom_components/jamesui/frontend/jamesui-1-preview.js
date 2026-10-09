@@ -76,6 +76,7 @@ export function createJamesUI1Preview({ document = globalThis.document } = {}) {
       } catch (error) {
         composer.destroy();
         for (const id of activeProviders.splice(0)) core.moduleLoader.destroy(id);
+        core.moduleLoader.destroyAll();
         throw error;
       }
     },
