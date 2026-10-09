@@ -56,11 +56,14 @@ export function createDashboardPageComposer({ document, moduleLoader, getConfig 
       layout = createHeroDeck({}, { hero_ratio: page.layout.hero_ratio });
       layout.mount(target);
       const heroSlot = layout.getSlot("hero");
-      const definition = config.widget_instances[config.pages[pageId].hero_widget_id];
+      const heroRef = config.pages[pageId].hero_widget_id;
+      const definition = heroRef ? config.widget_instances[heroRef] : null;
+      if (heroRef && !definition) throw new TypeError(`Missing hero widget instance: ${heroRef}`);
       if (definition) {
         hero = `dashboard:${pageId}:hero`;
         const heroId = hero;
-        const loaded = await moduleLoader.load(definition.module_id, { instanceId: heroId, config: definition.config ?? {} });
+        const loading = moduleLoader.load(definition.module_id, { instanceId: heroId, config: definition.config ?? {} });
+        const loaded = await loading;
         if (token !== generation) {
           if (loaded) moduleLoader.destroy(heroId);
           return false;
@@ -69,9 +72,14 @@ export function createDashboardPageComposer({ document, moduleLoader, getConfig 
       }
       if (token !== generation) return false;
     } else {
+      const fullRoot = document.createElement("section");
+      fullRoot.setAttribute("data-jui-layout", "fullscreen");
+      fullRoot.style.height = "100%";
+      fullRoot.style.minHeight = "0";
+      target.appendChild(fullRoot);
       layout = {
-        getSlot: (name) => name === "content" ? target : null,
-        destroy() {},
+        getSlot: (name) => name === "content" ? fullRoot : null,
+        destroy() { if (fullRoot.parentNode) fullRoot.parentNode.removeChild(fullRoot); },
       };
     }
 
