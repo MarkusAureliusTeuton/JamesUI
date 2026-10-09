@@ -12,3 +12,6 @@ PANEL_ELEMENT = "jamesui-panel"
 
 STATIC_URL = "/jamesui_static"
 FRONTEND_FILE = "jamesui-entry.js"
+
+PREVIEW_PANEL_URL = "jamesui-1-preview"
+PREVIEW_PANEL_ELEMENT = "jamesui-1-preview-panel"
