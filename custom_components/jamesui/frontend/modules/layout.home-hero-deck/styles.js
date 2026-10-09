@@ -44,4 +44,9 @@ export const HOME_HERO_DECK_STYLES = `
   min-height: 0;
   min-width: 0;
 }
+@container (max-width: 44rem) {
+  [data-jui-layout="home-hero-deck"] [data-jui-layout-region="deck"] {
+    padding-inline: var(--jui-space-4);
+  }
+}
 `;
