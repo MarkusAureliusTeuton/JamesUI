@@ -328,3 +328,9 @@ Read the completed Block-13 spec/plan and the cross-block layout planning notes,
 - Added preview integration coverage for config loading and provider lifecycle; a real HA connection and actual widget data remain untested.
 - Updated `docs/JAMESUI_1_0_SOLL_IST_MATRIX.md` with evidence and acceptance gaps.
 - No merge or production cutover; draft PR #27 remains open. Tablet/HA/Fully Kiosk acceptance not performed.
+
+### Block 14 Start composition regression (2026-10-09)
+
+- Added a composed preview regression test with configured Weather Today hero, Calendar Agenda, House Quick and Dynamic Buttons widget instances.
+- Test checks the hero-deck layout, fixed bottom navigation, grid host count and weather hero module lifecycle; latest CI still pending.
+- No real HA entity data or physical tablet interaction was tested. r11 remains unaffected.
