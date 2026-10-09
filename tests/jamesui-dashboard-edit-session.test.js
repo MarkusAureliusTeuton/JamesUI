@@ -73,3 +73,23 @@ test("Block 14 detects external element changes instead of overwriting them", as
   await assert.rejects(() => editor.save(), /externally/);
   assert.equal(configService.snapshot().pages.start.elements.length, 1);
 });
+
+
+test("Block 14 catalog widgets are independent, undoable and saved atomically", async () => {
+  const { configService, editor, getWrites } = setup();
+  await configService.load();
+  editor.enter();
+  const added = editor.addWidget("widget.calendar-agenda", { config: { calendar: "work" } });
+  assert.equal(added.elements.length, 3);
+  assert.equal(getWrites(), 0);
+  editor.undo();
+  assert.equal(editor.snapshot().elements.length, 2);
+  const again = editor.addWidget("widget.calendar-agenda", { config: { calendar: "family" } });
+  assert.equal(again.elements.length, 3);
+  await editor.save();
+  const saved = configService.snapshot();
+  const ref = saved.pages.start.elements[2].ref_id;
+  assert.equal(saved.widget_instances[ref].module_id, "widget.calendar-agenda");
+  assert.equal(saved.widget_instances[ref].config.calendar, "family");
+  assert.equal(getWrites(), 1);
+});
