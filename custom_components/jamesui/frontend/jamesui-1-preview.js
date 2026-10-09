@@ -57,7 +57,7 @@ export function createJamesUI1Preview({ document = globalThis.document } = {}) {
           if (manifest.type !== "provider") continue;
           const source = config.data_sources[manifest.id];
           if (!source) continue;
-            const instanceConfig = source.config ?? source;
+          const instanceConfig = source.config ?? source;
           if (!await core.moduleLoader.load(manifest.id, { config: instanceConfig })) {
             throw new Error(`Unable to load configured provider: ${manifest.id}`);
           }
