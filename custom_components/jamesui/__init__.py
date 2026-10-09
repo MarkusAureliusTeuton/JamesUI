@@ -107,6 +107,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a JamesUI config entry."""
     if PANEL_URL in hass.data.get("frontend_panels", {}):
         async_remove_panel(hass, PANEL_URL)
+    if PREVIEW_PANEL_URL in hass.data.get('frontend_panels', {}):
+        async_remove_panel(hass, PREVIEW_PANEL_URL)
 
     domain_data = hass.data.get(DOMAIN, {})
     domain_data.pop(entry.entry_id, None)
