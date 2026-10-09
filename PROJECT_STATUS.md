@@ -254,6 +254,10 @@ Delivered:
 
 Final grid coordinates/spans, Android-like placement/reflow, generic Config-Store-to-instance orchestration and composed OnePlus/Fully acceptance remain Block 14.
 
+## Approved roadmap change (2026-10-09)
+
+**New execution sequence:** Block **14 → 19 → 20 → 21 → 15 → 16 → 17 → 18**. The user approved an early clean 1.0 cutover after the finished Start dashboard instead of waiting for all secondary-page migrations. Blocks 19–21 validate and deliver a deliberately reduced but fully honest and usable Start-first release; no fake or dead secondary routes. Retain a documented rollback until the new production path is proven; remove the r11 runtime in Block 21 rather than retaining a permanent dual path. Blocks 15–18 are built on clean production 1.0 afterward. This is a roadmap decision, **not** a completed cutover.
+
 ## 10. Production/reference runtime
 
 Repository: `MarkusAureliusTeuton/JamesUI`
@@ -298,4 +302,4 @@ Cross-page page-scroll/grid/widget-instance rules remain binding in `docs/JAMESU
 
 Start **Block 14 – Start configuration experience**.
 
-Read the completed Block-13 spec/plan and the cross-block layout planning notes, then define the final Start composition and generic structured-config-to-widget-instance orchestration. Block 14 must choose the actual OnePlus Pad 2 portrait logical grid/spans from measured available space, place Agenda + House Quick + Dynamic Buttons without hard-coding a button count in Block 13, and provide the planned Android-like grid placement/reflow contract without pulling later Haus/Media/Climate/Door migrations or production cutover forward.
+Read the completed Block-13 spec/plan and the cross-block layout planning notes, then define the final Start composition and generic structured-config-to-widget-instance orchestration. Block 14 must choose the actual OnePlus Pad 2 portrait logical grid/spans from measured available space, place Agenda + House Quick + Dynamic Buttons without hard-coding a button count in Block 13, and provide the planned Android-like grid placement/reflow contract without including later Haus/Media/Climate/Door migrations in Block 14. The approved new order places cutover Blocks 19–21 immediately after Block 14, before Blocks 15–18.
