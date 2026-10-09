@@ -27,3 +27,9 @@ Stand: 2026-10-09. Arbeitsstand des Draft-PR #27, keine Freigabe oder Tablet-Abn
 - Automatisierte Vorschau-Tests inklusive HA-Panel-Eigenschaften (`hass`, `narrow`, `route`, `panel`) erfolgreich: CI `4ee13127`.
 - Home-Assistant-Instanz, reale Entitäten, Tablet-Hochformat und Fully Kiosk: weiterhin **nicht getestet**.
 - Produktiv-Umschaltung auf JamesUI 1.0: **nicht freigegeben**.
+
+## Provider-Startfehler (2026-10-09)
+
+- Soll: Bei ungültiger gespeicherter Provider-Konfiguration darf keine teilweise aktive Dashboard-Laufzeit zurückbleiben.
+- Ist: Fehlerpfad räumt alle geladenen und ausstehenden Module auf; Regressionstest ergänzt, neue CI ausstehend.
+- Reale HA-Entitäten müssen später explizit zugeordnet und am Zielgerät getestet werden.
