@@ -172,16 +172,31 @@ Real `climate.*` data and controls; no demo rooms/temperatures.
 ### Block 18 – Door migration ⬜
 Real door/camera functionality with suitable safety behavior.
 
-## Phase E – Controlled cutover and cleanup
+## Revised execution order – early clean cutover
+
+**Approved 2026-10-09:** execute **14 → 19 → 20 → 21 → 15 → 16 → 17 → 18**. Block identifiers remain stable. The clean modular Start is released before migrating the remaining pages. The remaining pages are then implemented directly on the new production foundation.
+
+Early cutover rules:
+- Block 14 completes a usable configured Start dashboard and editor first.
+- Blocks 19–20 require a tested, stable OnePlus Pad 2 / Fully Start experience, first-load and persisted-config checks. Completeness means completeness of the explicitly reduced initial release scope, **not** prior migration of Haus/Medien/Klima/Tür.
+- Unimplemented pages contain no fake data, dead controls or misleading working navigation: their routes are hidden or explicitly marked unavailable until their respective migration block.
+- Capture a known-good rollback revision and recovery procedure before enabling 1.0. After successful acceptance, Block 21 deletes r11 implementation, bridges, polish and obsolete compatibility code. No long-term dual runtime or fallback shim.
+- Blocks 15–18 add real pages after cleanup; no change to their existing functional requirements.
+
+## Phase E – Controlled cutover and cleanup (immediately after Block 14)
 
 ### Block 19 – Cutover preparation ⬜
-Prove readiness including OnePlus/Fully portrait acceptance and migration completeness.
+Prove readiness for the deliberately reduced initial release (Start + core + editor), including OnePlus/Fully portrait acceptance, honest handling of not-yet-migrated routes, configuration validation and documented rollback. Full migration of Blocks 15–18 is no longer a prerequisite.
 
 ### Block 20 – Cutover ⬜
 Switch the Home Assistant panel bootstrap to the new Core and perform first-load/migration checks.
 
 ### Block 21 – Legacy deletion and architecture gate ⬜
 Delete old monolith/patch/demo/compatibility paths and enforce permanent architecture gates.
+
+## Phase D – Remaining page migrations (after Block 21)
+
+Blocks 15–18 are specified above but executed only after the early cutover and cleanup.
 
 ## Status table
 
