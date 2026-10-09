@@ -43,6 +43,8 @@ export function createModuleLoader({
 
   const runtimes = new Map();
   const reloadGenerations = new Map();
+  const pendingLoads = new Map();
+  const cancelledLoads = new Set();
 
   const reportError = (id, phase, error) => {
     health.report(moduleHealthId(id), {
@@ -54,33 +56,49 @@ export function createModuleLoader({
   const clearError = (id) => health.clear(moduleHealthId(id));
 
   const loader = {
-    async load(id, { config = {} } = {}) {
-      if (runtimes.has(id)) return true;
+    async load(id, { config = {}, instanceId = id } = {}) {
+      if (typeof instanceId !== "string" || !instanceId.trim()) throw new TypeError("instanceId must be non-empty");
+      if (runtimes.has(instanceId)) return runtimes.get(instanceId).moduleId === id;
+      if (pendingLoads.has(instanceId)) return pendingLoads.get(instanceId).moduleId === id ? pendingLoads.get(instanceId).promise : false;
       const record = registry.get(id);
       if (!record) {
         reportError(id, "load", new Error(`Module is not registered: ${id}`));
         return false;
       }
-      const generation = reloadGenerations.get(id) ?? 0;
+      if (instanceId !== id && record.manifest.type !== "widget" && record.manifest.type !== "layout") {
+        reportError(instanceId, "load", new Error("Only widgets/layouts can use separate instance IDs"));
+        return false;
+      }
+      const generation = reloadGenerations.get(instanceId) ?? 0;
       const url = buildModuleImportUrl(record.entryUrl, record.manifest.version, generation);
+      const task = (async () => {
       try {
         const definition = await importer(url);
+        if (cancelledLoads.has(instanceId)) return false;
         if (!definition || typeof definition.create !== "function") {
           throw new TypeError(`Module ${id} must export create(context, config)`);
         }
-        const contextRequest = Object.freeze({ id, manifest: record.manifest });
+        const contextRequest = Object.freeze({ id, instanceId, manifest: record.manifest });
         const instance = definition.create(getContext(contextRequest), config);
         if (!validateLifecycle(instance)) {
           throw new TypeError(`Module ${id} must return synchronous mount/update/destroy lifecycle methods`);
         }
-        runtimes.set(id, { instance, config, target: null, manifest: record.manifest });
-        clearError(id);
+        if (cancelledLoads.has(instanceId)) {
+          try { instance.destroy(); } catch (_) { /* teardown best effort */ }
+          return false;
+        }
+        runtimes.set(instanceId, { moduleId: id, instance, config, target: null, manifest: record.manifest });
+        clearError(instanceId);
         return true;
       } catch (error) {
-        runtimes.delete(id);
-        reportError(id, "load", error);
+        runtimes.delete(instanceId);
+        reportError(instanceId, "load", error);
         return false;
       }
+      })();
+      pendingLoads.set(instanceId, { moduleId: id, promise: task });
+      try { return await task; }
+      finally { pendingLoads.delete(instanceId); cancelledLoads.delete(instanceId); }
     },
 
     mount(id, target) {
@@ -101,7 +119,7 @@ export function createModuleLoader({
       const runtime = runtimes.get(id);
       if (!runtime) return false;
       try {
-        const contextRequest = Object.freeze({ id, manifest: runtime.manifest });
+        const contextRequest = Object.freeze({ id: runtime.moduleId, instanceId: id, manifest: runtime.manifest });
         runtime.instance.update(getContext(contextRequest), nextConfig);
         runtime.config = nextConfig;
         clearError(id);
@@ -114,7 +132,10 @@ export function createModuleLoader({
 
     destroy(id) {
       const runtime = runtimes.get(id);
-      if (!runtime) return false;
+      if (!runtime) {
+        if (pendingLoads.has(id)) { cancelledLoads.add(id); return true; }
+        return false;
+      }
       runtimes.delete(id);
       try {
         runtime.instance.destroy();
@@ -129,16 +150,17 @@ export function createModuleLoader({
     async reload(id) {
       const runtime = runtimes.get(id);
       if (!runtime) return false;
-      const { config, target } = runtime;
+      const { config, target, moduleId } = runtime;
       if (!loader.destroy(id)) return false;
       reloadGenerations.set(id, (reloadGenerations.get(id) ?? 0) + 1);
-      if (!await loader.load(id, { config })) return false;
+      if (!await loader.load(moduleId, { instanceId: id, config })) return false;
       if (target !== null && !loader.mount(id, target)) return false;
       clearError(id);
       return true;
     },
 
     destroyAll() {
+      for (const id of [...pendingLoads.keys()]) cancelledLoads.add(id);
       for (const id of [...runtimes.keys()]) loader.destroy(id);
     },
 
