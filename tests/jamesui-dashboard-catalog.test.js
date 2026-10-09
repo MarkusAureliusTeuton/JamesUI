@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createDashboardCatalog, createDashboardCatalogView } from "../custom_components/jamesui/frontend/core/dashboard-catalog.js";
+import { createDashboardCatalog, createDashboardCatalogView } from "../custom_components/jamesui/frontend/modules/dashboard-catalog.js";
 import { createFakeDocument } from "./helpers/fake-dom.js";
 
 test("Block 14 catalog shows registered widget modules only", () => {
