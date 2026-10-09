@@ -14,7 +14,7 @@ function requireDependency(value, name) {
   if (!value) throw new TypeError(`createAppShell requires ${name}`);
 }
 
-export function createAppShell({ document, router, overlays, health, getContext, designSystem, renderPage = null } = {}) {
+export function createAppShell({ document, router, overlays, health, getContext, designSystem, renderPage = null, availableRoutes = null } = {}) {
   requireDependency(document, "document");
   requireDependency(router, "router");
   requireDependency(overlays, "overlays");
@@ -155,7 +155,13 @@ export function createAppShell({ document, router, overlays, health, getContext,
       if (!iconId) throw new Error(`Missing navigation icon for route: ${route.id}`);
       button.prepend(createIcon(document, iconId, { size: "md" }));
       button.dataset.routeId = route.id;
-      const available = route.id === "home";\n      button.disabled = !available;\n      if (!available) {\n        button.setAttribute("aria-label", `${route.label} – noch nicht verfügbar`);\n        button.title = `${route.label} – noch nicht verfügbar`;\n      }\n      const listener = () => { if (available) router.navigate(route.id); };
+      const available = availableRoutes === null || availableRoutes.includes(route.id);
+      button.disabled = !available;
+      if (!available) {
+        button.setAttribute("aria-label", `${route.label} – noch nicht verfügbar`);
+        button.title = `${route.label} – noch nicht verfügbar`;
+      }
+      const listener = () => { if (available) router.navigate(route.id); };
       button.addEventListener("click", listener);
       navBindings.push({ button, listener });
       navigation.appendChild(button);
