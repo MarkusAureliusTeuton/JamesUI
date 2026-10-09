@@ -140,3 +140,25 @@ test("failed provider startup leaves no provider runtimes behind", async () => {
     preview.destroy();
   }
 });
+
+test("preview reuses canonical weather entity mapping migrated from r11", async () => {
+  const document = createFakeDocument();
+  const preview = createJamesUI1Preview({ document });
+  const config = {
+    schema_version: 1,
+    pages: { home: { kind: "dashboard", layout_id: "main", elements: [] } },
+    layouts: { main: { kind: "hero-deck", scroll: "fixed", hero_ratio: 0.42 } },
+    widget_instances: {}, dynamic_buttons: {},
+    data_sources: { weather: { entity_id: "weather.home" } }, module_settings: {},
+  };
+  preview.core.hass = {
+    connected: true, states: { "weather.home": { state: "sunny", attributes: {} } },
+    callWS: async () => ({ config }),
+  };
+  try {
+    assert.equal(await preview.mount(document.createElement("div")), true);
+    assert.equal(preview.core.moduleLoader.isLoaded("provider.weather"), true);
+  } finally {
+    preview.destroy();
+  }
+});
