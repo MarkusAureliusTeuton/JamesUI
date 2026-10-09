@@ -32,6 +32,7 @@ export function createDashboardEditSession({ controller, configService, pageId, 
     get active() { return active; },
     get canUndo() { return history.length > 0; },
     snapshot() { ensureActive(); return page(); },
+    workingConfig() { ensureActive(); return structuredClone(working); },
     move(elementId, geometry) {
       ensureActive();
       if (busy) throw new Error("Dashboard editor is saving");
