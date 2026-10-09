@@ -1,3 +1,4 @@
+import { createDashboardCatalog, createDashboardCatalogView } from "./dashboard-catalog.js";
 import { createDashboardController } from "./dashboard-controller.js";
 import { createDashboardEditSession } from "./dashboard-edit-session.js";
 import { createDashboardEditorToolbar } from "./dashboard-editor-toolbar.js";
@@ -10,7 +11,7 @@ import { validateDashboardPage } from "./dashboard-config.js";
 
 // Page composition owns one layout instance, one grid and the weather hero.
 // Its DOM is independent of the persistent Core shell and navigation.
-export function createDashboardPageComposer({ document, moduleLoader, getConfig, configService = null } = {}) {
+export function createDashboardPageComposer({ document, moduleLoader, getConfig, configService = null, moduleRegistry = null } = {}) {
   if (!document || typeof document.createElement !== "function") throw new TypeError("Dashboard composer requires document");
   if (!moduleLoader || typeof moduleLoader.load !== "function") throw new TypeError("Dashboard composer requires Module Loader");
   if (typeof getConfig !== "function") throw new TypeError("Dashboard composer requires getConfig");
@@ -21,7 +22,7 @@ export function createDashboardPageComposer({ document, moduleLoader, getConfig,
   let hero = null;
   let pageId = null;
   let generation = 0;
-  let editor = null, toolbar = null, touch = null, unbindTouch = null, gridRoot = null;
+  let editor = null, toolbar = null, touch = null, unbindTouch = null, gridRoot = null, catalogView = null;
 
   function destroy() {
     generation += 1;
@@ -29,6 +30,8 @@ export function createDashboardPageComposer({ document, moduleLoader, getConfig,
     touch?.destroy(); touch = null;
     if (toolbar?.root?.parentNode) toolbar.root.parentNode.removeChild(toolbar.root);
     toolbar = null; editor = null; gridRoot = null;
+    if (catalogView?.root?.parentNode) catalogView.root.parentNode.removeChild(catalogView.root);
+    catalogView = null;
     grid?.destroy();
     grid = null;
     if (hero) moduleLoader.destroy(hero);
@@ -58,6 +61,8 @@ export function createDashboardPageComposer({ document, moduleLoader, getConfig,
       touch?.destroy(); touch = null;
       if (toolbar?.root?.parentNode) toolbar.root.parentNode.removeChild(toolbar.root);
       toolbar = null; editor = null; gridRoot = null;
+    if (catalogView?.root?.parentNode) catalogView.root.parentNode.removeChild(catalogView.root);
+    catalogView = null;
       grid?.destroy();
       grid = null;
       if (hero) moduleLoader.destroy(hero);
@@ -144,9 +149,16 @@ export function createDashboardPageComposer({ document, moduleLoader, getConfig,
     };
     toolbar = createDashboardEditorToolbar({
       document, session: editor, onChange: preview,
-      onAdd: () => {},
+      onAdd: () => catalogView?.open(),
     });
     target.appendChild(toolbar.root);
+    if (moduleRegistry) {
+      catalogView = createDashboardCatalogView({ document, catalog: createDashboardCatalog({ moduleRegistry }), onSelect: (moduleId) => {
+        const next = editor.addWidget(moduleId);
+        if (next) preview(next);
+      } });
+      target.appendChild(catalogView.root);
+    }
     touch = createDashboardTouchEditor({ session: editor, onPreview: preview });
     unbindTouch = bindDashboardTouchEvents({
       gridRoot, editor: touch,
