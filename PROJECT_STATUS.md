@@ -319,3 +319,12 @@ Read the completed Block-13 spec/plan and the cross-block layout planning notes,
 - Shell viewport sizing uses a bounded grid (`minmax(0, 1fr) auto`) with non-scrolling page host; physical OnePlus Pad 2 / Fully Kiosk behavior unverified.
 - Current Soll-/Ist evidence matrix: `docs/JAMESUI_1_0_SOLL_IST_MATRIX.md`.
 - PR #27 remains draft. No HA or tablet acceptance claimed.
+
+### Block 14 integration work package – steps 1–6 (2026-10-09)
+
+- CI checked: commit `22de4b66` successful; provider-registration test commit `f526e912` successful. Subsequent provider lifecycle integration test and documentation commits require fresh CI.
+- The opt-in 1.0 preview now registers all eight canonical HA data providers and activates only entries explicitly present in persisted `data_sources`.
+- The preview retains the four Start widget registrations and a fixed-height shell with disabled unmigrated navigation destinations.
+- Added preview integration coverage for config loading and provider lifecycle; a real HA connection and actual widget data remain untested.
+- Updated `docs/JAMESUI_1_0_SOLL_IST_MATRIX.md` with evidence and acceptance gaps.
+- No merge or production cutover; draft PR #27 remains open. Tablet/HA/Fully Kiosk acceptance not performed.
