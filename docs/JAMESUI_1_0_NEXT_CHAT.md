@@ -1,6 +1,6 @@
 # JamesUI 1.0 – Next Chat / New ChatGPT Project Handover
 
-_Date: 2026-10-06_
+_Date: 2026-10-09_
 
 Use this document to start a fresh JamesUI conversation without relying on old chat history. The repository is the source of truth.
 
@@ -22,7 +22,9 @@ Default branch: `main`
 8. `docs/superpowers/plans/2026-10-04-jamesui-1.0-block-11-calendar-tasks-agenda.md`
 9. `docs/superpowers/specs/2026-10-05-jamesui-1.0-block-12-house-capabilities-house-quick-design.md`
 10. `docs/superpowers/plans/2026-10-05-jamesui-1.0-block-12-house-capabilities-house-quick.md`
-11. inspect only files relevant to the active block
+11. `docs/superpowers/specs/2026-10-09-jamesui-1.0-block-13-dynamic-buttons-design.md`
+12. `docs/superpowers/plans/2026-10-09-jamesui-1.0-block-13-dynamic-buttons.md`
+13. inspect only files relevant to the active block
 
 `docs/JAMESUI_1_0_BLOCK_11_PLANNING_NOTES.md` is now a historical planning record; the approved Block-11 spec/plan and merged code/tests are binding.
 
@@ -52,6 +54,7 @@ Completed and merged:
 - Block 10 – `widget.weather-today` + forecast overlay ✅ PR #22
 - Block 11 – Calendar/task providers + `widget.calendar-agenda` ✅ PR #23
 - Block 12 – House capability providers + `widget.house-quick` ✅ PR #25
+- Block 13 – `provider.control-state` + `widget.dynamic-buttons` ✅ PR #26
 
 Block 11 merge: `63e0b8dc6072eed885f591161180f7082f6f7f2c`.
 Final branch run `37284834614` and merged-main run `37285828629` both passed.
@@ -59,9 +62,12 @@ Final branch run `37284834614` and merged-main run `37285828629` both passed.
 Block 12 merge: `04e6beb8614d69c1dbd397391d136b28b492aedc`.
 Final unchanged head `966569786771b194dcfc5caee30e9cd1ee73de29`; branch run `37441731886` and merged-main run `37441814856` both passed.
 
+Block 13 merge: `8342c7055327c0d1c19b894cf63f4cd54fdaf799`.
+Final unchanged head `ff0c15fa452a0511ff9df25a444b5444720945b0`; branch run `37894875901` and merged-main run `37894938332` both passed.
+
 r11 is still production/reference. The new runtime has not been cut over.
 
-**Next formal gate: Block 13 – Dynamic Buttons module. Block 12 is complete and merged.**
+**Next formal gate: Block 14 – Start configuration experience. Blocks 0–13 are complete and merged.**
 
 ## Current architecture
 
@@ -118,19 +124,33 @@ Important:
 - Each House Quick instance owns its own button subset/order; generic page/Loader orchestration remains Block 14.
 - Semantic button navigation goes through Action Registry only.
 
-## Block 13 gate
+## Completed Block-13 contracts to preserve
 
-Block 13 should add the **Dynamic Buttons module**, not final Start composition.
+- `provider.control-state` owns `control.states`; widgets never receive raw HA state.
+- One explicit feedback signal per source maps to `active | inactive | intermediate | unavailable`; no multi-signal scene logic is derived in JamesUI.
+- Entity state or one configured attribute may be used; unknown/unmapped values stay unavailable.
+- Source revisions advance only on meaningful normalized feedback changes and are the acknowledgement boundary for toggles.
+- `widget.dynamic-buttons` supports exactly `toggle` and `trigger`.
+- Toggle requires activate/deactivate actions plus `state_source_id`; Action Registry success alone never proves target state.
+- Only newer real feedback can complete/reject a pending toggle; intermediate stays pending, wrong terminal/unavailable fails, default timeout is 5 s.
+- Trigger success is transient (~650 ms); failures/timeouts are transient and never become persistent history/retry logic.
+- Real feedback is shared across instances; pending/success/error is local to the pressed button occurrence.
+- Central definitions live conceptually under `dynamic_buttons`; technical control-state sources under `data_sources.control_states`. Block 14 owns the generic runtime resolution/orchestration from Config Store.
+- Each use has `compact | normal | wide`; final logical spans/count/coordinates are not Block-13-owned.
+- Dynamic Buttons has no built-in header.
+- Long-press remains reserved for the later editor; Block 13 implements no drag/grid editor.
+
+## Block 14 gate
+
+Block 14 should implement the **Start configuration experience** and the missing generic composition/orchestration layer, not later page migrations or production cutover.
 
 Start by inspecting:
-1. current Action Registry/action-provider contracts
-2. structured `dynamic_buttons` configuration ownership
-3. retained r11 scene/quick-button behavior as behavior reference only
-4. which action types and button states belong in the reusable module versus later page composition
+1. `layout.home-hero-deck` and `docs/JAMESUI_1_0_LAYOUT_PLANNING_NOTES.md`
+2. the Config Store sections `pages`, `layouts`, `widget_instances`, `dynamic_buttons`, `data_sources`, `module_settings`
+3. the completed Weather Today, Agenda, House Quick and Dynamic Buttons runtime contracts
+4. the actual OnePlus Pad 2 portrait/Fully available viewport and current retained Start visual behavior
 
-Clarify genuine product questions one at a time, approve design/spec if architectural, then create the detailed implementation plan before product code.
-
-Do not pull final Start placement/grid, generic page/widget instance orchestration (Block 14), later page migrations or production cutover into Block 13.
+Block 14 must settle the real logical grid/spans from available space and widget minimums, provide generic multi-instance creation/config resolution, compose Start, and perform the next composed OnePlus/Fully visual acceptance. Do not pull Haus/Media/Climate/Door migrations or production cutover forward.
 
 ## Working preferences / AI rules
 
@@ -159,11 +179,11 @@ Do not pull final Start placement/grid, generic page/widget instance orchestrati
 ```text
 Wir setzen mein Projekt JamesUI aus dem Repository MarkusAureliusTeuton/JamesUI fort.
 
-Arbeite nicht aus Erinnerung. Lies zuerst PROJECT_STATUS.md, die Foundation-Spec, die Execution Roadmap, die Baseline, JAMESUI_1_0_NEXT_CHAT.md und JAMESUI_1_0_LAYOUT_PLANNING_NOTES.md. Lies danach die Block-12-Spec/den Block-12-Plan als zuletzt abgeschlossenen Architekturblock und nur die Dateien, die du für den aktiven Block brauchst.
+Arbeite nicht aus Erinnerung. Lies zuerst PROJECT_STATUS.md, die Foundation-Spec, die Execution Roadmap, die Baseline, JAMESUI_1_0_NEXT_CHAT.md und JAMESUI_1_0_LAYOUT_PLANNING_NOTES.md. Lies danach die Block-13-Spec/den Block-13-Plan als zuletzt abgeschlossenen Architekturblock und nur die Dateien, die du für den aktiven Block brauchst.
 
-Variante B ist verbindlich. Blocks 0–12 sind abgeschlossen und auf main. Block 12 wurde mit PR #25 gemergt; finaler unveränderter Branch-Head und main-CI waren grün. r11 läuft weiterhin produktiv; kein Cutover.
+Variante B ist verbindlich. Blocks 0–13 sind abgeschlossen und auf main. Block 13 wurde mit PR #26 gemergt; finaler unveränderter Feature-Head `ff0c15fa452a0511ff9df25a444b5444720945b0` und main-CI waren grün. r11 läuft weiterhin produktiv; kein Cutover.
 
-Nächster Gate ist Block 13: Dynamic Buttons. Prüfe zuerst Action Registry, `dynamic_buttons`-Config und retained r11-Szenen/Quick-Button-Verhalten. Definiere den wiederverwendbaren Button-/Action-Vertrag, bevor Produktcode geschrieben wird. Finale Start-Komposition/Grid/Multi-Instance-Orchestrierung bleibt Block 14.
+Nächster Gate ist Block 14: Start configuration experience. Prüfe zuerst `layout.home-hero-deck`, die Layout Planning Notes, den strukturierten Config Store und die fertigen Weather/Agenda/House-Quick/Dynamic-Buttons-Verträge. Definiere die finale Start-Komposition, das reale OnePlus-Pad-2-Hochformat-Grid und die generische Multi-Instance-/Config-Auflösung. Spätere Haus-/Media-/Klima-/Tür-Migrationen und Cutover bleiben außerhalb Block 14.
 
 Wichtig: Deutsch, kurz und technisch sauber. Repository direkt bearbeiten, wenn GitHub-Zugriff vorhanden ist; keine manuellen Copy/Paste-Anweisungen für Änderungen, die du selbst ausführen kannst. Bereits entschiedene Fragen nicht erneut stellen. Bei offenen Designfragen immer nur eine Frage gleichzeitig. Kurze Antworten wie ok/passt/freigegeben gelten als Freigabe des unmittelbar vorherigen konkreten Vorschlags. TDD für Verhaltensänderungen; rote Tests nie nach main. Keine Monkey-Patches, Prototype-Overrides, Versions-Polish-Dateien, parallelen Implementierungen oder dauerhaften Legacy-Krücken. OnePlus Pad 2 Hochformat ist das primäre Ziel; Fully ist nur die Kiosk-Hülle. Halte Tool-/Log-Ausgaben kompakt, bündele Repo-Arbeit in sinnvolle Schritte und lies bei CI-Fehlern nur den kleinsten nötigen Fehlerausschnitt, damit der Input-Stream stabil bleibt.
 ```

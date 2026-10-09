@@ -1,6 +1,6 @@
 # JamesUI – Project Status / Chat Handover
 
-_Last updated: 2026-10-06_
+_Last updated: 2026-10-09_
 
 This file is the persistent **single source of truth for the current execution state**. Architecture details live in approved specs, retained behavior in the baseline, and block-specific implementation detail in plans/tests.
 
@@ -33,6 +33,8 @@ Canonical documents:
 - Block 11 plan: `docs/superpowers/plans/2026-10-04-jamesui-1.0-block-11-calendar-tasks-agenda.md`
 - Block 12 spec: `docs/superpowers/specs/2026-10-05-jamesui-1.0-block-12-house-capabilities-house-quick-design.md`
 - Block 12 plan: `docs/superpowers/plans/2026-10-05-jamesui-1.0-block-12-house-capabilities-house-quick.md`
+- Block 13 spec: `docs/superpowers/specs/2026-10-09-jamesui-1.0-block-13-dynamic-buttons-design.md`
+- Block 13 plan: `docs/superpowers/plans/2026-10-09-jamesui-1.0-block-13-dynamic-buttons.md`
 
 ## 3. Current formal state
 
@@ -49,6 +51,7 @@ Canonical documents:
 - Block 10 – Weather Today widget + forecast overlay: ✅ PR #22
 - Block 11 – Calendar/task providers + Agenda widget: ✅ PR #23
 - Block 12 – House capability providers + House Quick widget: ✅ PR #25
+- Block 13 – Dynamic Buttons module: ✅ PR #26
 
 Block 11 merge commit: `63e0b8dc6072eed885f591161180f7082f6f7f2c`.
 
@@ -73,9 +76,20 @@ Block 12 verification evidence:
 - no open Critical/Important review findings remain
 - PR #25 is merged
 
-**Next formal gate:** Block 13 – Dynamic Buttons module. Keep final Start composition/grid and generic page/widget multi-instance orchestration in Block 14; no production cutover yet.
+Block 13 merge commit: `8342c7055327c0d1c19b894cf63f4cd54fdaf799`.
 
-## 4. Platform completed through Block 12
+Block 13 verification evidence:
+- final unchanged feature head: `ff0c15fa452a0511ff9df25a444b5444720945b0`
+- final branch validation: run `37894875901` – success
+- merge/main validation: run `37894938332` – success
+- whole-branch review found and fixed one provider consistency issue before the final head: multiple normalized sources sharing one HA entity are published atomically as one coherent consumer snapshot
+- permanent Block-13 config, provider, state-machine, loader and architecture coverage is active
+- no open Critical/Important review findings remain
+- PR #26 is merged
+
+**Next formal gate:** Block 14 – Start configuration experience, final Start grid/composition and generic page/widget multi-instance orchestration. No production cutover yet.
+
+## 4. Platform completed through Block 13
 
 ### Core and module contract
 
@@ -214,9 +228,33 @@ Delivered:
 - semantic navigation through Action Registry only; House Quick performs no direct control
 - direct multi-instance widget isolation; generic Loader/page instance orchestration remains Block 14
 
-Windows/doors, ventilation, scenes, direct controls, detail pages, final Start composition and production cutover remain out of Block 12.
+Windows/doors, ventilation, scenes, direct controls, detail pages, final Start composition and production cutover remain out of Block 12. Reusable Dynamic Buttons are delivered separately by Block 13.
 
-## 9. Production/reference runtime
+## 9. Block 13 – Dynamic Buttons
+
+Boundaries:
+- `provider.control-state` → `control.states`
+- `widget.dynamic-buttons` consumes only `control.states` plus Action Registry commands
+
+Delivered:
+- explicit one-signal control-state sources with entity-state or one-attribute mapping
+- normalized `active | inactive | intermediate | unavailable` feedback with semantic intermediate details
+- per-source revisions that advance only on meaningful normalized feedback changes, preventing pre-command state from acknowledging a new command
+- shared/ref-counted HA subscriptions through the existing HA Adapter, including coherent publication when multiple configured sources share one HA entity
+- reusable central Dynamic Button definitions with required stable name, optional semantic icon and generic Action Registry payloads
+- exactly two interaction modes: stateful `toggle` and stateless `trigger`
+- toggle command direction from real terminal feedback only; Action Registry success never fabricates target state
+- pending resolution by newer real target feedback, immediate failure on wrong terminal/unavailable feedback, intermediate-state continuation and configurable timeout (default 5 s)
+- trigger pending, approximately 650 ms success feedback and transient error feedback
+- real state shared across widget instances while pending/success/error feedback remains local to the pressed occurrence
+- unavailable/external-intermediate toggles are non-actionable
+- `compact | normal | wide` per-use size classes without hard-coded final Start spans or button count
+- no built-in widget header and no Block-14 drag/grid editor behavior
+- permanent Block-13 architecture, loader and CI gate
+
+Final grid coordinates/spans, Android-like placement/reflow, generic Config-Store-to-instance orchestration and composed OnePlus/Fully acceptance remain Block 14.
+
+## 10. Production/reference runtime
 
 Repository: `MarkusAureliusTeuton/JamesUI`
 Default branch: `main`
@@ -227,7 +265,7 @@ Frontend revision: `0.5.1-r11`
 
 The retained baseline therefore remains valid and did not require a Block-11 change.
 
-## 10. Start direction to preserve/rebuild
+## 11. Start direction to preserve/rebuild
 
 - persistent bottom nav `Start | Haus | Klima | Medien | Tür`
 - Alpine/weather hero
@@ -236,12 +274,12 @@ The retained baseline therefore remains valid and did not require a Block-11 cha
 - one lower dark/translucent deck extending to navigation
 - Agenda left
 - House Quick right/main
-- four Dynamic Buttons right/footer
+- Dynamic Buttons right/footer; exact count and spans are chosen by the Block-14 logical grid from available space and minimum sizes
 - never fake unavailable backend data
 
 Cross-page page-scroll/grid/widget-instance rules remain binding in `docs/JAMESUI_1_0_LAYOUT_PLANNING_NOTES.md`.
 
-## 11. Development rules
+## 12. Development rules
 
 1. Repository is source of truth.
 2. One roadmap block at a time.
@@ -256,8 +294,8 @@ Cross-page page-scroll/grid/widget-instance rules remain binding in `docs/JAMESU
 11. OnePlus/Fully portrait screenshot acceptance is required at major composed-UI milestones; do not claim it without a deterministic or explicit visual run.
 12. Keep GitHub/tool traffic compact: inspect targeted files/steps rather than repeatedly streaming full logs.
 
-## 12. Next action
+## 13. Next action
 
-Start **Block 13 – Dynamic Buttons module**.
+Start **Block 14 – Start configuration experience**.
 
-Inspect the current Action Registry, structured `dynamic_buttons` config area and retained r11 scene/quick-button behavior. Define a reusable configurable action-button contract without folding final Start placement/grid into Block 13. Block 14 still owns final Start composition and generic instance orchestration.
+Read the completed Block-13 spec/plan and the cross-block layout planning notes, then define the final Start composition and generic structured-config-to-widget-instance orchestration. Block 14 must choose the actual OnePlus Pad 2 portrait logical grid/spans from measured available space, place Agenda + House Quick + Dynamic Buttons without hard-coding a button count in Block 13, and provide the planned Android-like grid placement/reflow contract without pulling later Haus/Media/Climate/Door migrations or production cutover forward.

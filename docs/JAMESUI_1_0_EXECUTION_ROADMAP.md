@@ -1,7 +1,7 @@
 # JamesUI 1.0 – Execution Roadmap
 
-_Status: foundation architecture approved; Blocks 0–12 complete and validated; next gate Block 13_
-_Date: 2026-10-06_
+_Status: foundation architecture approved; Blocks 0–13 complete and validated; next gate Block 14_
+_Date: 2026-10-09_
 
 This document defines the implementation order for JamesUI 1.0 using **Variant B: clean foundation + controlled cutover**. r11 remains the running design/reference runtime until the cutover gate.
 
@@ -121,8 +121,33 @@ Whole-branch review issues around provider rebind failure and critical-status cl
 
 Windows/doors, ventilation, scenes, detail pages, final Start composition/grid, generic Loader/page multi-instance orchestration and production cutover remain out of scope.
 
-### Block 13 – Dynamic Buttons module ⬜
-Configurable reusable action buttons for entity toggle, HA service, scene, navigation and URL.
+### Block 13 – Dynamic Buttons module ✅
+
+Spec: `docs/superpowers/specs/2026-10-09-jamesui-1.0-block-13-dynamic-buttons-design.md`
+
+Plan: `docs/superpowers/plans/2026-10-09-jamesui-1.0-block-13-dynamic-buttons.md`
+
+Result: PR #26, merge `8342c7055327c0d1c19b894cf63f4cd54fdaf799`.
+
+Final unchanged branch head `ff0c15fa452a0511ff9df25a444b5444720945b0` passed run `37894875901`; merged `main` passed run `37894938332`.
+
+Delivered:
+- `provider.control-state` with generic `control.states`, explicit HA entity/state-or-attribute mappings and normalized `active | inactive | intermediate | unavailable` feedback
+- meaningful per-source revisions so pre-command feedback cannot falsely acknowledge a new toggle command
+- shared/ref-counted HA subscriptions and coherent multi-source publication for shared entities
+- central reusable `dynamic_buttons` definitions plus per-widget-use `compact | normal | wide` sizing
+- generic Action Registry payloads without widget coupling to today's concrete action types
+- stateful `toggle` and stateless `trigger` interaction modes
+- target-feedback-vs-action-result race handling, intermediate states, wrong-terminal/unavailable failure, default 5 s configurable timeout and no automatic retries
+- approximately 650 ms trigger success feedback plus transient error feedback
+- shared real state with instance-local pending/success/error interaction state
+- disabled unavailable/intermediate toggles, fixed stable name, optional icon, one secondary line and permanent mode indicator
+- no built-in header, no hard-coded 3/4/5 button count and no Block-14 drag/grid editor implementation
+- permanent Block-13 architecture, loader and CI gates
+
+Whole-branch review found one control-state publication consistency issue while two sources shared one HA entity; it was fixed before the final validated head. No Critical/Important findings remain.
+
+Final Start composition/grid, generic Config-Store-to-instance orchestration, Android-like placement/reflow and composed OnePlus/Fully acceptance remain Block 14.
 
 ### Block 14 – Start configuration experience ⬜
 Configure the complete new Start page using the structured Config Store. This is also the next major composed OnePlus/Fully portrait screenshot-acceptance milestone.
@@ -175,7 +200,7 @@ Delete old monolith/patch/demo/compatibility paths and enforce permanent archite
 | 10 Weather widget | ✅ |
 | 11 Calendar/tasks agenda | ✅ |
 | 12 House Quick | ✅ |
-| 13 Dynamic Buttons | ⬜ |
+| 13 Dynamic Buttons | ✅ |
 | 14 Start config | ⬜ |
 | 15 Haus migration | ⬜ |
 | 16 Media migration | ⬜ |
@@ -185,4 +210,4 @@ Delete old monolith/patch/demo/compatibility paths and enforce permanent archite
 | 20 Cutover | ⬜ |
 | 21 Legacy deletion/gate | ⬜ |
 
-**Current summary:** Blocks 0–12 are complete, reviewed, green and merged. Block 13 Dynamic Buttons is the next formal gate. r11 remains production/reference; no cutover has occurred.
+**Current summary:** Blocks 0–13 are complete, reviewed, green and merged. Block 14 Start configuration experience is the next formal gate. r11 remains production/reference; no cutover has occurred.
