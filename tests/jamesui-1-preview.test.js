@@ -91,3 +91,25 @@ test("preview renders the four Start widgets from persisted instances", async ()
     preview.destroy();
   }
 });
+
+test("configured invalid hero fails visibly instead of presenting a false successful dashboard", async () => {
+  const document = createFakeDocument();
+  const preview = createJamesUI1Preview({ document });
+  const config = {
+    schema_version: 1,
+    pages: { home: { kind: "dashboard", layout_id: "main", hero_widget_id: "invalid", elements: [] } },
+    layouts: { main: { kind: "hero-deck", scroll: "fixed", hero_ratio: 0.42 } },
+    widget_instances: { invalid: { module_id: "widget.not-registered", config: {} } },
+    dynamic_buttons: {}, data_sources: {}, module_settings: {},
+  };
+  preview.core.hass = { connected: true, states: {}, callWS: async () => ({ config }) };
+  try {
+    await assert.rejects(
+      () => preview.mount(document.createElement("div")),
+      /Failed to mount dashboard hero widget/,
+    );
+    assert.equal(preview.core.moduleLoader.isLoaded("dashboard:home:hero"), false);
+  } finally {
+    preview.destroy();
+  }
+});
