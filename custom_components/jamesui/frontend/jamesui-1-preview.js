@@ -7,7 +7,7 @@ import { MANIFEST as BUTTONS } from "./modules/widget.dynamic-buttons/manifest.j
 
 // Explicit opt-in preview. Neither the r11 panel nor its bootstrap imports this.
 export function createJamesUI1Preview({ document = globalThis.document } = {}) {
-  const core = createJamesUICore({ document });
+  const core = createJamesUICore({ document, availableRoutes: ["home"] });
   const composer = createDashboardPageComposer({
     document, moduleLoader: core.moduleLoader, moduleRegistry: core.moduleRegistry,
     configService: core.config, getConfig: () => core.config.snapshot(),
