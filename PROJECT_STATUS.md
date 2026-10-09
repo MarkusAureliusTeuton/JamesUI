@@ -303,3 +303,11 @@ Cross-page page-scroll/grid/widget-instance rules remain binding in `docs/JAMESU
 Start **Block 14 – Start configuration experience**.
 
 Read the completed Block-13 spec/plan and the cross-block layout planning notes, then define the final Start composition and generic structured-config-to-widget-instance orchestration. Block 14 must choose the actual OnePlus Pad 2 portrait logical grid/spans from measured available space, place Agenda + House Quick + Dynamic Buttons without hard-coding a button count in Block 13, and provide the planned Android-like grid placement/reflow contract without including later Haus/Media/Climate/Door migrations in Block 14. The approved new order places cutover Blocks 19–21 immediately after Block 14, before Blocks 15–18.
+
+## Block 14 – ongoing integration checkpoint (2026-10-09)
+
+- Active implementation: draft PR #27 (`feat/jamesui-1-0-block-14-start-configuration`), not merged or released.
+- Preview and dashboard composer/grid/editor/config implementation exist on the feature branch; integration and acceptance remain open.
+- Navigation UI now disables unmigrated Haus/Klima/Medien/Tür destinations on this branch; router-level route restrictions and regression coverage remain to verify.
+- No Home Assistant or OnePlus Pad 2 / Fully acceptance test has been performed or claimed.
+- Next: verify preview bootstrap and real config/provider wiring, add navigation regression tests, run branch CI, validate viewport, update Soll/Ist and prepare a test release without cutover.
