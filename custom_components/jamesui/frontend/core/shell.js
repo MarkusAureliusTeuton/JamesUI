@@ -155,7 +155,7 @@ export function createAppShell({ document, router, overlays, health, getContext,
       if (!iconId) throw new Error(`Missing navigation icon for route: ${route.id}`);
       button.prepend(createIcon(document, iconId, { size: "md" }));
       button.dataset.routeId = route.id;
-      const listener = () => router.navigate(route.id);
+      const available = route.id === "home";\n      button.disabled = !available;\n      if (!available) {\n        button.setAttribute("aria-label", `${route.label} – noch nicht verfügbar`);\n        button.title = `${route.label} – noch nicht verfügbar`;\n      }\n      const listener = () => { if (available) router.navigate(route.id); };
       button.addEventListener("click", listener);
       navBindings.push({ button, listener });
       navigation.appendChild(button);
