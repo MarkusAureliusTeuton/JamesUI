@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createDashboardWidgetHosts } from "../custom_components/jamesui/frontend/core/dashboard-widget-hosts.js";
+import { createDashboardWidgetHosts } from "../custom_components/jamesui/frontend/modules/dashboard-widget-hosts.js";
 import { createDashboardGrid } from "../custom_components/jamesui/frontend/core/dashboard-grid.js";
 import { createFakeDocument } from "./helpers/fake-dom.js";
 
