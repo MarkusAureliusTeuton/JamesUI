@@ -72,10 +72,10 @@ export function createModuleLoader({
       const generation = reloadGenerations.get(instanceId) ?? 0;
       const url = buildModuleImportUrl(record.entryUrl, record.manifest.version, generation);
       const task = (async () => {
-      try {
-        const definition = await importer(url);
-        if (cancelledLoads.has(instanceId)) return false;
-        if (!definition || typeof definition.create !== "function") {
+        try {
+          const definition = await importer(url);
+          if (cancelledLoads.has(instanceId)) return false;
+          if (!definition || typeof definition.create !== "function") {
           throw new TypeError(`Module ${id} must export create(context, config)`);
         }
         const contextRequest = Object.freeze({ id, instanceId, manifest: record.manifest });
@@ -90,11 +90,11 @@ export function createModuleLoader({
         runtimes.set(instanceId, { moduleId: id, instance, config, target: null, manifest: record.manifest });
         clearError(instanceId);
         return true;
-      } catch (error) {
-        runtimes.delete(instanceId);
-        reportError(instanceId, "load", error);
-        return false;
-      }
+        } catch (error) {
+          runtimes.delete(instanceId);
+          reportError(instanceId, "load", error);
+          return false;
+        }
       })();
       pendingLoads.set(instanceId, { moduleId: id, promise: task });
       try { return await task; }
