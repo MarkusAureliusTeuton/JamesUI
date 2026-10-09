@@ -55,7 +55,10 @@ export function createJamesUI1Preview({ document = globalThis.document } = {}) {
         // Missing entries remain unavailable; never invent Home Assistant entity bindings.
         for (const [manifest] of registered) {
           if (manifest.type !== "provider") continue;
-          const source = config.data_sources[manifest.id];
+          // Legacy r11 weather settings are migrated into data_sources.weather.
+          // Prefer an explicit provider-specific binding when both are present.
+          const source = config.data_sources[manifest.id] ??
+            (manifest.id === "provider.weather" ? config.data_sources.weather : undefined);
           if (!source) continue;
           const instanceConfig = source.config ?? source;
           if (!await core.moduleLoader.load(manifest.id, { config: instanceConfig })) {
