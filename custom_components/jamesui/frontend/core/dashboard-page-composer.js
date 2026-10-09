@@ -1,4 +1,4 @@
-import { createDashboardCatalog, createDashboardCatalogView } from "./dashboard-catalog.js";
+import { createDashboardCatalog, createDashboardCatalogView } from "../modules/dashboard-catalog.js";
 import { createDashboardController } from "./dashboard-controller.js";
 import { createDashboardEditSession } from "./dashboard-edit-session.js";
 import { createDashboardEditorToolbar } from "./dashboard-editor-toolbar.js";
