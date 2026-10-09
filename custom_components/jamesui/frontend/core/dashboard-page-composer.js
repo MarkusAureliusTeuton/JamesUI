@@ -4,7 +4,7 @@ import { createDashboardEditSession } from "./dashboard-edit-session.js";
 import { createDashboardEditorToolbar } from "./dashboard-editor-toolbar.js";
 import { createDashboardTouchEditor } from "./dashboard-touch-editor.js";
 import { bindDashboardTouchEvents } from "./dashboard-touch-events.js";
-import { create as createHeroDeck } from "../modules/layout.home-hero-deck/index.js";
+import { createDashboardHeroLayout } from "../modules/dashboard-layout-factory.js";
 import { createDashboardGrid } from "./dashboard-grid.js";
 import { createDashboardWidgetHosts } from "./dashboard-widget-hosts.js";
 import { validateDashboardPage } from "./dashboard-config.js";
@@ -72,7 +72,7 @@ export function createDashboardPageComposer({ document, moduleLoader, getConfig,
     }
 
     if (page.layout.kind === "hero-deck") {
-      layout = createHeroDeck({}, { hero_ratio: page.layout.hero_ratio });
+      layout = createDashboardHeroLayout({ hero_ratio: page.layout.hero_ratio });
       layout.mount(target);
       const heroSlot = layout.getSlot("hero");
       const heroRef = config.pages[pageId].hero_widget_id;
