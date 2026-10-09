@@ -38,3 +38,9 @@ Stand: 2026-10-09. Arbeitsstand des Draft-PR #27, keine Freigabe oder Tablet-Abn
 
 - Soll: Bereits konfigurierte r11-Wetter-Entitäten aus der kanonischen Migration wiederverwenden, ohne künstliche HA-IDs.
 - Ist: Preview berücksichtigt `data_sources.weather` als Fallback für `provider.weather`; Regressionstest ergänzt, CI ausstehend.
+
+## Verbindliche Freigabe-Gates (2026-10-09)
+
+- Nachweis und Risiken: `docs/JAMESUI_NEXT_ACCEPTANCE_GATES.md`.
+- CI bis `68005c2b` grün; echte Browser-/HA-/Fully-Kiosk-/Tablet-Prüfungen fehlen.
+- **Startblocker:** Ohne explizites `pages.home`-Dashboard startet die 1.0-Vorschau nicht. Konfigurations- und E2E-Gates sind offen.
