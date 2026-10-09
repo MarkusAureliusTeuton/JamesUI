@@ -12,7 +12,6 @@ on:
 
 jobs:
   validate:
-    if: github.event_name == 'push' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -205,3 +204,5 @@ jobs:
 
       - name: Test Start calendar and scene data
         run: node --experimental-default-type=module --test tests/jamesui-home-data.test.js
+
+  # Block 14 uses the same validation pipeline in draft PRs; no skipped checks.
