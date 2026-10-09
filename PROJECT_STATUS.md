@@ -311,3 +311,11 @@ Read the completed Block-13 spec/plan and the cross-block layout planning notes,
 - Navigation UI now disables unmigrated Haus/Klima/Medien/Tür destinations on this branch; router-level route restrictions and regression coverage remain to verify.
 - No Home Assistant or OnePlus Pad 2 / Fully acceptance test has been performed or claimed.
 - Next: verify preview bootstrap and real config/provider wiring, add navigation regression tests, run branch CI, validate viewport, update Soll/Ist and prepare a test release without cutover.
+
+### Block 14 follow-up – viewport and navigation (2026-10-09)
+
+- Preview-only route allowlist now gates both navigation controls and Core Router; default Core behavior remains unchanged.
+- Navigation regression tests added; navigation CI commit `3da751c` passed. Subsequent viewport changes still require CI validation.
+- Shell viewport sizing uses a bounded grid (`minmax(0, 1fr) auto`) with non-scrolling page host; physical OnePlus Pad 2 / Fully Kiosk behavior unverified.
+- Current Soll-/Ist evidence matrix: `docs/JAMESUI_1_0_SOLL_IST_MATRIX.md`.
+- PR #27 remains draft. No HA or tablet acceptance claimed.
