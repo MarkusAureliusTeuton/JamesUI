@@ -361,3 +361,10 @@ Read the completed Block-13 spec/plan and the cross-block layout planning notes,
 - Canonical backend migration stores legacy weather entity IDs at `data_sources.weather` (not `data_sources.provider.weather`).
 - Preview now reads `data_sources.weather` when no explicit `provider.weather` entry exists, preserving migrated weather entity settings without modifying r11.
 - Added regression test with `weather.home`; CI pending. No other entity IDs were inferred.
+
+### Evidence-based release gate (2026-10-09)
+
+- Audited current workflow and preview boundaries; CI `68005c2b` green, but no browser E2E or real HA/tablet evidence.
+- Binding release criteria and concrete risks: `docs/JAMESUI_NEXT_ACCEPTANCE_GATES.md`.
+- Highest-priority blocker: a fresh/migrated config has no `pages.home` dashboard; preview rejects startup until a configured dashboard exists.
+- PR #27 stays draft; no tablet rollout until automated browser/system integration is demonstrated.
