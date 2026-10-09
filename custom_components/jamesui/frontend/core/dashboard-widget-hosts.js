@@ -17,12 +17,10 @@ export function createDashboardWidgetHosts({ moduleLoader, getConfig } = {}) {
     }
     const instanceId = `dashboard:${element.id}`;
     let alive = true;
-    let loaded = false;
     const ready = moduleLoader.load(definition.module_id, {
       instanceId, config: definition.config ?? {},
     }).then((success) => {
       if (!success) return false;
-      loaded = true;
       if (!alive) {
         moduleLoader.destroy(instanceId);
         return false;
@@ -36,8 +34,7 @@ export function createDashboardWidgetHosts({ moduleLoader, getConfig } = {}) {
     void ready;
     return () => {
       alive = false;
-      if (loaded) moduleLoader.destroy(instanceId);
-      else moduleLoader.destroy(instanceId); // Cancel in-flight loading if supported.
+      moduleLoader.destroy(instanceId); // Also cancels in-flight loading.
     };
   };
 }
