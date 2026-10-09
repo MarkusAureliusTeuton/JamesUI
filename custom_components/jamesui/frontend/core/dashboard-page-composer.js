@@ -54,6 +54,10 @@ export function createDashboardPageComposer({ document, moduleLoader, getConfig,
     const token = ++generation;
     // A change of layout invalidates all previous element mounts.
     if (layout) {
+      unbindTouch?.(); unbindTouch = null;
+      touch?.destroy(); touch = null;
+      if (toolbar?.root?.parentNode) toolbar.root.parentNode.removeChild(toolbar.root);
+      toolbar = null; editor = null; gridRoot = null;
       grid?.destroy();
       grid = null;
       if (hero) moduleLoader.destroy(hero);
