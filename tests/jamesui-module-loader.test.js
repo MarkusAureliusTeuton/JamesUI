@@ -287,3 +287,33 @@ test("Block 14 cancels pending instance loads on teardown", async () => {
   assert.equal(await load, false);
   assert.equal(loader.isLoaded("late.a"), false);
 });
+
+
+test("Block 14 reload affects only one occurrence and retains its configuration", async () => {
+  const lifecycle = [];
+  const { registry, loader } = setup({
+    importer: async () => ({
+      create(context, config) {
+        const id = context.instanceId;
+        return {
+          mount() { lifecycle.push([id, "mount", config.label]); },
+          update() {},
+          destroy() { lifecycle.push([id, "destroy"]); },
+        };
+      },
+    }),
+    getContext: ({ instanceId }) => ({ instanceId }),
+  });
+  registry.register(manifest("widget.repeated"), { entryUrl: "https://example.test/repeated.js" });
+  assert.equal(await loader.load("widget.repeated", { instanceId: "first", config: { label: "one" } }), true);
+  assert.equal(await loader.load("widget.repeated", { instanceId: "second", config: { label: "two" } }), true);
+  loader.mount("first", {});
+  loader.mount("second", {});
+  assert.equal(await loader.reload("first"), true);
+  assert.equal(loader.isLoaded("second"), true);
+  assert.deepEqual(lifecycle, [
+    ["first", "mount", "one"], ["second", "mount", "two"],
+    ["first", "destroy"], ["first", "mount", "one"],
+  ]);
+  loader.destroyAll();
+});
