@@ -56,6 +56,8 @@ export function createConfigService({ homeAssistant } = {}) {
 
   let current = null;
   let destroyed = false;
+  let operationGeneration = 0;
+  let pendingMutation = Promise.resolve();
   const listeners = new Set();
 
   const requireActive = () => {
@@ -83,8 +85,10 @@ export function createConfigService({ homeAssistant } = {}) {
   return {
     async load() {
       requireActive();
+      const requestGeneration = ++operationGeneration;
       const response = await homeAssistant.callWS({ type: "jamesui/config/get" });
       requireActive();
+      if (requestGeneration !== operationGeneration) return current === null ? null : cloneValue(current);
       return commitResponse(response);
     },
 
@@ -95,12 +99,30 @@ export function createConfigService({ homeAssistant } = {}) {
     async replace(config) {
       requireActive();
       const requestConfig = validateAndCloneConfig(config);
+      const requestGeneration = ++operationGeneration;
       const response = await homeAssistant.callWS({
         type: "jamesui/config/replace",
         config: requestConfig,
       });
       requireActive();
+      if (requestGeneration !== operationGeneration) return current === null ? null : cloneValue(current);
       return commitResponse(response);
+    },
+
+    // Serialize dashboard edits against the latest committed snapshot. Failed
+    // changes leave the local snapshot unchanged; unrelated sections persist.
+    update(mutator) {
+      requireActive();
+      if (typeof mutator !== "function") throw new TypeError("mutator must be a function");
+      const operation = pendingMutation.then(async () => {
+        requireActive();
+        if (current === null) throw new Error("JamesUI config must be loaded before update");
+        const next = mutator(cloneValue(current));
+        if (next === null) return null;
+        return this.replace(next);
+      });
+      pendingMutation = operation.then(() => undefined, () => undefined);
+      return operation;
     },
 
     subscribe(listener, { emitCurrent = true } = {}) {
@@ -126,6 +148,7 @@ export function createConfigService({ homeAssistant } = {}) {
     destroy() {
       if (destroyed) return false;
       destroyed = true;
+      operationGeneration += 1;
       listeners.clear();
       return true;
     },
