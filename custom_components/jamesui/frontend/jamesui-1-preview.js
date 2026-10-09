@@ -50,6 +50,7 @@ export function createJamesUI1Preview({ document = globalThis.document } = {}) {
       if (!config?.pages?.home || config.pages.home.kind !== "dashboard") {
         throw new Error("No configured JamesUI 1.0 dashboard. Existing r11 data is not auto-migrated.");
       }
+      try {
       // Provider definitions come from the canonical persisted data_sources section.
       // Missing entries remain unavailable; never invent Home Assistant entity bindings.
       for (const [manifest] of registered) {
@@ -72,6 +73,11 @@ export function createJamesUI1Preview({ document = globalThis.document } = {}) {
       await composer.mount(page, "home");
       mounted = true;
       return true;
+      } catch (error) {
+        composer.destroy();
+        for (const id of activeProviders.splice(0)) core.moduleLoader.destroy(id);
+        throw error;
+      }
     },
     destroy() {
       composer.destroy();
