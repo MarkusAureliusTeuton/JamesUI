@@ -27,3 +27,18 @@ test("core default navigation keeps all canonical routes available", () => {
   assert.equal(core.navigate("house"), true);
   core.destroy();
 });
+
+test("dashboard shell uses a bounded viewport grid and does not scroll its page host", () => {
+  const document = createFakeDocument();
+  const core = createJamesUICore({ document, availableRoutes: ["home"] });
+  const target = document.createElement("div");
+  core.mount(target);
+  const shell = target.querySelector('[data-role="app-shell"]');
+  const page = target.querySelector('[data-role="page-region"]');
+  assert.equal(shell.style.height, "100%");
+  assert.equal(shell.style.minHeight, "0");
+  assert.equal(shell.style.gridTemplateRows, "minmax(0, 1fr) auto");
+  assert.equal(page.style.overflow, "hidden");
+  assert.equal(page.style.minHeight, "0");
+  core.destroy();
+});
