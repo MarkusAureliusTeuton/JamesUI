@@ -341,3 +341,10 @@ Read the completed Block-13 spec/plan and the cross-block layout planning notes,
 - Composer now rejects an unregistered or unmountable configured hero widget instead of silently treating an incomplete page as successful.
 - Added regression coverage for invalid hero configuration; latest CI still pending.
 - HA/OnePlus/Fully tests remain outstanding; PR #27 stays draft.
+
+### Block 14 HA preview bootstrap verification (2026-10-09)
+
+- GitHub Actions for `4ee13127` passed, including the preview panel property-forwarding regression.
+- HA panel now retains `hass`, `narrow`, `route`, and `panel` across asynchronous preview startup.
+- Configured providers remain opt-in via persisted `data_sources`; there is no invented HA entity mapping.
+- Automated tests are not a real Home Assistant or Fully Kiosk acceptance. PR #27 remains draft and r11 unchanged.
