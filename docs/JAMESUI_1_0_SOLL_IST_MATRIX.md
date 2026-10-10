@@ -44,3 +44,10 @@ Stand: 2026-10-09. Arbeitsstand des Draft-PR #27, keine Freigabe oder Tablet-Abn
 - Nachweis und Risiken: `docs/JAMESUI_NEXT_ACCEPTANCE_GATES.md`.
 - CI bis `68005c2b` grün; echte Browser-/HA-/Fully-Kiosk-/Tablet-Prüfungen fehlen.
 - **Startblocker:** Ohne explizites `pages.home`-Dashboard startet die 1.0-Vorschau nicht. Konfigurations- und E2E-Gates sind offen.
+
+## Integration und Browser-Smoke (2026-10-10)
+
+- `validate` und `browser-smoke` sind im CI-Lauf `38028254684` grün (Commit `0cfadf65`).
+- **Widget-Readiness:** Der Preview-Mount wartet, bis die konfigurierten Widgets fertig geladen und gemountet sind. Ein fehlgeschlagener Start wird nicht mehr als Erfolg gemeldet.
+- **Echter Chromium-Browser:** Tests in `tests/browser/` prüfen Startseite, Widget-DOM, Navigation, Overflow, Portrait-Viewports und Zerstörung der App. Dies ist ein **simulierter HA-Browser-Smoke-Test**, keine Abnahme mit realem HA, OnePlus Pad 2 oder Fully Kiosk.
+- Browser-Interaktions- und Reconnect-Szenarien sind noch nicht vollständig abgedeckt.
