@@ -171,7 +171,8 @@ export function buildDashboardWidgetSetup({ moduleId, inputs = {}, currentConfig
         throw new TypeError("Buttons mit mehreren Einträgen zunächst über separate Instanzen konfigurieren");
       }
       widgetConfig = validateDynamicButtonInstanceConfig({
-        buttons: [{ id: prior[0]?.id ?? "button-1", button_id: buttonId, size: prior[0]?.size ?? "normal" }],
+        buttons: [{ id: prior[0]?.id ?? "button-1", button_id: buttonId,
+          size: inputs.buttonSize ?? prior[0]?.size ?? "normal" }],
       });
       break;
     }

@@ -527,3 +527,29 @@ test("energy attribute clearing updates only the selected source and forks share
     if (shared) assert.equal(sources[0].power.attribute, "power");
   }
 });
+
+
+test("dynamic button size is individually configurable without modifying the central definition", () => {
+  const current = config();
+  const prior = { buttons: [{ id: "button-use", button_id: "existing", size: "compact" }] };
+  const keep = buildDashboardWidgetSetup({
+    moduleId: "widget.dynamic-buttons", currentConfig: current,
+    priorWidgetConfig: prior, inputs: { existingButtonId: "existing" },
+  });
+  assert.deepEqual(keep.config.buttons,
+    [{ id: "button-use", button_id: "existing", size: "compact" }]);
+  const wide = buildDashboardWidgetSetup({
+    moduleId: "widget.dynamic-buttons", currentConfig: current,
+    priorWidgetConfig: prior,
+    inputs: { existingButtonId: "existing", buttonSize: "wide" },
+  });
+  assert.deepEqual(wide.config.buttons,
+    [{ id: "button-use", button_id: "existing", size: "wide" }]);
+  assert.deepEqual(wide.dynamicButtons, {});
+  assert.deepEqual(current.dynamic_buttons.existing,
+    { name: "Bestehend", mode: "trigger", action: { type: "navigate", route: "home" } });
+  assert.throws(() => buildDashboardWidgetSetup({
+    moduleId: "widget.dynamic-buttons", currentConfig: current,
+    inputs: { existingButtonId: "existing", buttonSize: "oversized" },
+  }), /size is unsupported/);
+});

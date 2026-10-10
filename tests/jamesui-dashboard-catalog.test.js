@@ -175,3 +175,31 @@ test("energy editor offers and pre-fills power attributes and can remove the att
   assert.deepEqual(plans[0].dataSources["provider.house-energy"].sources[0].power,
     { entity_id: "sensor.inverter" });
 });
+
+
+test("catalog edits a single button occurrence size without changing its shared definition", () => {
+  const document = createFakeDocument();
+  const current = { data_sources: {}, dynamic_buttons: {
+    existing: { name: "Taster", mode: "trigger", action: { type: "navigate", route: "home" } },
+  } };
+  const plans = [];
+  const view = createDashboardCatalogView({
+    document,
+    catalog: createDashboardCatalog({ moduleRegistry: {
+      get: (id) => id === "widget.dynamic-buttons" ? { manifest: { type: "widget" } } : null,
+    } }),
+    getConfig: () => current,
+    onSelect() { throw Error("Expected edit"); },
+    onEdit: (...args) => { plans.push(args[2]); return true; },
+  });
+  view.edit("button-tile", { module_id: "widget.dynamic-buttons",
+    config: { buttons: [{ id: "use-1", button_id: "existing", size: "compact" }] } });
+  const field = view.root.querySelector('[data-jui-catalog-field="buttonSize"]');
+  assert.equal(field.value, "compact");
+  field.value = "wide";
+  view.root.querySelector("[data-jui-catalog-confirm]").dispatchEvent("click");
+  assert.equal(plans.length, 1);
+  assert.deepEqual(plans[0].config.buttons,
+    [{ id: "use-1", button_id: "existing", size: "wide" }]);
+  assert.deepEqual(plans[0].dynamicButtons, {});
+});

@@ -245,6 +245,24 @@ export function createDashboardCatalogView({ document, catalog, onSelect, onEdit
       form.appendChild(wrapper);
       fields.set("existingButtonId", select);
 
+      const sizeLabel = document.createElement("label");
+      sizeLabel.style.display = "block";
+      sizeLabel.textContent = "Button-Größe";
+      const size = document.createElement("select");
+      size.setAttribute("data-jui-catalog-field", "buttonSize");
+      for (const [value, label] of [
+        ["compact", "Kompakt"], ["normal", "Normal"], ["wide", "Breit"],
+      ]) {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = label;
+        size.appendChild(option);
+      }
+      size.value = "normal";
+      sizeLabel.appendChild(size);
+      form.appendChild(sizeLabel);
+      fields.set("buttonSize", size);
+
       const fresh = document.createElement("section");
       fresh.setAttribute("data-jui-new-button-setup", "");
       form.appendChild(fresh);
@@ -300,7 +318,10 @@ export function createDashboardCatalogView({ document, catalog, onSelect, onEdit
         set("calendars", (instance.calendars ?? []).map((entry) => entry.entity_id).join(", "));
         set("tasks", (instance.task_lists ?? []).map((entry) => entry.entity_id).join(", "));
       } else if (item.module_id === "widget.dynamic-buttons") {
-        if (instance.buttons?.length === 1) set("existingButtonId", instance.buttons[0].button_id);
+        if (instance.buttons?.length === 1) {
+          set("existingButtonId", instance.buttons[0].button_id);
+          set("buttonSize", instance.buttons[0].size);
+        }
         if (fields.get("existingButtonId")) {
           fields.get("existingButtonId").dispatchEvent(new Event("change"));
         }
