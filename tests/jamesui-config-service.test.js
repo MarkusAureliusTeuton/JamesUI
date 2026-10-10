@@ -297,11 +297,13 @@ test("two concurrent direct replacements are serialized against the newest ackno
 test("queued update builds upon an already pending direct replacement", async () => {
   let remote = config("initial");
   let releaseFirst;
+  let delayFirstWrite = true;
   const service = createConfigService({
     homeAssistant: {
       async callWS(request) {
         if (request.type === "jamesui/config/get") return { config: structuredClone(remote) };
-        if (request.config.pages.home.label === "first") {
+        if (delayFirstWrite) {
+          delayFirstWrite = false;
           return new Promise((resolve) => {
             releaseFirst = () => {
               remote = structuredClone(request.config);
