@@ -43,6 +43,7 @@ export function createModuleLoader({
 
   const runtimes = new Map();
   const reloadGenerations = new Map();
+  const pendingLoads = new Map();
 
   const reportError = (id, phase, error) => {
     health.report(moduleHealthId(id), {
@@ -54,32 +55,59 @@ export function createModuleLoader({
   const clearError = (id) => health.clear(moduleHealthId(id));
 
   const loader = {
-    async load(id, { config = {} } = {}) {
-      if (runtimes.has(id)) return true;
+    async load(id, { config = {}, instanceId = id } = {}) {
+      if (typeof instanceId !== "string" || !instanceId.trim()) throw new TypeError("instanceId must be non-empty");
+      if (runtimes.has(instanceId)) return runtimes.get(instanceId).moduleId === id;
+      const pending = pendingLoads.get(instanceId);
+      if (pending) return pending.moduleId === id ? pending.promise : false;
       const record = registry.get(id);
       if (!record) {
         reportError(id, "load", new Error(`Module is not registered: ${id}`));
         return false;
       }
-      const generation = reloadGenerations.get(id) ?? 0;
-      const url = buildModuleImportUrl(record.entryUrl, record.manifest.version, generation);
-      try {
-        const definition = await importer(url);
-        if (!definition || typeof definition.create !== "function") {
-          throw new TypeError(`Module ${id} must export create(context, config)`);
-        }
-        const contextRequest = Object.freeze({ id, manifest: record.manifest });
-        const instance = definition.create(getContext(contextRequest), config);
-        if (!validateLifecycle(instance)) {
-          throw new TypeError(`Module ${id} must return synchronous mount/update/destroy lifecycle methods`);
-        }
-        runtimes.set(id, { instance, config, target: null, manifest: record.manifest });
-        clearError(id);
-        return true;
-      } catch (error) {
-        runtimes.delete(id);
-        reportError(id, "load", error);
+      if (instanceId !== id && record.manifest.type !== "widget" && record.manifest.type !== "layout") {
+        reportError(instanceId, "load", new Error("Only widgets/layouts can use separate instance IDs"));
         return false;
+      }
+      const generation = reloadGenerations.get(instanceId) ?? 0;
+      const url = buildModuleImportUrl(record.entryUrl, record.manifest.version, generation);
+      // Each import owns its own cancellation token. Destroying an in-flight
+      // import must not block a new load with the same instance ID, or allow
+      // the stale task to replace/destroy the newly installed runtime.
+      const loadRecord = { moduleId: id, cancelled: false, promise: null };
+      const task = (async () => {
+        try {
+          const definition = await importer(url);
+          if (loadRecord.cancelled) return false;
+          if (!definition || typeof definition.create !== "function") {
+            throw new TypeError(`Module ${id} must export create(context, config)`);
+          }
+          const contextRequest = Object.freeze({ id, instanceId, manifest: record.manifest });
+          const instance = definition.create(getContext(contextRequest), config);
+          if (!validateLifecycle(instance)) {
+            throw new TypeError(`Module ${id} must return synchronous mount/update/destroy lifecycle methods`);
+          }
+          if (loadRecord.cancelled) {
+            try { instance.destroy(); } catch (_) { /* teardown best effort */ }
+            return false;
+          }
+          runtimes.set(instanceId, { moduleId: id, instance, config, target: null, manifest: record.manifest });
+          clearError(instanceId);
+          return true;
+        } catch (error) {
+          if (!loadRecord.cancelled) {
+            // A stale cancelled import must never destroy or mark unhealthy a
+            // replacement that has already mounted under the same instance ID.
+            reportError(instanceId, "load", error);
+          }
+          return false;
+        }
+      })();
+      loadRecord.promise = task;
+      pendingLoads.set(instanceId, loadRecord);
+      try { return await task; }
+      finally {
+        if (pendingLoads.get(instanceId) === loadRecord) pendingLoads.delete(instanceId);
       }
     },
 
@@ -87,7 +115,11 @@ export function createModuleLoader({
       const runtime = runtimes.get(id);
       if (!runtime) return false;
       try {
-        runtime.instance.mount(target);
+        const mounted = runtime.instance.mount(target);
+        if (mounted === false) {
+          reportError(id, "mount", new Error("Module lifecycle mount returned false"));
+          return false;
+        }
         runtime.target = target;
         clearError(id);
         return true;
@@ -101,8 +133,12 @@ export function createModuleLoader({
       const runtime = runtimes.get(id);
       if (!runtime) return false;
       try {
-        const contextRequest = Object.freeze({ id, manifest: runtime.manifest });
-        runtime.instance.update(getContext(contextRequest), nextConfig);
+        const contextRequest = Object.freeze({ id: runtime.moduleId, instanceId: id, manifest: runtime.manifest });
+        const updated = runtime.instance.update(getContext(contextRequest), nextConfig);
+        if (updated === false) {
+          reportError(id, "update", new Error("Module lifecycle update returned false"));
+          return false;
+        }
         runtime.config = nextConfig;
         clearError(id);
         return true;
@@ -114,7 +150,15 @@ export function createModuleLoader({
 
     destroy(id) {
       const runtime = runtimes.get(id);
-      if (!runtime) return false;
+      if (!runtime) {
+        const pending = pendingLoads.get(id);
+        if (pending) {
+          pending.cancelled = true;
+          pendingLoads.delete(id);
+          return true;
+        }
+        return false;
+      }
       runtimes.delete(id);
       try {
         runtime.instance.destroy();
@@ -129,16 +173,25 @@ export function createModuleLoader({
     async reload(id) {
       const runtime = runtimes.get(id);
       if (!runtime) return false;
-      const { config, target } = runtime;
+      const { config, target, moduleId } = runtime;
       if (!loader.destroy(id)) return false;
       reloadGenerations.set(id, (reloadGenerations.get(id) ?? 0) + 1);
-      if (!await loader.load(id, { config })) return false;
-      if (target !== null && !loader.mount(id, target)) return false;
+      if (!await loader.load(moduleId, { instanceId: id, config })) return false;
+      if (target !== null && !loader.mount(id, target)) {
+        // A failed remount must not leave a loaded, detached runtime behind.
+        // Keep the failure visible after the teardown clears the old health record.
+        const failure = health.get(moduleHealthId(id))?.error ??
+          new Error("Reloaded module refused mount");
+        loader.destroy(id);
+        reportError(id, "reload", failure);
+        return false;
+      }
       clearError(id);
       return true;
     },
 
     destroyAll() {
+      for (const id of [...pendingLoads.keys()]) loader.destroy(id);
       for (const id of [...runtimes.keys()]) loader.destroy(id);
     },
 

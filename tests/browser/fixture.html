@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JamesUI Next – browser integration fixture</title>
+  <style>
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }
+    #app { width: 100%; height: 100dvh; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module">
+    import { createJamesUI1Preview } from "/custom_components/jamesui/frontend/jamesui-1-preview.js";
+
+    // Test-only source ID. No fabricated Home Assistant entities are saved.
+    let config = {
+      schema_version: 1,
+      pages: { home: {
+        kind: "dashboard", layout_id: "main", hero_widget_id: "weather",
+        elements: [
+          { id: "agenda", kind: "widget", ref_id: "agenda", column: 0, row: 0, column_span: 4, row_span: 4 },
+          { id: "house", kind: "widget", ref_id: "house", column: 4, row: 0, column_span: 4, row_span: 4 },
+          { id: "buttons", kind: "widget", ref_id: "buttons", column: 8, row: 0, column_span: 4, row_span: 4 }
+        ]
+      } },
+      layouts: { main: { kind: "hero-deck", scroll: "fixed", hero_ratio: 0.42 } },
+      widget_instances: {
+        weather: { module_id: "widget.weather-today", config: {} },
+        agenda: { module_id: "widget.calendar-agenda", config: {
+          instance_id: "browser-agenda", calendar_enabled: true, tasks_enabled: false,
+          calendars: [{ entity_id: "calendar.browser_fixture" }]
+        } },
+        house: { module_id: "widget.house-quick", config: {
+          buttons: [{ id: "lights", type: "lights" }]
+        } },
+        buttons: { module_id: "widget.dynamic-buttons", config: {
+          buttons: [{ id: "navigate", button_id: "navigate", size: "normal", definition: {
+            name: "Start", mode: "trigger", action: { type: "navigate", route: "home" }
+          } }]
+        } }
+      },
+      dynamic_buttons: {},
+      data_sources: {
+        "provider.weather": { entity_id: "weather.browser_fixture" },
+        "provider.house-lighting": {
+          lights: [{ id: "living", name: "Wohnzimmer", state: { entity_id: "light.browser_fixture" } }],
+          ambient_lights: []
+        }
+      },
+      module_settings: {}
+    };
+
+    if (new URLSearchParams(location.search).has("empty")) {
+      config = {
+        schema_version: 1, pages: {}, layouts: {}, widget_instances: {},
+        dynamic_buttons: {}, data_sources: {}, module_settings: {},
+      };
+    }
+    window.__juiTest = { status: "loading", app: null, error: null };
+    const app = createJamesUI1Preview({ document });
+    window.__juiTest.app = app;
+    let revisionCounter = 1;
+    const revision = () => revisionCounter.toString(16).padStart(64, "0");
+    const callWS = async ({ type, config: nextConfig, expected_revision: expectedRevision }) => {
+      if (type === "jamesui/config/get") return { config, revision: revision() };
+      if (type === "jamesui/config/replace") {
+        if (expectedRevision !== revision()) throw new Error("config_conflict: stale JamesUI config");
+        if (window.__juiTest.rejectNextReplace) {
+          window.__juiTest.rejectNextReplace = false;
+          throw new Error("Simulated Home Assistant configuration save failure");
+        }
+        config = structuredClone(nextConfig);
+        revisionCounter += 1;
+        window.__juiTest.persisted = structuredClone(config);
+        window.__juiTest.writes += 1;
+        return { config, revision: revision() };
+      }
+      throw new Error("Unexpected HA WS: " + type);
+    };
+    window.__juiTest.externalConfigChange = (change) => {
+      const next = structuredClone(config);
+      change(next);
+      config = next;
+      revisionCounter += 1;
+      window.__juiTest.persisted = structuredClone(config);
+    };
+    window.__juiTest.writes = 0;
+    window.__juiTest.serviceCalls = [];
+    window.__juiTest.persisted = structuredClone(config);
+    // Explicit local test entities; no customer entities or settings are saved.
+    window.__juiTest.setHass = ({
+      connected = true, light = "off", temperature = 21,
+      weather = "sunny", missingLight = false, missingWeather = false
+    } = {}) => {
+      const states = {};
+      if (!missingWeather) states["weather.browser_fixture"] = {
+        entity_id: "weather.browser_fixture", state: weather,
+        attributes: { temperature, temperature_unit: "°C", supported_features: 0 }
+      };
+      if (!missingLight) states["light.browser_fixture"] = {
+        entity_id: "light.browser_fixture", state: light, attributes: {}
+      };
+      app.core.hass = {
+        connected, states, config: { time_zone: "Europe/Berlin" }, callWS,
+        callService: async (domain, service, data, target) => {
+          window.__juiTest.serviceCalls.push({ domain, service, data, target });
+          if (domain !== "homeassistant" || service !== "toggle" ||
+              target?.entity_id !== "light.browser_fixture") {
+            throw new Error("Unsupported browser fixture service call");
+          }
+          const previous = app.core.homeAssistant.getState("light.browser_fixture")?.state;
+          window.__juiTest.setHass({ light: previous === "on" ? "off" : "on" });
+          return {};
+        },
+      };
+    };
+    window.__juiTest.setHass();
+    try {
+      await app.mount(document.getElementById("app"));
+      window.__juiTest.status = "ready";
+    } catch (error) {
+      window.__juiTest.status = "error";
+      window.__juiTest.error = error?.stack ?? String(error);
+    }
+  </script>
+</body>
+</html>

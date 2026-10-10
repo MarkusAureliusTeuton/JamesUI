@@ -138,6 +138,11 @@ class Block11ArchitectureTest(unittest.TestCase):
         for token in CORE_COUPLING_TOKENS:
             self.assertNotIn(token, source, f"Core must not own Block 11 behavior: {token}")
 
+    def test_block14_core_editor_has_no_direct_widget_module_dependency(self):
+        source = (CORE / "dashboard-edit-session.js").read_text(encoding="utf-8")
+        self.assertNotIn("../modules/", source, "Core edit session must not import domain modules")
+        self.assertIn("removeUnusedButton", source, "Resource cleanup must use dependency injection")
+
     def test_agenda_icons_use_existing_local_registry_only(self):
         definitions = (ICONS / "icon-definitions.js").read_text(encoding="utf-8")
         agenda_ids = (

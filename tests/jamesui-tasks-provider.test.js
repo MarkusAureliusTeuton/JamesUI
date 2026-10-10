@@ -220,3 +220,43 @@ test("atomic update rebinds source set and destroy drains all subscriptions with
   assert.equal(ha.activeEntitySubscriptions(), 0);
   assert.equal(caps.unregistered, 2);
 });
+
+test("failed source subscription during update rolls back the previous task runtime", async () => {
+  const caps = fakeCapabilities();
+  const ha = createFakeHomeAssistantAdapter({
+    states: {
+      "todo.old": todo("todo.old"),
+      "todo.new": todo("todo.new"),
+    },
+  });
+  const ctx = context(caps, ha);
+  const provider = createTasksProvider(ctx, { source_entity_ids: ["todo.old"] });
+  assert.equal(provider.mount(null), true);
+  await flush();
+  const originalSubscribe = ha.subscribeEntity.bind(ha);
+  let refuseOnce = true;
+  ha.subscribeEntity = (id, ...args) => {
+    if (id === "todo.new" && refuseOnce) {
+      refuseOnce = false;
+      throw new Error("new task subscription unavailable");
+    }
+    return originalSubscribe(id, ...args);
+  };
+  assert.throws(() => provider.update(ctx, { source_entity_ids: ["todo.new"] }),
+    /new task subscription unavailable/);
+  assert.equal(ha.activeEntitySubscriptions("todo.old"), 1);
+  assert.equal(ha.activeEntitySubscriptions("todo.new"), 0);
+  assert.equal(ha.activeConnectionSubscriptions(), 1);
+  await flush();
+  const latest = ha.subscriptionCalls.length - 1;
+  assert.equal(ha.subscriptionCalls[latest].message.entity_id, "todo.old");
+  ha.emitSubscription(latest, { items: [{
+    uid: "restored", summary: "Wieder verfügbar", status: "needs_action",
+  }] });
+  assert.equal(caps.current.status, "available");
+  assert.equal(caps.current.value.sources["todo.old"].items[0].uid, "restored");
+  assert.equal(provider.destroy(), true);
+  await flush();
+  assert.equal(ha.activeEntitySubscriptions(), 0);
+  assert.equal(ha.activeConnectionSubscriptions(), 0);
+});

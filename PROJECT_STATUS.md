@@ -303,3 +303,181 @@ Cross-page page-scroll/grid/widget-instance rules remain binding in `docs/JAMESU
 Start **Block 14 – Start configuration experience**.
 
 Read the completed Block-13 spec/plan and the cross-block layout planning notes, then define the final Start composition and generic structured-config-to-widget-instance orchestration. Block 14 must choose the actual OnePlus Pad 2 portrait logical grid/spans from measured available space, place Agenda + House Quick + Dynamic Buttons without hard-coding a button count in Block 13, and provide the planned Android-like grid placement/reflow contract without including later Haus/Media/Climate/Door migrations in Block 14. The approved new order places cutover Blocks 19–21 immediately after Block 14, before Blocks 15–18.
+
+## Block 14 – ongoing integration checkpoint (2026-10-09)
+
+- Active implementation: draft PR #27 (`feat/jamesui-1-0-block-14-start-configuration`), not merged or released.
+- Preview and dashboard composer/grid/editor/config implementation exist on the feature branch; integration and acceptance remain open.
+- Navigation UI now disables unmigrated Haus/Klima/Medien/Tür destinations on this branch; router-level route restrictions and regression coverage remain to verify.
+- No Home Assistant or OnePlus Pad 2 / Fully acceptance test has been performed or claimed.
+- Next: verify preview bootstrap and real config/provider wiring, add navigation regression tests, run branch CI, validate viewport, update Soll/Ist and prepare a test release without cutover.
+
+### Block 14 follow-up – viewport and navigation (2026-10-09)
+
+- Preview-only route allowlist now gates both navigation controls and Core Router; default Core behavior remains unchanged.
+- Navigation regression tests added; navigation CI commit `3da751c` passed. Subsequent viewport changes still require CI validation.
+- Shell viewport sizing uses a bounded grid (`minmax(0, 1fr) auto`) with non-scrolling page host; physical OnePlus Pad 2 / Fully Kiosk behavior unverified.
+- Current Soll-/Ist evidence matrix: `docs/JAMESUI_1_0_SOLL_IST_MATRIX.md`.
+- PR #27 remains draft. No HA or tablet acceptance claimed.
+
+### Block 14 integration work package – steps 1–6 (2026-10-09)
+
+- CI checked: commit `22de4b66` successful; provider-registration test commit `f526e912` successful. Subsequent provider lifecycle integration test and documentation commits require fresh CI.
+- The opt-in 1.0 preview now registers all eight canonical HA data providers and activates only entries explicitly present in persisted `data_sources`.
+- The preview retains the four Start widget registrations and a fixed-height shell with disabled unmigrated navigation destinations.
+- Added preview integration coverage for config loading and provider lifecycle; a real HA connection and actual widget data remain untested.
+- Updated `docs/JAMESUI_1_0_SOLL_IST_MATRIX.md` with evidence and acceptance gaps.
+- No merge or production cutover; draft PR #27 remains open. Tablet/HA/Fully Kiosk acceptance not performed.
+
+### Block 14 Start composition regression (2026-10-09)
+
+- Added a composed preview regression test with configured Weather Today hero, Calendar Agenda, House Quick and Dynamic Buttons widget instances.
+- Test checks the hero-deck layout, fixed bottom navigation, grid host count and weather hero module lifecycle; latest CI still pending.
+- No real HA entity data or physical tablet interaction was tested. r11 remains unaffected.
+
+### Block 14 composition CI and error handling (2026-10-09)
+
+- Four-widget Start composition regression is green at `57b12772` after correcting zero-based grid coordinates in the test.
+- Composer now rejects an unregistered or unmountable configured hero widget instead of silently treating an incomplete page as successful.
+- Added regression coverage for invalid hero configuration; latest CI still pending.
+- HA/OnePlus/Fully tests remain outstanding; PR #27 stays draft.
+
+### Block 14 HA preview bootstrap verification (2026-10-09)
+
+- GitHub Actions for `4ee13127` passed, including the preview panel property-forwarding regression.
+- HA panel now retains `hass`, `narrow`, `route`, and `panel` across asynchronous preview startup.
+- Configured providers remain opt-in via persisted `data_sources`; there is no invented HA entity mapping.
+- Automated tests are not a real Home Assistant or Fully Kiosk acceptance. PR #27 remains draft and r11 unchanged.
+
+### Block 14 provider startup rollback (2026-10-09)
+
+- `5da8c3de` CI confirmed green.
+- Failed preview startup now cancels/destroys all pending or loaded modules, not only successfully mounted providers.
+- Added regression: invalid `provider.house-lighting` config after valid weather provider must reject and unload weather.
+- New CI pending. No fabricated HA entities, no actual HA/OnePlus Pad 2/Fully Kiosk testing.
+
+### Block 14 migrated weather binding (2026-10-09)
+
+- Canonical backend migration stores legacy weather entity IDs at `data_sources.weather` (not `data_sources.provider.weather`).
+- Preview now reads `data_sources.weather` when no explicit `provider.weather` entry exists, preserving migrated weather entity settings without modifying r11.
+- Added regression test with `weather.home`; CI pending. No other entity IDs were inferred.
+
+### Evidence-based release gate (2026-10-09)
+
+- Audited current workflow and preview boundaries; CI `68005c2b` green, but no browser E2E or real HA/tablet evidence.
+- Binding release criteria and concrete risks: `docs/JAMESUI_NEXT_ACCEPTANCE_GATES.md`.
+- Highest-priority blocker: a fresh/migrated config has no `pages.home` dashboard; preview rejects startup until a configured dashboard exists.
+- PR #27 stays draft; no tablet rollout until automated browser/system integration is demonstrated.
+
+- 2026-10-10: Startup initialization CI passed at `58fd1d95`. Async panel disconnect cleanup and pending-load regression test added (`53faba66`, `9b6bf43e`); CI confirmation pending. Browser/HA/tablet acceptance still open.
+
+### Integrations-/Browsertests (2026-10-10)
+
+- Das Dashboard wartet jetzt auf das tatsächliche Laden/Mounten aller konfigurierten Widgets; Teilfehler lassen den Preview-Start fehlschlagen statt einen erfolgreichen Start vorzutäuschen.
+- Der Vier-Widget-Integrationstest verwendet gültige Widgetkonfigurationen und prüft die geladenen Instanzen; benötigte Test-DOM-Geometrie ist explizit simuliert.
+- Ein eigenständiger Chromium-Job (`browser-smoke`) prüft Start, drei Deck-Widgets + Wetter-Hero, fehlende Ladefehler, Navigation, horizontales Overflow und vollständigen Destroy in zwei **generischen Portrait-Viewports** (800×1280, 1024×1366).
+- Beide GitHub-Actions-Jobs `validate` und `browser-smoke` erfolgreich: Run `38028254684`, Commit `0cfadf65`.
+- Offene Gates: umfassende Browserinteraktionen/Fehlerfälle, reale HA-Entitäten und Actions, OnePlus Pad 2 / Fully Kiosk. Keine produktive oder Tablet-Freigabe.
+
+### Chromium-Interaktion und HA-Störfälle (2026-10-10)
+
+- `browser-smoke` prüft jetzt in beiden Portrait-Viewports zusätzlich reale Klicks (Wetter-Forecast-Overlay öffnen/schließen; Dynamic-Button-Trigger), sichtbare fehlende Kalenderquelle und tatsächliche Wetter-/Lichtwerte aus **expliziten simulierten HA-Entitäten**.
+- Browser prüft Wetter- und Lichtänderung über HA-Adapter → Provider → Capability → Widget, fehlende konfigurierte Entitäten und Disconnect/Reconnect ohne Remount. Fehlt die Licht-Entität, erscheint eine Warnung mit `1 nicht erreichbar`, kein künstlich erfundener verfügbarer Wert.
+- Core Module Loader wertet ein explizites `mount() === false` nun als Fehler statt als Erfolg; Regressionstest ergänzt.
+- GitHub Actions **beide Jobs erfolgreich**: Run `38028627815` / Commit `88d3667f` (inkl. vorangegangener Module-Loader-Korrektur `4fc0337e` und Test `bbc2c5b9`).
+- Umfangsgrenze: simulierte HA-Daten in echtem Chromium-Browser; keine reale HA-Installation, kein tatsächliches OnePlus Pad 2, kein Fully Kiosk. Browser-Gestentests, erweiterte Widgetzustände und Integrationsabnahme stehen noch aus.
+
+### Block 14 Browser-Editor und Persistenz (2026-10-10)
+
+- Reale Chromium-Gestentests (in zwei generischen Tablet-Portrait-Viewports): Long-Press aktiviert den Dashboard-Editor, Drag bewegt die Rasterkachel, Undo stellt die Ausgangslage her.
+- Die Test-HA-Konfiguration akzeptiert erfolgreiche `jamesui/config/replace`-Schreibvorgänge und kann einen Schreibvorgang explizit ablehnen. Browser-E2E verifiziert: nach Fehler bleiben lokale Änderungen/Editor sichtbar, Remote-Konfiguration unverändert; erneutes Speichern führt zu genau einer erfolgreichen Aktualisierung.
+- Browsergeometrie validiert Sichtbarkeit aller drei Deck-Kacheln, fehlende gegenseitige Überlappung, horizontale Grenzen und Abstand zur Bottom-Navigation.
+- Beide CI-Jobs `validate` und `browser-smoke` erfolgreich: Run `38030663272`, Commit `1c47d75e`.
+- Noch offen (Block-14-Konfiguration): vollständige nutzbare Einrichtung der Widgetinstanzen und Datenquellen über die Oberfläche. Der Dashboard-Katalog erzeugt bislang nicht für jedes Widget einen gültigen Satz an Einstellungen; insbesondere Agenda benötigt Kalender-/Todo-Quellen. Kein OnePlus-Pad-2-/Fully-Kiosk-/Real-HA-Nachweis.
+
+### Block 14 – guided widget configuration and empty first-run editing (2026-10-10)
+
+- Added an always-available `Bearbeiten` entry point, allowing dashboard editing even when a fresh Start page has zero widgets.
+- Catalog now requests actual configuration and validates it **before** adding the widget: Weather Today (available HA weather), Agenda (explicit calendar/todo entity IDs), House Quick (existing configured lights or an explicit `light.*` source), Dynamic Buttons (existing central button or new explicitly configured HTTPS/HTTP URL action). No sample HA source IDs are persisted.
+- Dashboard edit session atomically persists new widget instances, provider `data_sources` and central dynamic button definitions; Undo drops all associated local changes. Concurrent remote source modifications reject save instead of overwriting them.
+- The dynamic-buttons host resolves new instance references against central definitions. The configurator remains in the `modules/` domain; Core is generic, preserving Block-11 architecture guards.
+- Chromium covers an empty initial configuration, direct editing without long-press, guided Agenda validation, insertion and atomic saving. Unit tests cover valid/invalid source bindings, buttons, undo and concurrent changes.
+- **Aktualisiert 2026-10-10:** Neu gespeicherte Datenquellen werden ohne erneutes Öffnen über den Block-14-Provider-Coordinator aktiviert. Unit-/Integrationstests und Chromium prüfen den Weg; echte HA-Entitäten/Services sind noch nicht abgenommen.
+- This is **an initial, guided subset**, not a full settings implementation for every heating/device/energy/control-state source or every advanced widget option. Real HA and Fully Kiosk remain untested. PR #27 remains draft.
+
+### Scope-Freeze: Basissoftware und Blöcke 0–14 (2026-10-10)
+
+- **Arbeitsfreigabe:** Ausschließlich Core/Basissoftware, bestehende Module 0–13 und deren Block-14-Integration, Konfiguration, Qualitätssicherung. Blöcke 15–21 werden **nicht** begonnen. Vorbereitete spätere Reihenfolge ist keine Ausführungsfreigabe.
+- Core Module Loader behandelt `update() === false` wie `mount() === false` als echten Fehler; Regressionstest.
+- Neue modulare Provider-Koordination gleicht die kanonisch gespeicherten `data_sources` mit den laufenden Provider-Instanzen ab (Laden, Update, Entfernen, Destroy und Abbruch). Keine fachlichen Provider-IDs im Core.
+- Automatisiert geprüft: Hinzufügen/Ändern/Entfernen konfigurierter Kalender-/Todo-Provider nach gespeichertem Config-Store-Update **ohne Panel-Neustart**, einschließlich sichtbarem Capability-Status. Chromium prüft ebenfalls die Live-Aktivierung der gespeicherten Agenda-Quellen.
+- **Bestätigter Stand:** CI-Lauf `38033578889`, beide Jobs `validate` und `browser-smoke` erfolgreich (Commit `304ac446`).
+- **Offen in den Blöcken 0–14:** vollständige Einrichtung/Änderung der bestehenden Heizungs-, Geräte-, Energie- und Control-State-Provider, erweiterte Kalender-/Widget-Einstellungen, allgemeine HA-Steueraktionen und echte HA-/Tablet-Abnahme. Es erfolgt keine Aussage „fertig“ allein aus der grünen CI.
+
+### Block 14: bestehende Wetter-, Haus- und Togglekonfiguration (2026-10-10)
+
+- Wetter-Katalog erwartet eine **explizite `weather.*`-Entität**; optionale Sensoren für Außentemperatur, Mondphase und Beleuchtungsstärke können getrennt gebunden werden. Vorhandene kanonische Wetterdaten (inkl. r11-Migration) werden als Voreinstellung übernommen.
+- House Quick lässt die **bereits in Block 12 implementierten Typen** direkt konfigurieren: Licht, Ambientelicht, Heizungszone mit Ist-/Solltemperatur sowie Heizanforderung und Auto-Status, Gerät mit Aktiv-/Update-/Warn-/Fehlersignalen und Energie mit Quelle/Mittelungsfenster/Grenzwerten.
+- Neue Dynamic Buttons bieten neben vorhandenem Button und URL-Trigger eine **zustandsabhängige Toggle-Variante** für `light.*`, `switch.*`, `input_boolean.*`, `fan.*` über die vorhandenen `entity.toggle`-Aktionen und `provider.control-state`. Ein Toggle zeigt nur den tatsächlich publizierten HA-Zustand als aktiv/inaktiv an.
+- Block-14-Rasterplatzierung korrigiert: neue Widgets nutzen freie Spalten in 12-Spalten-Zeilen, bevor sie eine neue Zeile belegen. Unit-/Browserregression prüft drei nebeneinanderliegende Widgets ohne gegenseitige Überlappung.
+- **Nachweis:** GitHub-Actions-Lauf `38041841417`, Commit `e065e7bae6`: `validate` und `browser-smoke` beide **grün**. Chromium prüft die Heizungsquellen und HA-Toggle-Zustandskette mit explizit simulierten Entitäten.
+- **Wichtig:** Ein Konfigurationsformular bindet Quellen, es beweist nicht die Existenz dieser Entitäten in der realen HA-Installation. Fortgeschrittene Eingaben (etwa benutzerdefinierte boolesche Wertmappings, frei definierte Services, Editing/Removing bestehender Widgetinstanzen) bleiben als Block-14-Rest offen. Weitere Blöcke 15–21 nicht begonnen; keine Tablet-/Produktivfreigabe.
+
+### Block 14 – vorhandene Widgets bearbeiten, entfernen und Abbrechen (2026-10-10)
+
+- Der Dashboard-Editor kann nun **vorhandene Widget-Instanzen** über den bereits validierenden Katalog öffnen, mit ihren aktuellen Quellen vorbelegen, lokal ändern, rückgängig machen und atomar speichern. Erhalten bleiben insbesondere bisherige erweiterte Agenda-Einstellungen sowie unveränderte Widget-IDs.
+- **Entfernen** löscht die Kachel und eine **nicht anderweitig referenzierte** Widget-Instanz aus `widget_instances`. Von anderen Seiten/Hero-Layouts genutzte Instanzen bleiben bestehen; globale Datenquellen und zentrale Buttondefinitionen werden niemals beiläufig gelöscht.
+- **Rückgängig** remountet bei geänderter Widget-Konfiguration gezielt den betroffenen Runtime-Host. Nicht betroffene Widgets werden nicht neu gestartet.
+- **Abbrechen** verwirft den gesamten ungespeicherten Entwurf ohne Config-Store-Schreibzugriff und stellt die vorherige Darstellung wieder her. Speicherversagen wird sichtbar erklärt; erneutes Speichern bleibt möglich.
+- **Parallelbearbeitung:** Änderungen an bestehenden Instanzen, geteilten Referenzen und sogar an Rasterpositionen einer anderen Sitzung führen zu einem kontrollierten Konflikt statt Datenüberschreibung.
+- **CI-Nachweis:** `validate` + echter Chromium-`browser-smoke` grün, [Run 38043543481](https://github.com/MarkusAureliusTeuton/JamesUI/actions/runs/38043543481), Commit `777274dc9e`. Browser deckt Edit/Undo/Save/Remove/Cancel, persistente HA-Mock-Konfiguration sowie Wiederaufbau des Widget-Runtime-DOM ab.
+- **Weiterhin offen innerhalb 0–14:** Komfort-/Erweiterteneinstellungen für alle Modulvarianten, explizite globale Verwaltung/Bereinigung nicht mehr genutzter Provider- und Buttondefinitionen, vollständige Architektur-/Fehlerfall-Abnahme und echtes Home Assistant/OnePlus Pad 2/Fully Kiosk. Keine Folgemodule 15–21, kein Cutover; PR #27 bleibt Draft.
+
+### Block 14 – zentrale Ressourcen und echte Mehrclient-Speichersicherheit (2026-10-10)
+
+- **Sichere Button-Bereinigung:** Die Editoraktion `Bereinigen` listet nur zentrale Dynamic-Button-Definitionen, auf die weder eigenständige Dashboard-Buttons noch Widgetinstanzen – einschließlich anderer Seiten – verweisen. Entfernen ist ausdrücklich auszulösen, per Undo rücknehmbar und wird gemeinsam mit der übrigen Konfiguration gespeichert. Entfernen einer Kachel allein bereinigt **keine** Datenquelle oder zentralen Definitionen.
+- **Gleichzeitig geöffnete Clients:** Bisher war `jamesui/config/replace` ein vollständiger, nicht versionsgebundener Austausch; ein anderer HA-Client konnte dadurch unbemerkt überschrieben werden. Die API **verlangt jetzt `expected_revision`** (64-stelliger Inhalts-SHA-256 der kanonischen Konfiguration). Der Python-Service vergleicht unter der Schreibsperre; bei Abweichung wird `config_conflict` zurückgemeldet. Auch Legacy-`config/update` verändert diese Revision, ohne die r11-API selbst abzuschalten.
+- **Frontend:** Config Service übernimmt `revision` aus `config/get`, sendet sie bei `config/replace` und aktualisiert sie nur nach bestätigter Speicherung. Der Editor behält seinen Entwurf bei fehlgeschlagenem Save. Erforderlich ist nach fremder Änderung ein erneutes Laden und eine bewusste Entscheidung über den Entwurf.
+- **Prüfungen:** Python-CAS- und Restart-Tests, HA-API-Konflikttest, JS-Zweiclient-Simulation, Undo/Shared-Resource-Tests und echter Chromium-Test mit simuliertem fremdem HA-Konfigurationsupdate.
+- **Bestätigt:** GitHub Actions `38048180467`, Commit `a355d719d2`: `validate` und `browser-smoke` beide erfolgreich.
+- **Kein Produktivnachweis:** Reale HA-Installation/Authentifizierung, KNX/HA-End-to-End und OnePlus Pad 2 / Fully Kiosk bleiben offen. PR #27 bleibt Draft. Keine Folgeblöcke 15–21.
+
+### Block 14 – sichere Bedienung nach einem Mehrclient-Speicherkonflikt (2026-10-10)
+
+- Der Editor bietet bei `config_conflict` jetzt eine **ausdrücklich auszulösende** Aktion `Serverstand laden und erneut speichern`. Es erfolgt keine stillschweigende Überschreibung oder automatische Wiederholung.
+- Der aktuelle Serverstand wird neu geladen; die bestehende Edit-Session prüft daraufhin vor erneutem CAS-Schreiben den ursprünglichen Seitenstand, geänderte Widgetinstanzen, Providerquellen und zentrale Buttondefinitionen. **Nur nicht widersprüchliche Änderungen** werden zusammengeführt.
+- Bei Konflikten an derselben Dashboard-Seite wird der zweite Versuch abgewiesen; der lokale Entwurf bleibt bestehen. `Abbrechen` zeigt nach bereits erfolgtem Server-Reload den aktuellen gespeicherten Dashboardstand an.
+- **Nachweis:** Integrationstests mit zwei simulierten Clients und Chromium-Browserablauf (erst Fremdänderung in `module_settings`, dann absichtlicher Rasterkonflikt), GitHub Actions [38062640323](https://github.com/MarkusAureliusTeuton/JamesUI/actions/runs/38062640323), Commit `f3c07c690`: `validate` und `browser-smoke` erfolgreich.
+- **Weiterhin offen:** Echte Mehrclient-Kommunikation auf Home Assistant/Tablet, Langzeittests sowie vollständige erweiterte Konfiguration der bestehenden Module. Blöcke 15–21 unverändert zurückgestellt.
+
+### Block 14 – Core-/Modulgrenzen geprüft (2026-10-10)
+
+- Der generische `core/dashboard-edit-session.js` importiert keine fachlichen Dynamic-Button-Module mehr. Die ausdrückliche Prüfung/Löschung ungenutzter Buttondefinitionen wird vom Dashboard-Composer als optionale Funktion `removeUnusedButton` injiziert.
+- Ein Architektur-Regressionstest verhindert einen erneuten direkten Import `../modules/` aus der Core-Edit-Session. Bisherige Unit-/Browserfälle für Bereinigen, Undo, Speichern, parallele Bearbeitung und Konfliktwiederholung bleiben unverändert abgedeckt.
+- **Nachweis:** [GitHub Actions 38062902006](https://github.com/MarkusAureliusTeuton/JamesUI/actions/runs/38062902006), Commit `4a068b957`: `validate` und `browser-smoke` beide erfolgreich.
+- **Rest bis Block 14:** weitere Modulgrenzen/Abhängigkeiten, vollständige fortgeschrittene Konfigurationsmöglichkeiten und echte HA-/Tablet-Funktionstests. Blöcke 15–21 weiter nicht freigegeben.
+
+### Block 14 – Lifecycle-/Abhängigkeitshärtung der bestehenden Module (2026-10-10)
+
+- **Provider-Audit:** Die vorhandenen Kalender- und Aufgabenprovider unterschieden sich beim fehlgeschlagenen Konfigurationswechsel von den Hausprovidern: Ein Fehler während der neuen HA-Subscription konnte die bisherige funktionierende Laufzeit verlieren lassen. Beide Provider sichern nun vor dem Rebind ihre vorherige Konfiguration, reinigen einen nur teilweise gebundenen Versuch und stellen die ursprünglichen Subscriptions/Capabilities wieder her.
+- **Regression:** Spezifische Tests erzwingen einen einmaligen `subscribeEntity`-Fehler bei Kalender- bzw. Aufgabenquellen und prüfen die alten funktionsfähigen Quellen, aktive Subscriptions, Rücklieferung der Aufgaben und Destroy-Cleanup.
+- **Module Loader:** `reload()` entfernt eine neu geladene Modulinstanz bei fehlgeschlagenem Remount, behält die Fehlermeldung im zentralen Health-Service und meldet keinen falschen Erfolg. Regression simuliert explizites `mount() === false`.
+- **CI-Nachweis:** GitHub Actions [38065899365](https://github.com/MarkusAureliusTeuton/JamesUI/actions/runs/38065899365), Commit `7ff1996c6`: **`validate` und `browser-smoke` erfolgreich**.
+- **Nächste Prüfstellen innerhalb 0–14:** Noch gezielt zu prüfen: der eigene Weather-Provider-Rebind und die Abhängigkeit der generischen `core/dashboard-page-composer.js` von mehreren `modules/`-Integrationsdateien. Das ist noch **kein abgeschlossener Architektur-/Hardware-Abnahmestand**. Blöcke 15–21 bleiben unberührt.
+
+### Block 14 – Wetter-Rollback und Dashboard-Core-Entkopplung (2026-10-10)
+
+- **Wetter-Provider:** Scheitert ein Wechsel von Quellen/Sensorbindungen innerhalb der lokalen HA-Subscriptions, werden der teilweise installierte neue Zustand und Remote-Forecast-Subscriptions bereinigt. Die zuvor gültige Wetterkonfiguration, Quellen-Subscriptions und publizierten Capabilities werden wiederhergestellt; der einzige Fünf-Minuten-Timer bleibt unverändert. Regression erzwingt einen einmalig fehlerhaften Sensor-Subscribe und prüft Laufzeit, Quellbindung, Subscriptionzahlen und Destroy.
+- **Dashboard-Composer:** `core/dashboard-page-composer.js` importiert keine Domain-Module mehr. Die fachliche Layout-, Widget-, Katalog- und Ressourcenlogik wird in `modules/dashboard-composition.js` zusammengestellt und als explizites `integrations`-Contract an den Core übergeben. Preview und Dashboard-Integrationstests verwenden diese Modul-Composition.
+- **Architektur-Gate:** Neuer Test in `tests/test_core_architecture.py` verhindert Domain-Imports aus dem generischen Dashboard-Composer. Separater Node-Test weist fehlende und unvollständige Composition-Contracts zurück.
+- **Prüfung:** Wetter-Fault-Injection sowie Core/Modul-Integration und Chromium werden durch die bestehende GitHub-CI ausgeführt. Aktuelle Änderungen sind auf `feat/jamesui-1-0-block-14-start-configuration` eingecheckt; PR #27 bleibt Draft.
+- **Weiter offen innerhalb 0–14:** umfassende Prüfung zusätzlicher Fehlerpfade und erweiterter Modul-/Widget-Einstellungen, Real-HA-/KNX-Services, Home-Assistant-Hardware und Tablet/Fully-Kiosk-End-to-End-Tests. Kein Start der Blöcke 15–21, kein Produktiv-Cutover.
+
+### Block 14 – Async-Widget-Lifecycle und Reihenfolge der Config-Store-Operationen (2026-10-10)
+
+- **Module Loader:** Abgebrochene asynchrone `load()`-Aufrufe werden jetzt **pro Ladeversuch** statt über eine gemeinsam geteilte Cancellation-ID verwaltet. Nach Entfernen/Undo kann sofort eine neue Instanz mit gleicher ID geladen werden. Alte Importergebnisse oder Importfehler dürfen die neue Laufzeit und deren Health-Status nicht überschreiben/zerstören.
+- **Widget-Host:** Ein bereits entsorgter Host ignoriert verspätete erfolgreiche oder fehlerhafte Imports vollständig. Die Entsorgung erfolgt beim Entfernen, nicht verspätet aus dem alten Host-Promise.
+- **Config Service:** Schreibvorgänge eines Clients werden serialisiert und verwenden jeweils die letzte bestätigte CAS-Revision; `load()` nach bereits angefragtem Write wartet auf dessen Abschluss. `update()` baut auf bereits beauftragten direkten `replace()`-Operationen auf. Die asynchrone `replace()`-Fehlerschnittstelle blieb erhalten.
+- **Fehler-/Racetests:** Unit-Tests für mehrere Importgenerationen, späte Fehler, echte Dashboard-Grid-/Widget-Host-/Loader-Kombination mit Remove/Undo; Config Service testet Delayed Writes, konkurrierende direkte Writes, Queue-Fortsetzung nach Schreibfehler und Stale-Read-Schutz.
+- **Qualitätsnachweis:** [GitHub Actions 38069408258](https://github.com/MarkusAureliusTeuton/JamesUI/actions/runs/38069408258), Commit `7708a784b`: beide Jobs `validate` und `browser-smoke` **grün**.
+- **Abgrenzung:** Weiter nur Blöcke 0–14; kein r11-Cutover, keine nachfolgenden Blöcke 15–21. Echte HA-Entitäten, länger laufende Netztrennung und OnePlus Pad 2 / Fully Kiosk weiterhin nicht geprüft.

@@ -1,0 +1,137 @@
+# JamesUI 1.0 – Soll-/Ist-Matrix
+
+Stand: 2026-10-09. Arbeitsstand des Draft-PR #27, keine Freigabe oder Tablet-Abnahme.
+
+| Bereich | Soll | Ist / Nachweis | Offen |
+| --- | --- | --- | --- |
+| Core / Architektur | Modularer Core, getrennt von r11 | Core, Loader, Registry und HA-Adapter vorhanden | End-to-End-Integration prüfen |
+| Navigation | Nur nutzbare Ziele anwählbar | 1.0-Vorschau beschränkt Router und Buttons auf Start; separate Regressionstests | Echte HA-Vorschau prüfen |
+| Dashboard-Komposition | Konfigurierte Widgetinstanzen im Layout | Composer, Grid, Widget-Hosts und Editor im Feature-Branch vorhanden; konfigurierte Provider werden aus data_sources geladen | Konfiguration und Provider im HA-Verbund prüfen |
+| Start-Widgets | Weather Today, Calendar Agenda, House Quick, Dynamic Buttons | Module und acht Datenprovider in Vorschau registriert; Provider-Lifecycle- und vier-Widget-Kompositionstest ergänzt | Datenbindung und Funktion auf HA prüfen |
+| Layout / Tablet | Hochformat, feste Startseite, Bottom-Navigation | Viewport-begrenztes Shell-Grid; Hero-Deck und internes Dashboard-Raster implementiert | Reale OnePlus-Pad-2-Maße, Fully Kiosk und Touch prüfen |
+| Persistenz | Konfigurationsspeicher statt r11-Fallback | Config Service mit HA-WebSocket get/replace; Vorschau lehnt fehlende Konfiguration ab | Realen HA-Konfigurationsstand prüfen |
+| Qualität | Automatisierte Tests und grüne GitHub Actions | Tests vorhanden; letzte grüne Navigation-CI vor Layout-Änderung: 3da751c | Vier-Widget-Komposition CI grün (`57b12772`); neue Fehlerpfad-CI abwarten, E2E mit echtem HA ergänzen |
+| Migration | r11 erst nach kontrollierter Freigabe ablösen | 1.0-Vorschau separat; PR #27 Entwurf | Abnahme, Umschaltplan, Rollback |
+
+**Wichtig:** Keine erfolgreichen Home-Assistant-, Fully-Kiosk- oder Tablet-Tests durchgeführt. „Vorhanden“ bedeutet nicht „abgenommen“.
+
+## Integrationsgrenzen
+
+- Provider werden ausschließlich aus `data_sources[provider-id]` aktiviert; nicht konfigurierte Provider liefern keine erfundenen Daten. Die HA-Entity-Zuordnung muss auf dem Zielsystem konfiguriert werden.
+- Die vier Start-Widgets sind im Modulregister vorhanden. Vollständige Widget-/Provider-Interaktion unter realen HA-Daten ist noch nicht abgenommen.
+- Die Dashboard-Hülle ist auf feste Höhe ausgelegt; sichtbare Widget-Anordnung und Touch-Bedienung im Hochformat sind noch nicht praktisch validiert.
+- CI ist eine technische Prüfung und kein Ersatz für einen Home-Assistant-/Fully-Kiosk-Test.
+
+## Bootstrap-Abnahme (2026-10-09)
+
+- Automatisierte Vorschau-Tests inklusive HA-Panel-Eigenschaften (`hass`, `narrow`, `route`, `panel`) erfolgreich: CI `4ee13127`.
+- Home-Assistant-Instanz, reale Entitäten, Tablet-Hochformat und Fully Kiosk: weiterhin **nicht getestet**.
+- Produktiv-Umschaltung auf JamesUI 1.0: **nicht freigegeben**.
+
+## Provider-Startfehler (2026-10-09)
+
+- Soll: Bei ungültiger gespeicherter Provider-Konfiguration darf keine teilweise aktive Dashboard-Laufzeit zurückbleiben.
+- Ist: Fehlerpfad räumt alle geladenen und ausstehenden Module auf; Regressionstest ergänzt, neue CI ausstehend.
+- Reale HA-Entitäten müssen später explizit zugeordnet und am Zielgerät getestet werden.
+
+## Wetter-Datenquelle (2026-10-09)
+
+- Soll: Bereits konfigurierte r11-Wetter-Entitäten aus der kanonischen Migration wiederverwenden, ohne künstliche HA-IDs.
+- Ist: Preview berücksichtigt `data_sources.weather` als Fallback für `provider.weather`; Regressionstest ergänzt, CI ausstehend.
+
+## Verbindliche Freigabe-Gates (2026-10-09)
+
+- Nachweis und Risiken: `docs/JAMESUI_NEXT_ACCEPTANCE_GATES.md`.
+- CI bis `68005c2b` grün; echte Browser-/HA-/Fully-Kiosk-/Tablet-Prüfungen fehlen.
+- **Startblocker:** Ohne explizites `pages.home`-Dashboard startet die 1.0-Vorschau nicht. Konfigurations- und E2E-Gates sind offen.
+
+## Integration und Browser-Smoke (2026-10-10)
+
+- `validate` und `browser-smoke` sind im CI-Lauf `38028254684` grün (Commit `0cfadf65`).
+- **Widget-Readiness:** Der Preview-Mount wartet, bis die konfigurierten Widgets fertig geladen und gemountet sind. Ein fehlgeschlagener Start wird nicht mehr als Erfolg gemeldet.
+- **Echter Chromium-Browser:** Tests in `tests/browser/` prüfen Startseite, Widget-DOM, Navigation, Overflow, Portrait-Viewports und Zerstörung der App. Dies ist ein **simulierter HA-Browser-Smoke-Test**, keine Abnahme mit realem HA, OnePlus Pad 2 oder Fully Kiosk.
+- Browser-Interaktions- und Reconnect-Szenarien sind noch nicht vollständig abgedeckt.
+
+## Browser-Störfallprüfung (2026-10-10)
+
+- Grüne CI für `validate` und `browser-smoke`: Run `38028627815` / Commit `88d3667f`.
+- Echte Chromium-Interaktionen: Forecast öffnen/schließen, konfigurierten Navigations-Trigger betätigen.
+- Getestete Datenkette: Wetter und Licht aus **simulierter HA-State-Liste** in die sichtbare UI; Wertänderung, fehlende Entity, Disconnect/Reconnect. Fehlende Kalenderquelle zeigt eine Nichtverfügbarkeitsmeldung statt Beispieltermine.
+- Gefundene Loader-Lücke geschlossen: Rückgabe `false` bei `mount()` ist ein Fehler.
+- **Nicht getestet:** produktive HA-WebSocket-/Entity-Konfiguration, echte KNX-/Geräteaktionen, Fully Kiosk und Hardware des OnePlus Pad 2. Für G4 fehlen weitere Interaktions- und Visual-Regressionsfälle.
+
+## Browser-Editor und Persistenz (2026-10-10)
+
+| Gegenstand | Nachweis | Rest |
+| --- | --- | --- |
+| Editor-Gesten und Raster | Chromium: Long-Press, Drag, Undo; zwei generische Hochformate | Reales Tablet, weitere Gesten-/Grenzfälle |
+| Konfiguration speichern | Chromium: eine erfolgreiche HA-WebSocket-Schreibtransaktion; Save-Fehler erhält den lokalen Entwurf und Remote-Daten; Retry erfolgreich | Echte HA-Authentifizierung/-Berechtigungen und reale Konfiguration |
+| Sichtbare Positionierung | Chromium: Kacheln nicht überlappend/abgeschnitten; Navigation sichtbar | Pixel-/Screenshot-Abnahme, Fully Kiosk |
+| Widget hinzufügen | Katalog und Edit-Session im Code und Node-Tests | **Offen:** vollständige UI-Formulare, gültige Widget-Defaults und Quellenbindung; leere Standardconfig funktioniert nicht für Agenda |
+| Qualitätsnachweis | Run `38030663272`: `validate` + `browser-smoke` grün | Keine Produktiv-/Tablet-Freigabe |
+
+## Block 14 – konfigurierte Widget-Instanzen und Erststart (2026-10-10)
+
+| Funktion | Aktueller Nachweis | Noch offen |
+| --- | --- | --- |
+| Leere Neuinstallation | Chromium: Dashboard wird initialisiert, `Bearbeiten` erreichbar, Widget anlegbar und speicherbar | Echte Home-Assistant-Installation |
+| Widget-Katalog | Geführte Eingaben und Validierung für Wetter, Agenda, Licht-Kurzstatus und vorhandene/URL-Buttons | Erweiterte Konfiguration für alle Haus-/Steuerungs-/Widget-Varianten |
+| Kalender/Aufgaben | Explizite `calendar.*`/`todo.*`-IDs; Provider-Bindings zusammen mit Widget gespeichert | Echte Kalender-/Todo-Berechtigungen, Abruf und Bearbeitung |
+| Quellenänderungen | Undo, atomarer Save, Konfliktschutz; bestehende Provider nach Save live gestartet/aktualisiert (CI 38033578889) | Reale Home-Assistant-Anbindung und zusätzliche Quellenformulare |
+| Dynamic Buttons | Zentrale Definition oder gültige URL-Action; keine implizite HA-Aktion | Eigene Toggle-/KNX-/Service-Action-Konfiguration |
+| Rollout | Testbereit nur in simulierter Browser-Umgebung | HA-, OnePlus-Pad-2- und Fully-Kiosk-Abnahme |
+
+## Beschränkung der laufenden Arbeit (2026-10-10)
+
+- Nur Basis/Core, bestehende Module aus Block 0–13 und deren Abschluss/Integration in Block 14.
+- Keine Folgeblöcke 15–21 und keine produktive Umschaltung; PR #27 bleibt Draft.
+- Live-Konfigurationsübernahme vorhandener Provider in Unit-/Integration-/Chromium-Tests grün (`38033578889`), echte HA-/Tablet-Tests offen.
+- Abschluss der vorhandenen Module bedeutet auch vollständige nutzerseitige Konfiguration der bereits spezifizierten Heizungs-, Geräte-, Energie- und Steuerzustandsfähigkeiten; diese ist **noch offen**.
+
+## Aktueller Stand der Modul-Konfiguration – 2026-10-10
+
+| Bereich in Blöcken 0–14 | Implementiert und automatisiert nachgewiesen | Noch offen |
+| --- | --- | --- |
+| Wetter | Manuelle `weather.*`-Quelle und optionale Sensoren; Migration bestehender Bindings | Reale Entitäten / HA-Abrufe; umfassende Wetter-Präsentationsabnahme |
+| Kalender/Aufgaben | Eigene Instanzen, explizite `calendar.*`/`todo.*`-Quellen, Quellaktivierung nach Save | Erweiterte Agenda-Optionen und reale Kalender-/Aufgabenbearbeitung |
+| House Quick | Licht, Ambientelicht, Heizung, Geräte, Energie über explizite Datenquellen; Energiegrenzwerte | Benutzerdefinierte State-Mappings, Editieren bestehender Provider-Einträge, Real-HA-Prüfung |
+| Dynamische Buttons | Vorhandene Definition, URL-Trigger und echte State-Backed Toggles; Chromium HA-Aktion/Zustandswechsel | Erweiterte HA-Serviceaktionen, freies Button-Management / Einstellungen |
+| Dashboard | Direktes Editieren leerer Seite, Hinzufügen, Undo, Save/Retry, 12-Spalten-First-Fit mit Browserprüfung | Bearbeiten/Entfernen vorhandener Widgets, visuelle/Tablet-Langlaufabnahme |
+| CI | **Beide Jobs grün**, `38041841417`, Commit `e065e7bae6` | Echte Home-Assistant-Instanz und Fully Kiosk / OnePlus Pad 2 |
+
+Ältere Tabellen oben dokumentieren den damaligen Zwischenstand; für die derzeitigen Abnahmekriterien gilt die vorstehende Matrix. Keine Arbeiten an Folgeblöcken 15–21.
+
+## Block 14 – bestehende Instanzen und sichere Editorabnahme (2026-10-10)
+
+| Funktion | Nachgewiesener Stand | Rest |
+| --- | --- | --- |
+| Bestehende Widgets ändern | Geführter Editor mit Vorbelegung der aktuellen Instanz, Quellvalidierung und Beibehaltung erweiterter Agendaoptionen; selektiver Remount | Alle erweiterten Einstellungen / Sonderinstanzen vollständig bedienbar machen |
+| Kachel entfernen | Layout-Element und exklusiv genutzte Instanz werden gelöscht; gemeinsam genutzte Instanzen/Quellen/Definitionen bleiben erhalten | Explizite Verwaltung globaler ungenutzter Ressourcen |
+| Undo und Abbrechen | Mehrere Entwurfsänderungen ohne HA-Write verwerfen; Browser belegt korrekte Darstellung und anschließendes Neuladen | Weitere Touch-/Dauerlaufszenarien |
+| Speicherkonflikte | Veränderte Widgetdefinitionen, fremde Page-Elemente und deren Rasterkoordinaten werden nicht überschrieben | Gleichzeitige echte HA-Clients |
+| Fehleranzeige | Fehlgeschlagener Save sichtbar mit Fehlermeldung, Draft und Retry bleiben erhalten | Endnutzertexte/weitere Providerfehler |
+| CI | **`validate` und `browser-smoke` grün:** 38043543481 (`777274dc9e`) | Reale Home-Assistant- und Zieltablet-Abnahme |
+
+Blöcke 15–21 ausdrücklich nicht gestartet. Frühere Abschnitte dokumentieren historische Zwischenstände; diese Tabelle ist der aktuelle Prüfstand.
+
+## Block 14 – Ressourcenbereinigung und Mehrclient-Konflikte (2026-10-10)
+
+| Bereich | Implementiert und geprüft | Verbleibende Grenze |
+| --- | --- | --- |
+| Zentrale Dynamic Buttons | Ungenutzte Definitionen werden anhand aller Seiten und Widgetinstanzen ermittelt; explizites Löschen, Undo, atomarer Save, erneute Referenz verhindert Löschung | Nicht genutzte Providerquellen werden **nicht** automatisch entfernt; separate gesicherte Ressourcenverwaltung noch offen |
+| Server-Speichersicherheit | SHA-256-Inhaltsrevision; `config/get` liefert `revision`; strukturierte `config/replace` erfordert `expected_revision`; Schreibsperre und `config_conflict` bei stale Client | Reale HA-Konfliktsituation / Reconnect und Benutzerführung zum Laden/Abgleichen |
+| r11-Verträglichkeit | r11 nutzt seine bisherige Legacy-Update-API, deren Änderungen die kanonische Revision beeinflussen | r11-Abschaltung **nicht freigegeben** |
+| Systemtests | Python/JS/Chromium grün: `38048180467` (`a355d719d2`) | Echte HA-Entitäten/Services und Zieltablet weiterhin nicht geprüft |
+
+Die vorstehenden Nachweise betreffen **nur Basissoftware und vorhandene Module bis Block 14**.
+
+## Block-14-Härtung – laufende Imports und Config Service (2026-10-10)
+
+| Prüfgegenstand | Aktueller Nachweis | Verbleibend |
+| --- | --- | --- |
+| Widget schnell entfernen / Undo | Mehrgenerationen-Import abgesichert; alte Erfolgs-/Fehlerantworten dürfen nicht neue Instanz oder Health überschreiben | Echte Tablet-Touch-Geschwindigkeit und Langlauftests |
+| Grid ↔ Widget-Host ↔ Module Loader | Integrationstest bei Pending Import und Wiederherstellung mit gleicher Instance-ID; kein doppeltes Destroy | Netzunterbrechungen mit echter HA-Installation |
+| Config Service ↔ HA CAS | Pro-Client-Writes serialisiert, Reads nach vorher gestarteten Writes, neue CAS-Revision je bestätigtem Save; Queue erholt sich nach Fehler | Mehrere reale Browser/HA-Clients und Recovery im Dauerbetrieb |
+| Gesamt-CI | **`validate` / `browser-smoke` grün:** `38069408258` (`7708a784b`) | G5 Real-HA, G6 OnePlus Pad 2 / Fully Kiosk und finale 0–14-Abnahme |
+
+Folgeblöcke 15–21 werden **nicht** gestartet; bisherige r11-Produktivumgebung unverändert.
