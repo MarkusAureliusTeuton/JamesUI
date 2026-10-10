@@ -1,5 +1,7 @@
 import asyncio
+import hashlib
 import importlib.util
+import json
 from pathlib import Path
 import sys
 import types
@@ -82,7 +84,15 @@ class FakeService:
     def snapshot(self):
         return self._validate(self._config)
 
-    async def async_replace(self, config):
+    @property
+    def revision(self):
+        serialized = json.dumps(self.snapshot(), sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+        return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+
+    async def async_replace(self, config, *, expected_revision=None):
+        if expected_revision != self.revision:
+            error_type = sys.modules["custom_components.jamesui.config_service"].ConfigConflictError
+            raise error_type("JamesUI configuration has changed; reload before saving")
         validated = self._validate(config)
         self.replace_calls.append(validated)
         self._config = validated
@@ -142,7 +152,9 @@ class ConfigApiTest(unittest.IsolatedAsyncioTestCase):
         hass = FakeHass(self.const.DOMAIN, service)
         connection = FakeConnection()
         self.api.websocket_get_structured_config(hass, connection, {"id": 1})
-        self.assertEqual(connection.results, [(1, {"config": service.snapshot()})])
+        self.assertEqual(connection.results, [(1, {
+            "config": service.snapshot(), "revision": service.revision,
+        })])
         self.assertEqual(connection.errors, [])
 
     async def test_structured_replace_is_admin_and_invalid_config_leaves_service_unchanged(self):
@@ -155,7 +167,7 @@ class ConfigApiTest(unittest.IsolatedAsyncioTestCase):
         invalid["pages"] = []
 
         await self.api.websocket_replace_structured_config(
-            hass, connection, {"id": 2, "config": invalid}
+            hass, connection, {"id": 2, "config": invalid, "expected_revision": service.revision}
         )
         self.assertEqual(service.snapshot(), before)
         self.assertEqual(connection.results, [])
@@ -165,9 +177,28 @@ class ConfigApiTest(unittest.IsolatedAsyncioTestCase):
         valid["pages"]["home"] = {"layout": "hero"}
         connection = FakeConnection()
         await self.api.websocket_replace_structured_config(
-            hass, connection, {"id": 3, "config": valid}
+            hass, connection, {"id": 3, "config": valid, "expected_revision": service.revision}
         )
-        self.assertEqual(connection.results, [(3, {"config": valid})])
+        self.assertEqual(connection.results, [(3, {"config": valid, "revision": service.revision})])
+
+    async def test_structured_replace_rejects_stale_client_revision(self):
+        service = self.make_service()
+        hass = FakeHass(self.const.DOMAIN, service)
+        stale = service.revision
+        changed = service.snapshot()
+        changed["module_settings"]["foreign"] = {"saved": True}
+        await service.async_replace(changed, expected_revision=stale)
+
+        client_attempt = self.schema.empty_config()
+        client_attempt["pages"]["stale"] = {"kind": "dashboard"}
+        connection = FakeConnection()
+        await self.api.websocket_replace_structured_config(
+            hass, connection,
+            {"id": 15, "config": client_attempt, "expected_revision": stale},
+        )
+        self.assertEqual(connection.results, [])
+        self.assertEqual(connection.errors[0][1], "config_conflict")
+        self.assertEqual(service.snapshot()["module_settings"]["foreign"], {"saved": True})
 
     async def test_legacy_get_projects_store_after_options_cleanup(self):
         service = self.make_service({
