@@ -82,3 +82,10 @@
 - **G4 verbessert:** Chromium simuliert parallel geänderte HA-Konfiguration und bestätigt: konfliktbehafteter Save schlägt sichtbar fehl; der Server behält die jüngeren Fremdänderungen, und der Editor kann den lokalen Entwurf verwerfen.
 - **Prüfnachweis:** [GitHub Actions 38048180467](https://github.com/MarkusAureliusTeuton/JamesUI/actions/runs/38048180467), Commit `a355d719d2`; `validate` und `browser-smoke` grün.
 - **Weitere Gates offen:** Reale HA-Integration einschließlich Authentifizierung, nutzerfreundlicher Reload/Rebase bei Fremdänderungen und echte OnePlus-Pad-2-/Fully-Kiosk-Prüfung. **Keine Freigabe der Blöcke 15–21.**
+
+## Mehrclient-Konflikt: bedienbarer Wiederanlauf (2026-10-10)
+
+- **G2/G4 nachgebessert:** Ein Server-`config_conflict` zeigt jetzt einen klaren Hinweis und einen nutzerseitigen Befehl zum Neuladen und erneuten Speichern. Der erste fehlgeschlagene Save verwirft keine lokalen Änderungen.
+- **Sicherheitsentscheidung:** Bei unveränderter Zielseite bleiben unabhängige Fremdänderungen erhalten; ein Vergleich mit der ursprünglichen Edit-Baseline verhindert die Verschmelzung widersprüchlicher Änderungen an derselben Seite oder Instanz. Bei erneuter Ablehnung bleibt der Editor aktiv.
+- **Automatisiert geprüft:** Node-Unit-/Integrationsprüfung sowie vollständiger Chromium-Ablauf mit CAS-Konflikt, ausdrücklicher erneuter Speicherung, erhaltenen Fremdänderungen und nicht auflösbarem Seitenkonflikt. CI `validate` und `browser-smoke` grün: [Run 38062640323](https://github.com/MarkusAureliusTeuton/JamesUI/actions/runs/38062640323), Commit `f3c07c690`.
+- **Freigabe unverändert gesperrt:** Echte HA-/KNX-Integration, OnePlus Pad 2 und Fully Kiosk nicht getestet; weitere Architektur-/Funktionsabnahme im Umfang 0–14 ausstehend.
