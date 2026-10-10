@@ -1,22 +1,36 @@
-import { createDashboardCatalog, createDashboardCatalogView } from "../modules/dashboard-catalog.js";
-import { createDashboardButtonCleanupView } from "../modules/dashboard-button-cleanup.js";
-import { removeUnusedDynamicButton } from "../modules/dashboard-resource-usage.js";
 import { createDashboardController } from "./dashboard-controller.js";
 import { createDashboardEditSession } from "./dashboard-edit-session.js";
 import { createDashboardEditorToolbar } from "./dashboard-editor-toolbar.js";
 import { createDashboardTouchEditor } from "./dashboard-touch-editor.js";
 import { bindDashboardTouchEvents } from "./dashboard-touch-events.js";
-import { createDashboardHeroLayout } from "../modules/dashboard-layout-factory.js";
 import { createDashboardGrid } from "./dashboard-grid.js";
-import { createDashboardWidgetHosts } from "../modules/dashboard-widget-hosts.js";
 import { validateDashboardPage } from "./dashboard-config.js";
 
 // Page composition owns one layout instance, one grid and the weather hero.
 // Its DOM is independent of the persistent Core shell and navigation.
-export function createDashboardPageComposer({ document, moduleLoader, getConfig, configService = null, moduleRegistry = null } = {}) {
+export function createDashboardPageComposer({
+  document, moduleLoader, getConfig, configService = null, moduleRegistry = null,
+  integrations = null,
+} = {}) {
   if (!document || typeof document.createElement !== "function") throw new TypeError("Dashboard composer requires document");
   if (!moduleLoader || typeof moduleLoader.load !== "function") throw new TypeError("Dashboard composer requires Module Loader");
   if (typeof getConfig !== "function") throw new TypeError("Dashboard composer requires getConfig");
+  // Core owns geometry and edit orchestration, not domain-specific widgets,
+  // button definitions or the implementation of the hero layout.
+  const {
+    createDashboardCatalog,
+    createDashboardCatalogView,
+    createDashboardButtonCleanupView,
+    removeUnusedDynamicButton,
+    createDashboardHeroLayout,
+    createDashboardWidgetHosts,
+  } = integrations ?? {};
+  for (const [name, fn] of Object.entries({
+    createDashboardCatalog, createDashboardCatalogView, createDashboardButtonCleanupView,
+    removeUnusedDynamicButton, createDashboardHeroLayout, createDashboardWidgetHosts,
+  })) {
+    if (typeof fn !== "function") throw new TypeError(`Dashboard composer requires integration: ${name}`);
+  }
 
   let target = null;
   let layout = null;
