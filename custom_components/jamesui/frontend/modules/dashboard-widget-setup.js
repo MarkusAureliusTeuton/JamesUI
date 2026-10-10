@@ -71,8 +71,8 @@ export function buildDashboardWidgetSetup({ moduleId, inputs = {}, currentConfig
       const lights = [...(existing.lights ?? [])];
       const ambientLights = [...(existing.ambient_lights ?? [])];
       if (entityId) {
-        if (!/^[a-z0-9_]+\.[a-z0-9_]+$/.test(entityId)) {
-          throw new TypeError("Bitte eine gültige Home-Assistant-Lichtentität angeben");
+        if (!/^light\.[a-z0-9_]+$/.test(entityId)) {
+          throw new TypeError("Bitte eine gültige light.*-Entität angeben");
         }
         if (![...lights, ...ambientLights].some((item) => item.state?.entity_id === entityId)) {
           let index = lights.length + ambientLights.length + 1;
