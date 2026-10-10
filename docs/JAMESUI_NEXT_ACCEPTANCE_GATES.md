@@ -134,3 +134,12 @@
 - **G4 / zusätzliche Browser-Regression:** Ein reales Chromium-Szenario bearbeitet und speichert eine Agenda, setzt den Modus `day`, `lookahead_days=21` und `tasks_enabled=false`; die Todo-Quellen bleiben bestehen. Vorhandene Browser-Gesamtszenarien weiter grün.
 - **Nachweis:** [GitHub Actions 38085763867](https://github.com/MarkusAureliusTeuton/JamesUI/actions/runs/38085763867), Commit `886593787475` – `validate` und `browser-smoke` erfolgreich.
 - **Offen:** Weitere fortgeschrittene Quell- und HA-Service-/Zustandsmappings, Vollreview G1–G4, reale HA/KNX-Aktions- und Authentifizierungstests (G5), OnePlus Pad 2 / Fully Kiosk (G6) sowie finale Abnahme. Keine Tablet-Updates vor sauberem technischen Stand. Draft-PR #27 bleibt offen; 15–21 und r11 bleiben unverändert.
+
+
+## G2/G3/G4: benutzerdefinierte Haus-Zustandsmappings (2026-10-10)
+
+- Heizung: Einzelauswahl von State/Attribut und konfigurierbaren True-/False-Werten für Heizanforderung sowie Automatikregelung; Ist-/Solltemperatur kann aus HA-Attributen gelesen werden. Bestehende Feldbindungen werden beim Bearbeiten gezeigt.
+- Geräte: Active-, Update-, Warning-, Fault-Signale können über eigene Attribute und True-/False-Werte interpretiert werden. Auswahl einer anderen Geräte-ID befüllt deren Felder neu, ohne eine andere Definition zu verändern.
+- Normalisierte vollständige Bindings bestimmen, ob eine Heizungsquelle identisch ist; gemeinsame Quellen unterliegen weiter Copy-on-Write. Ungültige/überlappende Werte werden vor dem Speichern abgewiesen. Optionales Mapping ist im Editor eingeklappt.
+- Node-/DOM-Regressionsprüfungen und Chromium-Persistenzprüfung erfolgreich: [Run 38086278879](https://github.com/MarkusAureliusTeuton/JamesUI/actions/runs/38086278879), Commit `1ef81c1748fe`, `validate` und `browser-smoke` **success**.
+- **Keine formale Gesamtfreigabe:** Dynamic-Button-Quellen/Aktionen und weitere erweiterte Einstellungen noch nicht durchgängig UI-konfigurierbar; HA/KNX/Fully/OnePlus weiterhin nicht live abgenommen. G5/G6 offen, Scope 0–14 unverändert, kein r11-Cutover.

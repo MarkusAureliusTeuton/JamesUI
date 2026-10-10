@@ -160,3 +160,15 @@ Blöcke 15–21 weiterhin nicht begonnen; PR #27 bleibt Draft, keine produktive 
 | Test-Gates | Node und Chromium inkl. gespeichertem Agenda-Edit-Szenario, **Run 38085763867**: `validate` + `browser-smoke` erfolgreich, HEAD `886593787475` | G1–G4 insgesamt nur teilweise; G5 echtes HA/KNX, G6 Tablet/Fully offen |
 
 **Arbeitsfreigabe:** Nur Basis und Module 0–14. Keine Produktivumschaltung, keine Löschung/Änderung von r11, keine Vorwegnahme 15–21.
+
+
+## Block 14 – Heizungs- und Gerätestatus-Mappings (2026-10-10)
+
+| Soll | Tatsächlich implementiert und geprüft | Grenze |
+| --- | --- | --- |
+| Heizungs-Quellsignale frei zuordnen | Entity plus optionales Attribut für Ist-/Solltemperatur und boolesche Signale; True-/False-Werte pro booleschem Signal. Referenzsichere Bearbeitung, vollständiger Mappingvergleich statt nur Entity-ID | KNX-/HA-Produktivsignale noch nicht geprüft |
+| Gerätezustände frei definieren | Attribute und boolesche Wertelisten für Aktivität, Update, Warnung, Störung; explizite Geräteauswahl, kein stilles Umschreiben anderer Geräte | Echte Geräte-Statusdaten/HA-Rechte noch offen |
+| Bedienbarkeit | Erweiterte Felder einklappbar, bestehende Mappings vorausgefüllt, optionale Mappings rücksetzbar | Visuelle Tabletprüfung ausstehend |
+| Automatisierte Gates | Node-Unit-/Editor-Regressionen plus echter Chromium-Persistenzablauf, Run [38086278879](https://github.com/MarkusAureliusTeuton/JamesUI/actions/runs/38086278879) auf Code-HEAD `1ef81c1748fe`: `validate` + `browser-smoke` erfolgreich | G1–G4 formal nicht vollständig; G5/G6 offen |
+
+**Nächster Implementierungsgegenstand:** bestehende Dynamic-Button-Aktions-/State-Mapping-Optionen im UI vervollständigen, danach systematische Fehler- und Wiederanlaufprüfungen. Nur Core/Basis und Blöcke 0–14; keine r11-Änderung, kein Cutover.

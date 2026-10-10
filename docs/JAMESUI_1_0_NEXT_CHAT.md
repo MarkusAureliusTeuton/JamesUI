@@ -200,3 +200,10 @@ Der aktive Branch bleibt `feat/jamesui-1-0-block-14-start-configuration` (Draft-
 Neu nachweisbar: Wetter-Optionalsensoren entfernbar; Energie-HA-Attribut bearbeitbar inkl. Shared-Source-Copy-on-Write; Button-Größe pro Instanz; Agenda-Modus/Lookahead/Ortsanzeige und Aufgaben anzeigen/verbergen ohne Löschen der Todo-Quellen. Dazu Node-/Editor-Tests und neuer Chromium-Ablauf.
 
 **Nächste sinnvolle Implementierungsfolge:** (1) verbleibende vorhandene Provider-/Widget-Einstellmöglichkeiten und tatsächliche UI-Verdrahtung gegen Specs prüfen, besonders Heizungs- und Gerätemappings sowie Dynamic-Button-Aktionen; (2) Systemstörfälle/HA-Socket-Restore und modulübergreifende Tests ergänzen; (3) Code- und Abhängigkeitsreview und echte G5/G6-Abnahme erst bei ausreichender Browser-/Unit-Sicherheit. Nicht produktiv umschalten. **Ausschließlich 0–14**; 15–21 bleiben zurückgestellt, r11 nicht löschen.
+
+
+## Arbeitsübergabe: nach House-Mapping-Gate (2026-10-10)
+
+Der unveränderte erfolgreiche Code-HEAD `1ef81c1748fe100511e8bb4e77b0307f38791c4f` hat [Actions 38086278879](https://github.com/MarkusAureliusTeuton/JamesUI/actions/runs/38086278879) bestanden (`validate` + Chromium `browser-smoke`). Auf Draft-PR #27 wurden Heizungs-/Gerätestatus-Attribute und freie Bool-Value-Mappings über den Dashboard-Editor implementiert; umfassender Normalisierungs-/Copy-on-Write-Schutz und Unit-/UI-Tests inklusive tatsächlicher Browserpersistenz ergänzt. Einklappbare Advanced-Felder erhalten die Lesbarkeit.
+
+**Als Nächstes ohne Rückfrage direkt bearbeiten:** Dynamic-Button-Aktions- und Control-State-Mapping-Einstellungen (bestehende Block-13-Funktion, keine neue Architektur), dabei gemeinsame Definitionen/Referenzen sichern; dann Lifecycle/HA-Reconnect-Störtests der bestehenden Core-/Providerketten. Nach jedem Codepaket Regressionen, GitHub Actions und Dokumentation prüfen. G5/G6 bleiben bis zur späteren Live-Abnahme offen. Blöcke 15–21 nicht starten, r11 unverändert lassen.

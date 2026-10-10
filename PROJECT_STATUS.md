@@ -504,3 +504,16 @@ Read the completed Block-13 spec/plan and the cross-block layout planning notes,
 - **Geprüfter Code-Stand:** `886593787475`; GitHub Actions **38085763867**, `validate` und `browser-smoke` erfolgreich. Zuvor ebenfalls grün: `38085461080` und `38085555887`.
 
 **Weiter offen:** Vollständige UI-Konfiguration für erweiterte Heizungs-/Geräte-Statusmappings, benutzerdefinierte Dynamic-Button-Aktionen/State-Mappings und die übrigen Agenda-/Wetter-Darstellungsoptionen; systematische Gesamtreview und Last-/Reconnect-Fälle. Real-HA/KNX (G5), OnePlus Pad 2 / Fully (G6) und formale 0–14-Abnahme **nicht** erfolgt. Folgeblöcke 15–21 gesperrt, r11 unverändert, PR #27 Draft.
+
+
+## Block 14 – House-Statusmapping im Dashboard-Editor (2026-10-10)
+
+- Heizungszonen: `current_temperature` und `target_temperature` erhalten editierbare optionale HA-Attribute. `heating_demand` und `auto_regulation_enabled` erhalten optionale HA-Attribute sowie frei konfigurierbare True-/False-Statuswerte.
+- Geräte: die vorhandenen Statussignale `active`, `update_available`, `warning` und `fault` können ebenso über HA-Attribute und frei konfigurierbare Bool-Zustandswerte definiert werden. Das ausdrücklich ausgewählte Geräteobjekt wird bearbeitet; Nachbarobjekte bleiben unverändert.
+- Leere Statusmapping-Eingaben setzen auf die bestehenden Provider-Standards zurück, während in programmatischen Updates ausgelassene Felder unverändert bleiben. Überlappende oder leere ungültige Mappingwerte werden durch die vorhandenen Validierer abgewiesen.
+- **Heizungs-Referenzschutz:** Die Suche nach bereits vorhandenen Zonen berücksichtigt nicht nur Entity-IDs, sondern die vollständig normalisierten Bindings; eine Änderung an booleschen Mappings kann nicht mehr fälschlich als unverändert durchlaufen. Geteilte Zonen werden beim Bearbeiten per Copy-on-Write abgespalten.
+- **Editor-UX:** Erweiterte Signalzuordnungen stehen in einklappbaren Abschnitten statt alle Grundfelder zu überladen.
+- **Tests:** Node-Setup- und DOM-Tests für Vorbelegung, Auswahl, Änderungen, Reset, Shared-Source-COW und Validierung. Echter Headless-Chromium-Test speichert im Dashboard ein geändertes Heizungs-Statusmapping und prüft die kanonische Persistenz.
+- **Erfolgreicher Nachweis:** [GitHub Actions 38086278879](https://github.com/MarkusAureliusTeuton/JamesUI/actions/runs/38086278879), unveränderter Code-HEAD `1ef81c1748fe`: **`validate` und `browser-smoke` grün**. Ein Zwischen-Commit zeigte erwartungsgemäß einen von neuen Regressionen entdeckten Parsingfehler; dieser wurde vor dem finalen Nachweis korrigiert.
+
+**Noch offen:** Vollständige Dynamic-Button-Aktions-/State-Mapping-Verwaltung, verbleibende erweiterte Widgetkonfiguration, abschließende kombinierte Lifecycle-/Reconnect-/Fehlertests und Code-Review. Keine Real-HA-/KNX-/OnePlus-/Fully-Abnahme (G5/G6), keine Produktivfreigabe. PR #27 bleibt Draft, Blöcke 15–21 gesperrt, r11 unverändert.
