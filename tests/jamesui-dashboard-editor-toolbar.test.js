@@ -15,6 +15,7 @@ test("Block 14 editor toolbar opens, undoes, adds and saves through edit session
     undo() { canUndo = false; return { elements: ["restored"] }; },
     async save() { events.push("save"); return { elements: ["saved"] }; },
     finish() { active = false; events.push("finish"); },
+    cancel() { active = false; events.push("cancel"); return { elements: ["restored"] }; },
   };
   const document = createFakeDocument();
   const toolbar = createDashboardEditorToolbar({
@@ -47,6 +48,7 @@ test("Block 14 editor keeps unsaved state visible if save fails", async () => {
     undo() { return null; },
     async save() { throw new Error("offline"); },
     finish() { throw new Error("finish must not be called"); },
+    cancel() { return {}; },
   };
   const toolbar = createDashboardEditorToolbar({
     document, session, onChange() {}, onAdd() {},
@@ -57,4 +59,33 @@ test("Block 14 editor keeps unsaved state visible if save fails", async () => {
   await Promise.resolve();
   assert.equal(toolbar.root.hidden, false);
   assert.notEqual(toolbar.root.getAttribute("data-jui-editor-save-error"), null);
+  const message = toolbar.root.querySelector("[data-jui-editor-save-error-message]");
+  assert.equal(message.hidden, false);
+  assert.match(message.textContent, /offline/);
+});
+
+test("Cancel discards editing immediately and clears the visible toolbar without saving", async () => {
+  const document = createFakeDocument();
+  const events = [];
+  let active = false;
+  const session = {
+    enter() { active = true; },
+    get active() { return active; },
+    get canUndo() { return true; },
+    snapshot() { return { elements: ["draft"] }; },
+    undo() { return null; },
+    async save() { throw Error("Save must not be called"); },
+    finish() { throw Error("Finish must not be called"); },
+    cancel() { active = false; events.push("cancel"); return { elements: ["persisted"] }; },
+  };
+  const toolbar = createDashboardEditorToolbar({
+    document, session,
+    onChange: (page) => events.push(page.elements[0]),
+    onAdd() {},
+  });
+  toolbar.open();
+  toolbar.root.children[3].dispatchEvent("click");
+  assert.equal(toolbar.root.hidden, true);
+  assert.equal(session.active, false);
+  assert.deepEqual(events, ["draft", "cancel", "persisted"]);
 });
