@@ -70,3 +70,48 @@ test("catalog pre-fills existing Agenda widget and preserves advanced options wh
     ["calendar.family", "calendar.extra"]);
   assert.equal(plan.instanceIdConfigKey, "instance_id");
 });
+
+test("device editor selects an explicit source instead of silently preselecting first of many", () => {
+  const document = createFakeDocument();
+  const data = {
+    data_sources: { "provider.house-devices": { devices: [
+      { id: "device-a", name: "Pumpe", primary_entity_id: "switch.pump",
+        active: { entity_id: "binary_sensor.pump_active" } },
+      { id: "device-b", name: "Lüftung", primary_entity_id: "switch.fan",
+        active: { entity_id: "binary_sensor.fan_active" },
+        warning: { entity_id: "binary_sensor.fan_warning" } },
+    ] } },
+    dynamic_buttons: {},
+  };
+  const edits = [];
+  const catalog = createDashboardCatalog({
+    moduleRegistry: {
+      get: (id) => id === "widget.house-quick" ? { manifest: { type: "widget" } } : null,
+    },
+  });
+  const view = createDashboardCatalogView({
+    document, catalog, getConfig: () => data,
+    onSelect: () => { throw Error("Unexpected new widget"); },
+    onEdit: (...args) => { edits.push(args); return true; },
+  });
+  view.edit("house-tile", {
+    module_id: "widget.house-quick",
+    config: { buttons: [{ id: "devices", type: "devices" }] },
+  });
+  const select = view.root.querySelector('[data-jui-catalog-field="deviceId"]');
+  assert.equal(select.value, "", "No implicit first-device selection");
+  assert.equal(view.root.querySelector('[data-jui-catalog-field="deviceName"]').value, "");
+  select.value = "device-b";
+  select.dispatchEvent(new Event("change"));
+  assert.equal(view.root.querySelector('[data-jui-catalog-field="deviceName"]').value, "Lüftung");
+  assert.equal(view.root.querySelector('[data-jui-catalog-field="warningEntity"]').value,
+    "binary_sensor.fan_warning");
+  view.root.querySelector('[data-jui-catalog-field="deviceName"]').value = "Lüftungsanlage";
+  view.root.querySelector('[data-jui-catalog-confirm]').dispatchEvent("click");
+  assert.equal(view.root.hidden, true);
+  assert.equal(edits.length, 1);
+  const sources = edits[0][2].dataSources["provider.house-devices"].devices;
+  assert.equal(sources[0].name, "Pumpe");
+  assert.equal(sources[1].id, "device-b");
+  assert.equal(sources[1].name, "Lüftungsanlage");
+});
