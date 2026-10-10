@@ -172,13 +172,38 @@ export function buildHouseQuickSetup({ inputs = {}, currentConfig, priorWidgetCo
     const sources = [...getSource(currentConfig, provider, "sources")];
     const name = title(inputs.sourceName, "Energiequelle");
     const powerEntityId = entity(inputs.powerEntity, "Leistung");
-    const existing = sources.find((row) => row.power?.entity_id === powerEntityId);
-    const id = existing?.id ?? uniqueId("dashboard-energy-", sources);
-    if (!existing) {
+    const previousButton = priorWidgetConfig?.buttons?.find((entry) => entry.type === kind);
+    const previousSource = previousButton
+      ? sources.find((row) => row.id === previousButton.source_id)
+      : null;
+    if (previousButton && !previousSource) {
+      throw new TypeError("Bisherige Energiequelle existiert nicht mehr");
+    }
+    const matching = sources.find((row) => row.power?.entity_id === powerEntityId);
+    const matchingSame = matching && matching.name === name;
+    let id;
+    if (matchingSame) {
+      id = matching.id;
+    } else if (matching && matching.id !== previousSource?.id) {
+      throw new TypeError("Energiequelle ist bereits mit anderem Namen konfiguriert");
+    } else if (previousSource) {
+      const uses = Object.values(currentConfig.widget_instances ?? {})
+        .filter((instance) => instance?.module_id === "widget.house-quick")
+        .flatMap((instance) => instance.config?.buttons ?? [])
+        .filter((entry) => entry.type === "energy" &&
+          entry.source_id === previousSource.id).length;
+      id = uses > 1 ? uniqueId("dashboard-energy-", sources) : previousSource.id;
+      const updated = {
+        id, name, power: previousSource.power?.entity_id === powerEntityId
+          ? previousSource.power : { entity_id: powerEntityId },
+      };
+      if (uses > 1) sources.push(updated);
+      else sources[sources.findIndex((entry) => entry.id === id)] = updated;
+      dataSources[provider] = validateHouseEnergyConfig({ sources });
+    } else {
+      id = uniqueId("dashboard-energy-", sources);
       sources.push({ id, name, power: { entity_id: powerEntityId } });
       dataSources[provider] = validateHouseEnergyConfig({ sources });
-    } else if (existing.name !== name) {
-      throw new TypeError("Energiequelle ist bereits mit anderem Namen konfiguriert");
     }
     const window = number(inputs.averageWindow ?? "15", "Mittelungszeit", { positive: true });
     const warning = number(inputs.warningThreshold, "Warnschwelle", { nonNegative: true });
