@@ -1,10 +1,11 @@
 // Minimal page-local edit toolbar. Gesture-driven drag/resize are attached
 // separately; this layer never invokes Home Assistant directly.
-export function createDashboardEditorToolbar({ document, session, onChange, onAdd } = {}) {
+export function createDashboardEditorToolbar({ document, session, onChange, onAdd, onCleanup = null } = {}) {
   if (!document || typeof document.createElement !== "function") throw new TypeError("editor toolbar requires document");
   if (!session || typeof session.enter !== "function" || typeof session.finish !== "function" || typeof session.cancel !== "function") {
     throw new TypeError("editor toolbar requires edit session");
   }
+  if (onCleanup !== null && typeof onCleanup !== "function") throw new TypeError("onCleanup must be a function or null");
   if (typeof onChange !== "function" || typeof onAdd !== "function") {
     throw new TypeError("editor toolbar requires onChange and onAdd callbacks");
   }
@@ -61,6 +62,7 @@ export function createDashboardEditorToolbar({ document, session, onChange, onAd
     onChange(restored);
     refresh();
   });
+  const cleanup = onCleanup ? createAction("Bereinigen", () => onCleanup()) : null;
   const errorMessage = document.createElement("p");
   errorMessage.setAttribute("data-jui-editor-save-error-message", "");
   errorMessage.setAttribute("role", "alert");
@@ -73,6 +75,7 @@ export function createDashboardEditorToolbar({ document, session, onChange, onAd
     add.disabled = saving;
     finish.disabled = saving;
     cancel.disabled = saving;
+    if (cleanup) cleanup.disabled = saving;
   };
   return Object.freeze({
     root,
