@@ -25,39 +25,53 @@ export function createDashboardProviderCoordinator({ registered, moduleLoader, g
 
   const reconcile = async (next) => {
     if (stopped) return false;
+    const errors = [];
     for (const id of providers) {
       if (stopped) return false;
       const config = next[id];
       const previous = applied.get(id);
-      if (config === null) {
-        if (previous !== undefined) {
-          moduleLoader.destroy(id);
-          applied.delete(id);
+      try {
+        if (config === null) {
+          if (previous !== undefined) {
+            const removed = moduleLoader.destroy(id);
+            applied.delete(id);
+            if (!removed) throw new Error(`Unable to destroy removed provider: ${id}`);
+          }
+          continue;
         }
-        continue;
-      }
-      if (previous !== undefined && JSON.stringify(previous) === JSON.stringify(config)) continue;
-      if (previous !== undefined) {
-        if (!moduleLoader.update(id, config)) {
-          throw new Error(`Unable to update configured provider: ${id}`);
+        if (previous !== undefined && JSON.stringify(previous) === JSON.stringify(config)) continue;
+        if (previous !== undefined) {
+          if (!moduleLoader.update(id, config)) {
+            throw new Error(`Unable to update configured provider: ${id}`);
+          }
+          applied.set(id, config);
+          continue;
+        }
+        const loaded = await moduleLoader.load(id, { config });
+        if (stopped) {
+          moduleLoader.destroy(id);
+          return false;
+        }
+        if (!loaded) {
+          moduleLoader.destroy(id);
+          throw new Error(`Unable to load configured provider: ${id}`);
+        }
+        if (!moduleLoader.mount(id, getTarget())) {
+          moduleLoader.destroy(id);
+          throw new Error(`Unable to mount configured provider: ${id}`);
         }
         applied.set(id, config);
-        continue;
+      } catch (error) {
+        if (stopped) return false;
+        // A faulty provider must not prevent a subsequent independent source
+        // from being loaded, updated or removed. Failed entries retain their
+        // previous applied baseline and are eligible for a later retry.
+        errors.push(error instanceof Error ? error :
+          new Error(`Provider ${id} failed: ${String(error)}`));
       }
-      const loaded = await moduleLoader.load(id, { config });
-      if (stopped) {
-        moduleLoader.destroy(id);
-        return false;
-      }
-      if (!loaded) {
-        moduleLoader.destroy(id);
-        throw new Error(`Unable to load configured provider: ${id}`);
-      }
-      if (!moduleLoader.mount(id, getTarget())) {
-        moduleLoader.destroy(id);
-        throw new Error(`Unable to mount configured provider: ${id}`);
-      }
-      applied.set(id, config);
+    }
+    if (errors.length) {
+      throw new AggregateError(errors, errors.map((error) => error.message).join("; "));
     }
     return true;
   };
