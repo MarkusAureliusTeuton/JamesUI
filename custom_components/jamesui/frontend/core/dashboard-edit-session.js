@@ -94,6 +94,61 @@ export function createDashboardEditSession({ controller, configService, pageId, 
       };
       return page();
     },
+    updateWidget(elementId, { config, dataSources = {}, dynamicButtons = {}, instanceIdConfigKey = null } = {}) {
+      ensureActive();
+      if (busy) throw new Error("Dashboard editor is saving");
+      const element = page().elements.find((item) => item.id === elementId);
+      if (!element || element.kind !== "widget") throw new TypeError("Widget zum Bearbeiten nicht gefunden");
+      if (!config || typeof config !== "object" || Array.isArray(config)) throw new TypeError("Widget-Konfiguration fehlt");
+      const refs = Object.values(working.pages).reduce((count, candidate) =>
+        count + (candidate.hero_widget_id === element.ref_id ? 1 : 0) +
+        (candidate.elements ?? []).filter((item) => item.kind === "widget" && item.ref_id === element.ref_id).length, 0);
+      if (refs !== 1) throw new Error("Gemeinsam genutzte Widget-Instanz kann nicht direkt bearbeitet werden");
+      const instance = working.widget_instances[element.ref_id];
+      if (!instance) throw new TypeError("Widget-Instanz ist nicht vorhanden");
+      for (const id of Object.keys(dynamicButtons)) {
+        if (id in working.dynamic_buttons) throw new Error(`Button-Definition existiert bereits: ${id}`);
+      }
+      const instanceConfig = structuredClone(config);
+      if (instanceIdConfigKey !== null) {
+        if (instanceIdConfigKey !== "instance_id") throw new TypeError("unsupported instance ID config key");
+        instanceConfig.instance_id = element.ref_id;
+      }
+      history.push(working);
+      working = {
+        ...working,
+        data_sources: { ...working.data_sources, ...structuredClone(dataSources) },
+        dynamic_buttons: { ...working.dynamic_buttons, ...structuredClone(dynamicButtons) },
+        widget_instances: { ...working.widget_instances,
+          [element.ref_id]: { ...instance, config: instanceConfig } },
+      };
+      return page();
+    },
+    removeElement(elementId) {
+      ensureActive();
+      if (busy) throw new Error("Dashboard editor is saving");
+      const element = page().elements.find((item) => item.id === elementId);
+      if (!element) return null;
+      const elements = working.pages[pageId].elements.filter((item) => item.id !== elementId);
+      const widgetInstances = { ...working.widget_instances };
+      if (element.kind === "widget") {
+        const stillReferenced = Object.entries(working.pages).some(([id, candidate]) =>
+          candidate.hero_widget_id === element.ref_id ||
+          (id === pageId ? elements : candidate.elements ?? []).some((item) =>
+            item.kind === "widget" && item.ref_id === element.ref_id));
+        if (!stillReferenced) delete widgetInstances[element.ref_id];
+      }
+      history.push(working);
+      working = {
+        ...working,
+        widget_instances: widgetInstances,
+        pages: { ...working.pages,
+          [pageId]: { ...working.pages[pageId], elements } },
+      };
+      // Shared provider sources and centrally registered button definitions are
+      // never implicitly deleted when a tile is removed.
+      return page();
+    },
     undo() {
       ensureActive();
       if (busy) throw new Error("Dashboard editor is saving");
@@ -119,11 +174,23 @@ export function createDashboardEditSession({ controller, configService, pageId, 
                 item.kind !== original.elements[index].kind)) {
             throw new Error("Dashboard changed externally during editing");
           }
-          const added = Object.fromEntries(
-            Object.entries(working.widget_instances).filter(([id]) =>
-              !(id in baseline.widget_instances)));
-          if (Object.keys(added).some((id) => id in latest.widget_instances)) {
-            throw new Error("Widget instance ID changed externally");
+          const instanceChanges = Object.fromEntries(
+            Object.entries(working.widget_instances).filter(([id, value]) =>
+              JSON.stringify(value) !== JSON.stringify(baseline.widget_instances[id])));
+          const instanceRemovals = Object.keys(baseline.widget_instances).filter(
+            (id) => !(id in working.widget_instances));
+          for (const id of [...Object.keys(instanceChanges), ...instanceRemovals]) {
+            if (JSON.stringify(latest.widget_instances[id]) !== JSON.stringify(baseline.widget_instances[id])) {
+              throw new Error(`Widget-Instanz wurde extern geändert: ${id}`);
+            }
+          }
+          const instances = { ...latest.widget_instances, ...structuredClone(instanceChanges) };
+          for (const id of instanceRemovals) {
+            const referenced = Object.entries(latest.pages).some(([otherPageId, otherPage]) =>
+              otherPageId !== pageId && (otherPage.hero_widget_id === id ||
+                (otherPage.elements ?? []).some((item) => item.kind === "widget" && item.ref_id === id)));
+            if (referenced) throw new Error(`Widget-Instanz wird extern verwendet: ${id}`);
+            delete instances[id];
           }
           const sourceChanges = Object.fromEntries(
             Object.entries(working.data_sources).filter(([id, value]) =>
@@ -145,7 +212,7 @@ export function createDashboardEditSession({ controller, configService, pageId, 
             ...latest,
             data_sources: { ...latest.data_sources, ...sourceChanges },
             dynamic_buttons: { ...latest.dynamic_buttons, ...buttonChanges },
-            widget_instances: { ...latest.widget_instances, ...added },
+            widget_instances: instances,
             pages: { ...latest.pages,
               [pageId]: { ...latest.pages[pageId],
                 elements: structuredClone(working.pages[pageId].elements) } },
