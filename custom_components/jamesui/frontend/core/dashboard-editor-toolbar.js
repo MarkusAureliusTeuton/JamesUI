@@ -31,12 +31,15 @@ export function createDashboardEditorToolbar({ document, session, onChange, onAd
     refresh();
     try {
       const page = await session.save();
-      if (page) onChange(page);
       session.finish();
+      root.removeAttribute("data-jui-editor-save-error");
       root.hidden = true;
+      // Re-render *after* leaving edit mode: no stale resize/edit/delete
+      // controls should remain over the ordinary interactive widgets.
+      if (page) onChange(page);
     } catch {
       // Keep editing and the unsaved layout intact for an explicit retry.
-      root.setAttribute("data-jui-editor-save-error", "");
+      if (session.active) root.setAttribute("data-jui-editor-save-error", "");
     } finally {
       saving = false;
       refresh();
