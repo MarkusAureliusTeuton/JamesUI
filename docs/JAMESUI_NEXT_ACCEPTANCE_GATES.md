@@ -47,3 +47,10 @@ Stand: 2026-10-09. Technischer Audit anhand des Feature-Branches und der GitHub-
 - **G4 teilweise:** Echter Headless-Chromium-Smoke-Test in CI: zwei generische Tablet-Portrait-Viewports, Navigation, DOM-Widgets, horizontales Overflow und App-Destroy erfolgreich. Vollständige Browser-Interaktions-, Fehler- und Reconnect-Tests stehen aus.
 - **CI-Nachweis:** Run `38028254684`, beide Jobs `validate` und `browser-smoke` erfolgreich.
 - **G5/G6:** Reale Home-Assistant-Integration, OnePlus Pad 2 und Fully Kiosk unverändert nicht geprüft; kein Rollout.
+
+## Ergänzung zum Browser-Gate (2026-10-10)
+
+- Chromium prüft Interaktion und Störfälle zusätzlich zum Layout: Forecast-Overlay, Core-Navigations-Trigger, Wetter-/Licht-Wertänderungen, fehlende HA-Entitäten und Disconnect/Reconnect.
+- Simulationsstatus bleibt explizit: Test benutzt ausschließlich `weather.browser_fixture` und `light.browser_fixture` (keine Nutzer-IDs).
+- Run `38028627815` ist grün (beide Jobs); im Modul-Loader zählt `mount() === false` nicht mehr als Erfolg.
+- **G4 weiterhin teilweise**, **G5/G6 offen**; weder Tablet-Test noch Produktionsfreigabe.
