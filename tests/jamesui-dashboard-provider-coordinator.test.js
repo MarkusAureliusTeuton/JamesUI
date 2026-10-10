@@ -74,7 +74,7 @@ test("failed initial load or explicit provider update refusal never claims succe
   const failing = harness({ load: async (id) => id !== "provider.calendar" });
   await assert.rejects(() => failing.coordinator.sync(source({
     "provider.calendar": { source_entity_ids: ["calendar.bad"] },
-  })), /Unable to mount configured provider: provider.calendar/);
+  })), /Unable to load configured provider: provider.calendar/);
   assert.ok(failing.calls.some((entry) => entry[0] === "destroy" && entry[1] === "provider.calendar"));
   failing.coordinator.destroy();
 
