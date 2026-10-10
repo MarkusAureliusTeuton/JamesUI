@@ -518,6 +518,29 @@ try {
     assert.ok(Math.abs(packed[index].top - packed[0].top) < 2,
       "Packed dashboard widgets must share the same logical row");
   }
+  // Editing the persisted heating-zone tile must update its existing source
+  // in place instead of silently adding duplicate KNX/HA zone bindings.
+  await emptyPage.locator('[data-jui-dashboard-edit-entry]').click();
+  await blankToolbar.waitFor({ state: "visible" });
+  await emptyPage.locator('[data-jui-dashboard-item="' + heating.instance.id +
+    '"] [data-jui-editor-edit]').click();
+  await blankCatalog.waitFor({ state: "visible" });
+  assert.equal(await blankCatalog.locator('[data-jui-catalog-field="targetTemperature"]').inputValue(),
+    "sensor.living_target");
+  await blankCatalog.locator('[data-jui-catalog-field="targetTemperature"]').fill("sensor.living_target_new");
+  await blankCatalog.locator('[data-jui-catalog-confirm]').click();
+  await blankCatalog.waitFor({ state: "hidden" });
+  await blankToolbar.getByRole("button", { name: "Fertig" }).click();
+  await emptyPage.waitForFunction(() => window.__juiTest.writes === 5);
+  const editedHeating = await emptyPage.evaluate((id) => ({
+    zones: window.__juiTest.persisted.data_sources["provider.house-heating"].zones,
+    button: window.__juiTest.persisted.widget_instances[id].config.buttons[0],
+  }), heating.instance.ref_id);
+  assert.equal(editedHeating.zones.length, 1, "Editing a unique zone must not duplicate its source");
+  assert.equal(editedHeating.zones[0].id, heating.zone.id);
+  assert.equal(editedHeating.zones[0].target_temperature.entity_id, "sensor.living_target_new");
+  assert.equal(editedHeating.button.source_id, heating.zone.id);
+  assert.equal(await emptyPage.locator('[data-jui-widget-error]').count(), 0);
   assert.deepEqual(emptyErrors, []);
   await emptyPage.evaluate(() => window.__juiTest.app.destroy());
   await emptyPage.close();
