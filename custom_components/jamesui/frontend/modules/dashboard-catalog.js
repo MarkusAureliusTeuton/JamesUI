@@ -87,6 +87,18 @@ export function createDashboardCatalogView({ document, catalog, onSelect, onEdit
     fields.set(key, input);
   };
 
+  const addSourceMapping = (section, fields, prefix, name, boolean = false) => {
+    createField(section, fields, prefix + "Attribute", name + ": HA-Attribut (optional)");
+    if (boolean) {
+      createField(section, fields, prefix + "TrueValues", name + ": EIN/Wahr-Werte", {
+        placeholder: "on, true, 1 (leer = Standard)",
+      });
+      createField(section, fields, prefix + "FalseValues", name + ": AUS/Falsch-Werte", {
+        placeholder: "off, false, 0 (leer = Standard)",
+      });
+    }
+  };
+
   const close = document.createElement("button");
   close.setAttribute("type", "button");
   close.textContent = "Schließen";
@@ -194,6 +206,12 @@ export function createDashboardCatalogView({ document, catalog, onSelect, onEdit
       createField(heating, fields, "targetTemperature", "Solltemperatur", { placeholder: "sensor.wohnzimmer_soll" });
       createField(heating, fields, "heatingDemand", "Heizanforderung", { placeholder: "binary_sensor.heizung_anforderung" });
       createField(heating, fields, "autoRegulation", "Automatikregelung aktiv", { placeholder: "binary_sensor.heizung_auto" });
+      for (const [prefix, name, bool] of [
+        ["currentTemperature", "Isttemperatur", false],
+        ["targetTemperature", "Solltemperatur", false],
+        ["heatingDemand", "Heizanforderung", true],
+        ["autoRegulation", "Automatikregelung", true],
+      ]) addSourceMapping(heating, fields, prefix, name, bool);
       const devices = group("devices");
       const deviceSelectorLabel = document.createElement("label");
       deviceSelectorLabel.textContent = "Gerät auswählen";
@@ -224,6 +242,9 @@ export function createDashboardCatalogView({ document, catalog, onSelect, onEdit
       createField(devices, fields, "updateEntity", "Update vorhanden (optional)", { placeholder: "binary_sensor.lueftung_update" });
       createField(devices, fields, "warningEntity", "Warnung (optional)", { placeholder: "binary_sensor.lueftung_warnung" });
       createField(devices, fields, "faultEntity", "Störung (optional)", { placeholder: "binary_sensor.lueftung_stoerung" });
+      for (const [prefix, name] of [
+        ["active", "Aktivstatus"], ["update", "Update"], ["warning", "Warnung"], ["fault", "Störung"],
+      ]) addSourceMapping(devices, fields, prefix, name, true);
       const populateDevice = () => {
         const selected = configuredDevices.find((item) => item.id === deviceSelector.value);
         for (const [field, property] of [
@@ -236,7 +257,19 @@ export function createDashboardCatalogView({ document, catalog, onSelect, onEdit
             ? value?.entity_id ?? "" : value ?? "";
         }
       };
-      deviceSelector.addEventListener("change", populateDevice);
+      deviceSelector.addEventListener("change", () => {
+        populateDevice();
+        const selected = configuredDevices.find((item) => item.id === deviceSelector.value);
+        for (const [prefix, field] of [
+          ["active", "active"], ["update", "update_available"],
+          ["warning", "warning"], ["fault", "fault"],
+        ]) {
+          const binding = selected?.[field];
+          fields.get(prefix + "Attribute").value = binding?.attribute ?? "";
+          fields.get(prefix + "TrueValues").value = binding?.true_values?.join(", ") ?? "";
+          fields.get(prefix + "FalseValues").value = binding?.false_values?.join(", ") ?? "";
+        }
+      });
       const deviceNotice = document.createElement("p");
       deviceNotice.textContent = "Änderungen an einem ausgewählten Gerät gelten für alle Widgets, die den Geräte-Provider verwenden.";
       devices.appendChild(deviceNotice);
@@ -377,6 +410,18 @@ export function createDashboardCatalogView({ document, catalog, onSelect, onEdit
           set("targetTemperature", zone.target_temperature?.entity_id);
           set("heatingDemand", zone.heating_demand?.entity_id);
           set("autoRegulation", zone.auto_regulation_enabled?.entity_id);
+          for (const [prefix, field, bool] of [
+            ["currentTemperature", "current_temperature", false],
+            ["targetTemperature", "target_temperature", false],
+            ["heatingDemand", "heating_demand", true],
+            ["autoRegulation", "auto_regulation_enabled", true],
+          ]) {
+            set(prefix + "Attribute", zone[field]?.attribute);
+            if (bool) {
+              set(prefix + "TrueValues", zone[field]?.true_values?.join(", "));
+              set(prefix + "FalseValues", zone[field]?.false_values?.join(", "));
+            }
+          }
         }
         if (button.type === "devices") {
           const configured = source("provider.house-devices", "devices");

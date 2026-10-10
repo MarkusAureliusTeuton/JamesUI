@@ -238,3 +238,71 @@ test("agenda editor exposes per-instance modes and allows disabling tasks withou
   assert.equal(plans[0].config.task_lists[0].entity_id, "todo.family");
   assert.equal(plans[0].config.presentation_mode, "day");
 });
+
+
+test("heating editor prefills source attributes and mapped boolean states", () => {
+  const document = createFakeDocument();
+  const current = { data_sources: { "provider.house-heating": { zones: [{
+    id: "living", name: "Wohnen",
+    current_temperature: { entity_id: "sensor.actual", attribute: "temperature" },
+    target_temperature: { entity_id: "sensor.target" },
+    heating_demand: { entity_id: "binary_sensor.demand" },
+    auto_regulation_enabled: { entity_id: "sensor.mode",
+      attribute: "value", true_values: ["auto"], false_values: ["manual"] },
+  }] } }, dynamic_buttons: {},
+    widget_instances: { living: { module_id: "widget.house-quick",
+      config: { buttons: [{ id: "heating", type: "heating_zone", source_id: "living" }] } } } };
+  const plans = [];
+  const view = createDashboardCatalogView({
+    document, catalog: createDashboardCatalog({ moduleRegistry: {
+      get: (id) => id === "widget.house-quick" ? { manifest: { type: "widget" } } : null,
+    } }), getConfig: () => current, onSelect() { throw Error("Expected edit"); },
+    onEdit: (...args) => { plans.push(args[2]); return true; },
+  });
+  view.edit("living", current.widget_instances.living);
+  const field = (name) => view.root.querySelector('[data-jui-catalog-field="' + name + '"]');
+  assert.equal(field("currentTemperatureAttribute").value, "temperature");
+  assert.equal(field("autoRegulationTrueValues").value, "auto");
+  assert.equal(field("autoRegulationFalseValues").value, "manual");
+  field("autoRegulationTrueValues").value = "enabled";
+  view.root.querySelector("[data-jui-catalog-confirm]").dispatchEvent("click");
+  assert.equal(plans.length, 1);
+  assert.deepEqual(plans[0].dataSources["provider.house-heating"].zones[0]
+    .auto_regulation_enabled.true_values, ["enabled"]);
+});
+
+test("device editor selects and clears per-signal mappings without affecting a sibling device", () => {
+  const document = createFakeDocument();
+  const current = { data_sources: { "provider.house-devices": { devices: [
+    { id: "fan", name: "Lüftung", primary_entity_id: "switch.fan",
+      active: { entity_id: "sensor.fan_running", attribute: "active",
+        true_values: ["yes"], false_values: ["no"] } },
+    { id: "pump", name: "Pumpe", primary_entity_id: "switch.pump",
+      active: { entity_id: "binary_sensor.pump" } },
+  ] } }, dynamic_buttons: {} };
+  const plans = [];
+  const view = createDashboardCatalogView({
+    document, catalog: createDashboardCatalog({ moduleRegistry: {
+      get: (id) => id === "widget.house-quick" ? { manifest: { type: "widget" } } : null,
+    } }), getConfig: () => current, onSelect() { throw Error("Expected edit"); },
+    onEdit: (...args) => { plans.push(args[2]); return true; },
+  });
+  view.edit("devices", { module_id: "widget.house-quick",
+    config: { buttons: [{ id: "devices", type: "devices" }] } });
+  const field = (name) => view.root.querySelector('[data-jui-catalog-field="' + name + '"]');
+  field("deviceId").value = "fan";
+  field("deviceId").dispatchEvent(new Event("change"));
+  assert.equal(field("activeAttribute").value, "active");
+  assert.equal(field("activeTrueValues").value, "yes");
+  field("deviceId").value = "pump";
+  field("deviceId").dispatchEvent(new Event("change"));
+  assert.equal(field("activeAttribute").value, "");
+  field("deviceId").value = "fan";
+  field("deviceId").dispatchEvent(new Event("change"));
+  field("activeTrueValues").value = "running";
+  view.root.querySelector("[data-jui-catalog-confirm]").dispatchEvent("click");
+  assert.equal(plans.length, 1);
+  const rows = plans[0].dataSources["provider.house-devices"].devices;
+  assert.deepEqual(rows[0].active.true_values, ["running"]);
+  assert.equal(rows[1].name, "Pumpe");
+});

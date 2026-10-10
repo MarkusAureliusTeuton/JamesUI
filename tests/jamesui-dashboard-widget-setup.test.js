@@ -606,3 +606,104 @@ test("agenda rejects invalid advanced settings and disabled all domains", () => 
     }));
   }
 });
+
+
+// Block 14 mapping regression: status mappings must actually change even when
+// the HA entity IDs remain identical, and shared zones must not be mutated.
+test("heating source mappings update or fork by full normalized binding", () => {
+  for (const shared of [false, true]) {
+    const current = existingHeating({ shared });
+    const before = structuredClone(current.data_sources["provider.house-heating"].zones[0]);
+    const plan = buildDashboardWidgetSetup({
+      moduleId: "widget.house-quick", currentConfig: current,
+      priorWidgetConfig: current.priorWidgetConfig,
+      inputs: heatingInputs({
+        currentTemperatureAttribute: "value",
+        autoRegulationAttribute: "mode",
+        autoRegulationTrueValues: "enabled, automatic",
+        autoRegulationFalseValues: "disabled, manual",
+      }),
+    });
+    const zones = plan.dataSources["provider.house-heating"].zones;
+    assert.equal(zones.length, shared ? 2 : 1);
+    const updated = zones.at(-1);
+    assert.equal(updated.current_temperature.attribute, "value");
+    assert.equal(updated.auto_regulation_enabled.attribute, "mode");
+    assert.deepEqual(updated.auto_regulation_enabled.true_values, ["enabled", "automatic"]);
+    assert.deepEqual(updated.auto_regulation_enabled.false_values, ["disabled", "manual"]);
+    assert.equal(plan.config.buttons[0].source_id,
+      shared ? "dashboard-zone-1" : "zone-living");
+    assert.deepEqual(current.data_sources["provider.house-heating"].zones[0], before);
+    if (shared) assert.deepEqual(zones[0].auto_regulation_enabled.true_values, ["1"]);
+    const unchangedConfig = {
+      ...current, data_sources: { ...current.data_sources,
+        "provider.house-heating": { zones: [updated] } },
+      widget_instances: { first: { module_id: "widget.house-quick",
+        config: { buttons: [{ id: "heating", type: "heating_zone", source_id: updated.id }] } } },
+    };
+    const unchanged = buildDashboardWidgetSetup({
+      moduleId: "widget.house-quick", currentConfig: unchangedConfig,
+      priorWidgetConfig: unchangedConfig.widget_instances.first.config,
+      inputs: heatingInputs({
+        currentTemperatureAttribute: "value",
+        autoRegulationAttribute: "mode",
+        autoRegulationTrueValues: "enabled automatic",
+        autoRegulationFalseValues: "disabled manual",
+      }),
+    });
+    assert.deepEqual(unchanged.dataSources, {}, "Equivalent bindings must not rewrite the source");
+  }
+});
+
+test("invalid heating boolean overlaps are rejected before changing configuration", () => {
+  const current = existingHeating();
+  assert.throws(() => buildDashboardWidgetSetup({
+    moduleId: "widget.house-quick", currentConfig: current,
+    priorWidgetConfig: current.priorWidgetConfig,
+    inputs: heatingInputs({
+      autoRegulationTrueValues: "yes, same",
+      autoRegulationFalseValues: "no, same",
+    }),
+  }), /overlap/);
+  assert.equal(current.data_sources["provider.house-heating"].zones[0].id, "zone-living");
+});
+
+test("device signal attributes and boolean state mappings are explicit and per device", () => {
+  const current = { data_sources: { "provider.house-devices": { devices: [
+    { id: "fan", name: "Lüftung", primary_entity_id: "switch.fan",
+      active: { entity_id: "sensor.fan_status", attribute: "running",
+        true_values: ["yes"], false_values: ["no"] },
+      fault: { entity_id: "sensor.fan_status", attribute: "fault" } },
+    { id: "pump", name: "Pumpe", primary_entity_id: "switch.pump",
+      active: { entity_id: "binary_sensor.pump" } },
+  ] } }, dynamic_buttons: {} };
+  const plan = buildDashboardWidgetSetup({
+    moduleId: "widget.house-quick", currentConfig: current,
+    inputs: { houseType: "devices", deviceId: "fan", sourceName: "Lüftung",
+      primaryEntity: "switch.fan", activeEntity: "sensor.fan_status",
+      activeAttribute: "run_state", activeTrueValues: "active, yes",
+      activeFalseValues: "idle, no", faultEntity: "sensor.fan_status",
+      faultAttribute: "fault", faultTrueValues: "error", faultFalseValues: "ok" },
+  });
+  const devices = plan.dataSources["provider.house-devices"].devices;
+  assert.equal(devices.length, 2);
+  assert.equal(devices[0].active.attribute, "run_state");
+  assert.deepEqual(devices[0].active.true_values, ["active", "yes"]);
+  assert.deepEqual(devices[0].fault.false_values, ["ok"]);
+  assert.equal(devices[1].id, "pump");
+  assert.equal(current.data_sources["provider.house-devices"].devices[0].active.attribute, "running");
+  const restored = buildDashboardWidgetSetup({
+    moduleId: "widget.house-quick", currentConfig: { data_sources: {
+      "provider.house-devices": { devices },
+    } }, inputs: {
+      houseType: "devices", deviceId: "fan", sourceName: "Lüftung",
+      primaryEntity: "switch.fan", activeEntity: "sensor.fan_status",
+      activeAttribute: "", activeTrueValues: "", activeFalseValues: "",
+      faultEntity: "sensor.fan_status", faultAttribute: "",
+      faultTrueValues: "", faultFalseValues: "",
+    },
+  });
+  assert.equal(restored.dataSources["provider.house-devices"].devices[0].active.attribute, undefined);
+  assert.deepEqual(restored.dataSources["provider.house-devices"].devices[0].active.true_values, ["on", "true", "1"]);
+  assert.equal(restored.dataSources["provider.house-devices"].devices[0].fault.attribute, undefined);
+});

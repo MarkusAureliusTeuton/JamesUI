@@ -39,6 +39,37 @@ function uniqueId(prefix, existing) {
   return prefix + i;
 }
 
+// Keep unchanged bindings, but let explicit empty form fields reset attributes
+// and boolean mappings to the provider defaults. All values are validated by
+// the existing house provider schema before a configuration plan is returned.
+function mappedBinding(inputs, prefix, entityId, previous, boolean = false) {
+  const result = previous?.entity_id === entityId
+    ? structuredClone(previous) : { entity_id: entityId };
+  const attributeKey = prefix + "Attribute";
+  if (Object.hasOwn(inputs, attributeKey)) {
+    const value = String(inputs[attributeKey] ?? "").trim();
+    if (value) result.attribute = value;
+    else delete result.attribute;
+  }
+  if (boolean) {
+    for (const [suffix, field] of [["TrueValues", "true_values"], ["FalseValues", "false_values"]]) {
+      const key = prefix + suffix;
+      if (!Object.hasOwn(inputs, key)) continue;
+      const values = String(inputs[key] ?? "").trim().split(/[\\s,;]+/).filter(Boolean);
+      if (values.length) result[field] = values;
+      else delete result[field];
+    }
+  }
+  return result;
+}
+
+function sameHeatingSource(left, right) {
+  const normalized = (row) => validateHouseHeatingConfig({
+    zones: [{ ...row, id: "comparison" }],
+  }).zones[0];
+  return JSON.stringify(normalized(left)) === JSON.stringify(normalized(right));
+}
+
 function getSource(config, providerId, field) {
   const entry = config.data_sources?.[providerId];
   const raw = entry?.config ?? entry ?? {};
@@ -95,23 +126,18 @@ export function buildHouseQuickSetup({ inputs = {}, currentConfig, priorWidgetCo
     if (previousButton && !previousZone) {
       throw new TypeError("Bisherige Heizungszone existiert nicht mehr");
     }
-    const binding = (key, entityId) =>
-      previousZone?.[key]?.entity_id === entityId
-        ? previousZone[key]
-        : { entity_id: entityId };
+    const binding = (key, prefix, entityId, boolean = false) =>
+      mappedBinding(inputs, prefix, entityId, previousZone?.[key], boolean);
     const desired = {
       name,
-      current_temperature: binding("current_temperature", current),
-      target_temperature: binding("target_temperature", target),
-      heating_demand: binding("heating_demand", demand),
-      auto_regulation_enabled: binding("auto_regulation_enabled", auto),
+      current_temperature: binding("current_temperature", "currentTemperature", current),
+      target_temperature: binding("target_temperature", "targetTemperature", target),
+      heating_demand: binding("heating_demand", "heatingDemand", demand, true),
+      auto_regulation_enabled: binding("auto_regulation_enabled", "autoRegulation", auto, true),
     };
-    const matching = zones.find((row) =>
-      row.name === name &&
-      row.current_temperature?.entity_id === current &&
-      row.target_temperature?.entity_id === target &&
-      row.heating_demand?.entity_id === demand &&
-      row.auto_regulation_enabled?.entity_id === auto);
+    validateHouseHeatingConfig({ zones: [{ id: "candidate", ...desired }] });
+    // Source identity includes normalized mappings, not only entity IDs.
+    const matching = zones.find((row) => sameHeatingSource(row, desired));
     let id;
     if (matching) {
       id = matching.id;
@@ -153,29 +179,33 @@ export function buildHouseQuickSetup({ inputs = {}, currentConfig, priorWidgetCo
       throw new TypeError("Gerät ist bereits einer anderen Geräte-ID zugeordnet");
     }
     const previous = index >= 0 ? devices[index] : null;
-    const binding = (field, entityId) => previous?.[field]?.entity_id === entityId
-      ? previous[field] : { entity_id: entityId };
+    const binding = (field, prefix, entityId) =>
+      mappedBinding(inputs, prefix, entityId, previous?.[field], true);
     const record = {
       id: previous?.id ?? uniqueId("dashboard-device-", devices),
       name, primary_entity_id: primary,
-      active: binding("active", active),
+      active: binding("active", "active", active),
     };
-    for (const [field, input] of [
-      ["update_available", "updateEntity"], ["warning", "warningEntity"], ["fault", "faultEntity"],
+    for (const [field, input, prefix] of [
+      ["update_available", "updateEntity", "update"],
+      ["warning", "warningEntity", "warning"],
+      ["fault", "faultEntity", "fault"],
     ]) {
       const raw = String(inputs[input] ?? "").trim();
-      if (raw) record[field] = binding(field, entity(raw, field));
+      if (raw) record[field] = binding(field, prefix, entity(raw, field));
     }
+    const normalizedRecord = validateHouseDevicesConfig({ devices: [record] }).devices[0];
     if (previous) {
       // Device summaries deliberately aggregate all devices in the provider.
       // An explicitly selected device ID is edited globally, never guessed
       // from the first item in a multi-device list.
-      if (JSON.stringify(previous) !== JSON.stringify(record)) {
-        devices[index] = record;
+      const normalizedPrevious = validateHouseDevicesConfig({ devices: [previous] }).devices[0];
+      if (JSON.stringify(normalizedPrevious) !== JSON.stringify(normalizedRecord)) {
+        devices[index] = normalizedRecord;
         dataSources[provider] = validateHouseDevicesConfig({ devices });
       }
     } else {
-      devices.push(record);
+      devices.push(normalizedRecord);
       dataSources[provider] = validateHouseDevicesConfig({ devices });
     }
     button = { id: "devices", type: "devices" };
