@@ -154,6 +154,41 @@ try {
     assert.equal(saved.pages.home.elements.find((item) => item.id === "house")?.row, 4);
     assert.equal(saved.pages.home.elements.find((item) => item.id === "agenda")?.row, 0);
     assert.equal(saved.data_sources["provider.weather"].entity_id, "weather.browser_fixture");
+
+    // A failed HA write must retain both the previous remote state and
+    // the local unsaved edit. Retrying commits exactly the pending change.
+    const movedHouseBox = await houseItem.boundingBox();
+    assert.ok(movedHouseBox, "Moved house tile must remain available");
+    const movedAnchor = {
+      x: movedHouseBox.x + movedHouseBox.width / 2,
+      y: movedHouseBox.y + movedHouseBox.height / 2,
+    };
+    await page.mouse.move(movedAnchor.x, movedAnchor.y);
+    await page.mouse.down();
+    await page.waitForTimeout(650);
+    await page.mouse.up();
+    await toolbar.waitFor({ state: "visible" });
+    await page.mouse.move(movedAnchor.x, movedAnchor.y);
+    await page.mouse.down();
+    await page.mouse.move(movedAnchor.x, movedAnchor.y - movedHouseBox.height - 12, { steps: 6 });
+    await page.mouse.up();
+    await page.waitForFunction(() =>
+      document.querySelector('[data-jui-dashboard-item="house"]')?.style.gridRow?.startsWith("1 /"));
+
+    await page.evaluate(() => { window.__juiTest.rejectNextReplace = true; });
+    await toolbar.getByRole("button", { name: "Fertig" }).click();
+    await page.locator('[data-jui-editor-save-error]').waitFor({ state: "visible" });
+    assert.equal(await page.evaluate(() => window.__juiTest.writes), 1);
+    assert.equal(await page.evaluate(() =>
+      window.__juiTest.persisted.pages.home.elements.find((item) => item.id === "house").row), 4);
+    assert.equal(await toolbar.isVisible(), true);
+    assert.equal(await houseItem.evaluate((node) => node.style.gridRow), "1 / span 4");
+
+    await toolbar.getByRole("button", { name: "Fertig" }).click();
+    await page.waitForFunction(() => window.__juiTest.writes === 2);
+    await toolbar.waitFor({ state: "hidden" });
+    assert.equal(await page.evaluate(() =>
+      window.__juiTest.persisted.pages.home.elements.find((item) => item.id === "house").row), 0);
     assert.deepEqual(errors, [], "Browser JavaScript errors");
     await page.evaluate(() => window.__juiTest.app.destroy());
     assert.equal(await page.locator('[data-role="app-shell"]').count(), 0);
