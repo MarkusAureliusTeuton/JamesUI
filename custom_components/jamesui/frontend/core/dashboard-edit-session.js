@@ -171,7 +171,11 @@ export function createDashboardEditSession({ controller, configService, pageId, 
               previous.elements.some((item, index) =>
                 item.id !== original.elements[index].id ||
                 item.ref_id !== original.elements[index].ref_id ||
-                item.kind !== original.elements[index].kind)) {
+                item.kind !== original.elements[index].kind ||
+                item.column !== original.elements[index].column ||
+                item.row !== original.elements[index].row ||
+                item.column_span !== original.elements[index].column_span ||
+                item.row_span !== original.elements[index].row_span)) {
             throw new Error("Dashboard changed externally during editing");
           }
           const instanceChanges = Object.fromEntries(
