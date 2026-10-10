@@ -370,3 +370,11 @@ Read the completed Block-13 spec/plan and the cross-block layout planning notes,
 - PR #27 stays draft; no tablet rollout until automated browser/system integration is demonstrated.
 
 - 2026-10-10: Startup initialization CI passed at `58fd1d95`. Async panel disconnect cleanup and pending-load regression test added (`53faba66`, `9b6bf43e`); CI confirmation pending. Browser/HA/tablet acceptance still open.
+
+### Integrations-/Browsertests (2026-10-10)
+
+- Das Dashboard wartet jetzt auf das tatsächliche Laden/Mounten aller konfigurierten Widgets; Teilfehler lassen den Preview-Start fehlschlagen statt einen erfolgreichen Start vorzutäuschen.
+- Der Vier-Widget-Integrationstest verwendet gültige Widgetkonfigurationen und prüft die geladenen Instanzen; benötigte Test-DOM-Geometrie ist explizit simuliert.
+- Ein eigenständiger Chromium-Job (`browser-smoke`) prüft Start, drei Deck-Widgets + Wetter-Hero, fehlende Ladefehler, Navigation, horizontales Overflow und vollständigen Destroy in zwei **generischen Portrait-Viewports** (800×1280, 1024×1366).
+- Beide GitHub-Actions-Jobs `validate` und `browser-smoke` erfolgreich: Run `38028254684`, Commit `0cfadf65`.
+- Offene Gates: umfassende Browserinteraktionen/Fehlerfälle, reale HA-Entitäten und Actions, OnePlus Pad 2 / Fully Kiosk. Keine produktive oder Tablet-Freigabe.
