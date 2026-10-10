@@ -67,6 +67,56 @@ try {
     assert.ok(metrics.navTop >= -2 && metrics.navBottom <= metrics.height + 2,
       "Navigation outside viewport: " + JSON.stringify(metrics));
     assert.equal(metrics.availableButtons, 1);
+    assert.equal(await nav.locator("button:disabled").count(), 4);
+
+    // Real DOM, real click, and real provider-to-capability-to-widget updates.
+    const weather = page.locator('[data-jui-widget="weather-today"]');
+    const lights = page.locator('[data-jui-house-quick-id="lights"]');
+    const dynamic = page.locator('[data-jui-dynamic-button]');
+    await page.waitForFunction(() =>
+      document.querySelector('[data-jui-weather-temperature]')?.textContent?.includes("21"));
+    assert.match(await lights.innerText(), /0 von 1 an/);
+    assert.equal(await lights.getAttribute("data-jui-house-quick-status"), "neutral");
+    assert.match(await page.locator('[data-jui-agenda-source-notice]').first().innerText(), /Kalender derzeit nicht verfügbar/);
+
+    // A forecast overlay without daily/hourly HA data must still open and close.
+    await weather.locator('[data-jui-weather-forecast-trigger]').click();
+    assert.equal(await page.locator('[data-jui-weather-forecast-overlay]').count(), 1);
+    await page.locator('[data-jui-weather-forecast-close]').click();
+    assert.equal(await page.locator('[data-jui-weather-forecast-overlay]').count(), 0);
+
+    // The configured trigger uses the core navigate action (home is the only route).
+    await dynamic.click();
+    await page.waitForFunction(() =>
+      document.querySelector('[data-jui-dynamic-button]')?.getAttribute("data-jui-dynamic-feedback") === "success");
+    assert.equal(await dynamic.getAttribute("data-jui-dynamic-real-status"), "inactive");
+
+    // HA entity change must cross the adapter/provider/widget boundaries.
+    await page.evaluate(() => window.__juiTest.setHass({ light: "on", temperature: 23, weather: "rainy" }));
+    await page.waitForFunction(() =>
+      document.querySelector('[data-jui-weather-temperature]')?.textContent?.includes("23"));
+    await page.waitForFunction(() =>
+      document.querySelector('[data-jui-house-quick-id="lights"]')?.textContent?.includes("1 von 1 an"));
+    assert.equal(await lights.getAttribute("data-jui-house-quick-status"), "active");
+
+    // Connected-but-missing entities must be reported as missing, not left stale.
+    await page.evaluate(() => window.__juiTest.setHass({ missingWeather: true, missingLight: true }));
+    await page.waitForFunction(() =>
+      document.querySelector('[data-jui-weather-temperature]')?.textContent?.includes("—"));
+    await page.waitForFunction(() =>
+      document.querySelector('[data-jui-house-quick-id="lights"]')?.textContent?.includes("Keine Daten"));
+    assert.equal(await lights.getAttribute("data-jui-house-quick-status"), "warning");
+
+    // Disconnect clears values; reconnect must restore fresh values without remount.
+    await page.evaluate(() => window.__juiTest.setHass({ connected: false }));
+    assert.equal(await page.evaluate(() => window.__juiTest.app.core.homeAssistant.connectionState()), "disconnected");
+    await page.evaluate(() => window.__juiTest.setHass({ light: "off", temperature: 19, weather: "cloudy" }));
+    await page.waitForFunction(() =>
+      document.querySelector('[data-jui-weather-temperature]')?.textContent?.includes("19"));
+    await page.waitForFunction(() =>
+      document.querySelector('[data-jui-house-quick-id="lights"]')?.textContent?.includes("0 von 1 an"));
+    assert.equal(await lights.getAttribute("data-jui-house-quick-status"), "neutral");
+    assert.equal(await page.evaluate(() => window.__juiTest.app.core.homeAssistant.connectionState()), "connected");
     assert.deepEqual(errors, [], "Browser JavaScript errors");
     await page.evaluate(() => window.__juiTest.app.destroy());
     assert.equal(await page.locator('[data-role="app-shell"]').count(), 0);
