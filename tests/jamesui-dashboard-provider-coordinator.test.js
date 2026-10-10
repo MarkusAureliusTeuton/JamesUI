@@ -104,3 +104,82 @@ test("destroy prevents late async provider mount and future config sync", async 
   assert.ok(calls.some((entry) => entry[0] === "destroy" && entry[1] === "provider.weather"));
   assert.equal(await coordinator.sync(source({ "provider.calendar": { source_entity_ids: [] } })), false);
 });
+
+test("failing calendar provider does not block independent tasks or weather updates", async () => {
+  const { calls, coordinator } = harness({
+    update(id) { return id !== "provider.calendar"; },
+  });
+  assert.equal(await coordinator.sync(source({
+    "provider.weather": { entity_id: "weather.first" },
+    "provider.calendar": { source_entity_ids: ["calendar.family"] },
+    "provider.tasks": { source_entity_ids: ["todo.first"] },
+  })), true);
+  await assert.rejects(() => coordinator.sync(source({
+    "provider.weather": { entity_id: "weather.second" },
+    "provider.calendar": { source_entity_ids: ["calendar.family", "calendar.other"] },
+    "provider.tasks": { source_entity_ids: ["todo.second"] },
+  })), (error) => {
+    assert.ok(error instanceof AggregateError);
+    assert.equal(error.errors.length, 1);
+    assert.match(error.message, /Unable to update configured provider: provider.calendar/);
+    return true;
+  });
+  assert.deepEqual(calls.filter((entry) => entry[0] === "update").map((entry) => entry[1]), [
+    "provider.weather", "provider.calendar", "provider.tasks",
+  ], "Tasks must still update after calendar has failed");
+  // A failed source is not accepted as the new applied baseline. A later
+  // explicit correction must be retried while successful sources stay settled.
+  assert.equal(await coordinator.sync(source({
+    "provider.weather": { entity_id: "weather.second" },
+    "provider.calendar": { source_entity_ids: ["calendar.family"] },
+    "provider.tasks": { source_entity_ids: ["todo.second"] },
+  })), true);
+  assert.equal(calls.filter((entry) => entry[0] === "update").length, 3);
+  coordinator.destroy();
+});
+
+test("multiple provider failures aggregate without abandoning other independent loads", async () => {
+  const { coordinator, calls } = harness({
+    load: async (id) => id !== "provider.weather" && id !== "provider.calendar",
+  });
+  await assert.rejects(() => coordinator.sync(source({
+    "provider.weather": { entity_id: "weather.missing" },
+    "provider.calendar": { source_entity_ids: ["calendar.missing"] },
+    "provider.tasks": { source_entity_ids: ["todo.home"] },
+  })), (error) => {
+    assert.ok(error instanceof AggregateError);
+    assert.equal(error.errors.length, 2);
+    assert.match(error.message, /provider.weather/);
+    assert.match(error.message, /provider.calendar/);
+    return true;
+  });
+  assert.ok(calls.some((entry) => entry[0] === "mount" && entry[1] === "provider.tasks"),
+    "Healthy tasks provider must become available");
+  coordinator.destroy();
+});
+
+test("removing a provider continues to synchronize later providers even if destroy fails", async () => {
+  const calls = [];
+  const target = {};
+  const coordinator = createDashboardProviderCoordinator({
+    registered: manifests,
+    getTarget: () => target,
+    moduleLoader: {
+      load: async (id) => { calls.push(["load", id]); return true; },
+      mount: (id) => { calls.push(["mount", id]); return true; },
+      update: (id) => { calls.push(["update", id]); return true; },
+      destroy: (id) => { calls.push(["destroy", id]); return id !== "provider.weather"; },
+    },
+  });
+  await coordinator.sync(source({
+    "provider.weather": { entity_id: "weather.home" },
+    "provider.calendar": { source_entity_ids: ["calendar.home"] },
+  }));
+  await assert.rejects(() => coordinator.sync(source({
+    "provider.calendar": { source_entity_ids: ["calendar.updated"] },
+    "provider.tasks": { source_entity_ids: ["todo.new"] },
+  })), /Unable to destroy removed provider: provider.weather/);
+  assert.ok(calls.some((entry) => entry[0] === "update" && entry[1] === "provider.calendar"));
+  assert.ok(calls.some((entry) => entry[0] === "mount" && entry[1] === "provider.tasks"));
+  coordinator.destroy();
+});
