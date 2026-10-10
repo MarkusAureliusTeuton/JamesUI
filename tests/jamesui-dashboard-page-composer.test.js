@@ -64,3 +64,53 @@ test("Block 14 fullscreen uses entire content region and no hero", async () => {
   page.destroy();
   assert.equal(target.querySelector('[data-jui-layout="fullscreen"]'), null);
 });
+
+test("dashboard startup remains pending until every widget finishes loading", async () => {
+  const document = createFakeDocument();
+  const target = document.createElement("main");
+  const pending = [];
+  const loader = {
+    load(moduleId, { instanceId }) {
+      if (instanceId.endsWith(":hero")) return Promise.resolve(true);
+      return new Promise((resolve) => pending.push({ moduleId, resolve }));
+    },
+    mount() { return true; },
+    destroy() { return true; },
+  };
+  const page = createDashboardPageComposer({ document, moduleLoader: loader, getConfig: () => config() });
+  const started = page.mount(target, "start");
+  let settled = false;
+  void started.then(() => { settled = true; }, () => { settled = true; });
+  // The hero imports first; the two dashboard widgets load in parallel.
+  for (let i = 0; i < 5 && pending.length < 2; i++) await Promise.resolve();
+  assert.equal(pending.length, 2);
+  await Promise.resolve();
+  assert.equal(settled, false);
+  pending[0].resolve(true);
+  await Promise.resolve();
+  assert.equal(settled, false);
+  pending[1].resolve(true);
+  assert.equal(await started, true);
+  page.destroy();
+});
+
+test("dashboard reports failure when a configured widget cannot load", async () => {
+  const document = createFakeDocument();
+  const target = document.createElement("main");
+  const destroyed = [];
+  const loader = {
+    async load(_moduleId, { instanceId }) { return instanceId !== "dashboard:agenda"; },
+    mount() { return true; },
+    destroy(id) { destroyed.push(id); return true; },
+  };
+  const page = createDashboardPageComposer({ document, moduleLoader: loader, getConfig: () => config() });
+  try {
+    await assert.rejects(() => page.mount(target, "start"), /Failed to mount one or more dashboard widgets/);
+    assert.ok(target.querySelector('[data-jui-dashboard-item="agenda"]'));
+    assert.equal(target.querySelector('[data-jui-dashboard-item="agenda"]').getAttribute("data-jui-widget-error"), "");
+  } finally {
+    page.destroy();
+  }
+  assert.ok(destroyed.includes("dashboard:house"));
+  assert.ok(destroyed.includes("dashboard:start:hero"));
+});
