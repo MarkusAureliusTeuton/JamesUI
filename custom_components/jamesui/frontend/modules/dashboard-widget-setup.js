@@ -93,14 +93,13 @@ export function buildDashboardWidgetSetup({ moduleId, inputs = {}, currentConfig
     }
 
     case "widget.house-quick": {
-      const planned = buildHouseQuickSetup({ inputs, currentConfig });
+      const planned = buildHouseQuickSetup({ inputs, currentConfig, priorWidgetConfig });
       const oldButtons = priorWidgetConfig?.buttons ?? [];
       if (priorWidgetConfig && oldButtons.length !== 1) {
         throw new TypeError("Hausstatus mit mehreren Buttons zunächst über separate Instanzen konfigurieren");
       }
       const nextButton = planned.config.buttons[0];
-      const matching = oldButtons.find((button) =>
-        button.type === nextButton.type && button.source_id === nextButton.source_id);
+      const matching = oldButtons.find((button) => button.type === nextButton.type);
       widgetConfig = matching
         ? validateHouseQuickConfig({ buttons: [{ ...matching, ...nextButton }] })
         : planned.config;
