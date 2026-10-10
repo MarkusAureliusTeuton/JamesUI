@@ -253,10 +253,23 @@ export function createDashboardEditSession({ controller, configService, pageId, 
         busy = false;
       }
     },
+    // Explicit recovery after a server-side revision conflict. Fetch the
+    // newest committed document and let save() validate the user's unchanged
+    // draft against the original edit baseline before attempting CAS again.
+    // No automatic retry: the user must choose to merge unrelated changes.
+    async reloadAndSave() {
+      ensureActive();
+      if (busy) throw new Error("Dashboard editor is saving");
+      await configService.load();
+      ensureActive();
+      return this.save();
+    },
     cancel() {
       ensureActive();
       if (busy) throw new Error("Dashboard editor is saving");
-      const restored = validateDashboardPage(baseline, pageId);
+      // A failed merge may already have loaded a newer server document. On
+      // cancel show that actual committed page, not an obsolete edit baseline.
+      const restored = validateDashboardPage(configService.snapshot() ?? baseline, pageId);
       active = false;
       working = null;
       history = [];
