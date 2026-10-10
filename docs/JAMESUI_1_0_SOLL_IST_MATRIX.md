@@ -51,3 +51,11 @@ Stand: 2026-10-09. Arbeitsstand des Draft-PR #27, keine Freigabe oder Tablet-Abn
 - **Widget-Readiness:** Der Preview-Mount wartet, bis die konfigurierten Widgets fertig geladen und gemountet sind. Ein fehlgeschlagener Start wird nicht mehr als Erfolg gemeldet.
 - **Echter Chromium-Browser:** Tests in `tests/browser/` prüfen Startseite, Widget-DOM, Navigation, Overflow, Portrait-Viewports und Zerstörung der App. Dies ist ein **simulierter HA-Browser-Smoke-Test**, keine Abnahme mit realem HA, OnePlus Pad 2 oder Fully Kiosk.
 - Browser-Interaktions- und Reconnect-Szenarien sind noch nicht vollständig abgedeckt.
+
+## Browser-Störfallprüfung (2026-10-10)
+
+- Grüne CI für `validate` und `browser-smoke`: Run `38028627815` / Commit `88d3667f`.
+- Echte Chromium-Interaktionen: Forecast öffnen/schließen, konfigurierten Navigations-Trigger betätigen.
+- Getestete Datenkette: Wetter und Licht aus **simulierter HA-State-Liste** in die sichtbare UI; Wertänderung, fehlende Entity, Disconnect/Reconnect. Fehlende Kalenderquelle zeigt eine Nichtverfügbarkeitsmeldung statt Beispieltermine.
+- Gefundene Loader-Lücke geschlossen: Rückgabe `false` bei `mount()` ist ein Fehler.
+- **Nicht getestet:** produktive HA-WebSocket-/Entity-Konfiguration, echte KNX-/Geräteaktionen, Fully Kiosk und Hardware des OnePlus Pad 2. Für G4 fehlen weitere Interaktions- und Visual-Regressionsfälle.
