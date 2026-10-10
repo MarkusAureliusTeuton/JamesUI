@@ -296,7 +296,11 @@ try {
     await page.locator('[data-jui-dashboard-edit-entry]').click();
     await toolbar.waitFor({ state: "visible" });
     await newAgendaTile.locator('[data-jui-editor-remove]').click();
-    assert.equal(await page.locator('[data-jui-dashboard-item]').count(), 3);
+    const removeStatus = await page.evaluate((id) => ({
+      count: document.querySelectorAll('[data-jui-dashboard-item]').length,
+      error: document.querySelector('[data-jui-dashboard-item="' + id + '"]')?.getAttribute("data-jui-editor-action-error"),
+    }), agendaInstance.id);
+    assert.equal(removeStatus.count, 3, JSON.stringify(removeStatus));
     await toolbar.getByRole("button", { name: "Rückgängig" }).click();
     assert.equal(await page.locator('[data-jui-dashboard-item]').count(), 4);
     await newAgendaTile.locator('[data-jui-editor-remove]').click();
