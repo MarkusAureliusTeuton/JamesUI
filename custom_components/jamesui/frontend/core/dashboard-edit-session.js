@@ -42,7 +42,7 @@ export function createDashboardEditSession({ controller, configService, pageId, 
       working = next;
       return page();
     },
-    addWidget(moduleId, { config = {}, columnSpan = 4, rowSpan = 3 } = {}) {
+    addWidget(moduleId, { config = {}, dataSources = {}, dynamicButtons = {}, columnSpan = 4, rowSpan = 3 } = {}) {
       ensureActive();
       if (busy) throw new Error("Dashboard editor is saving");
       if (typeof moduleId !== "string" || !moduleId.startsWith("widget.")) throw new TypeError("invalid widget module");
@@ -58,11 +58,18 @@ export function createDashboardEditSession({ controller, configService, pageId, 
       while (elements.some((item) => item.column < columnSpan &&
           item.row < row + rowSpan && item.row + item.row_span > row)) row += 1;
       if (maxRows !== null && row + rowSpan > maxRows) return null;
+      for (const buttonId of Object.keys(dynamicButtons)) {
+        if (buttonId in working.dynamic_buttons) throw new Error(`Button-Definition existiert bereits: ${buttonId}`);
+      }
+      const instanceConfig = structuredClone(config);
+      if (moduleId === "widget.calendar-agenda") instanceConfig.instance_id = id;
       history.push(working);
       working = {
         ...working,
+        data_sources: { ...working.data_sources, ...structuredClone(dataSources) },
+        dynamic_buttons: { ...working.dynamic_buttons, ...structuredClone(dynamicButtons) },
         widget_instances: { ...working.widget_instances,
-          [id]: { module_id: moduleId, config: structuredClone(config) } },
+          [id]: { module_id: moduleId, config: instanceConfig } },
         pages: { ...working.pages,
           [pageId]: { ...working.pages[pageId], elements: [
             ...working.pages[pageId].elements,
@@ -103,8 +110,26 @@ export function createDashboardEditSession({ controller, configService, pageId, 
           if (Object.keys(added).some((id) => id in latest.widget_instances)) {
             throw new Error("Widget instance ID changed externally");
           }
+          const sourceChanges = Object.fromEntries(
+            Object.entries(working.data_sources).filter(([id, value]) =>
+              JSON.stringify(value) !== JSON.stringify(baseline.data_sources[id])));
+          const buttonChanges = Object.fromEntries(
+            Object.entries(working.dynamic_buttons).filter(([id, value]) =>
+              JSON.stringify(value) !== JSON.stringify(baseline.dynamic_buttons[id])));
+          for (const id of Object.keys(sourceChanges)) {
+            if (JSON.stringify(latest.data_sources[id]) !== JSON.stringify(baseline.data_sources[id])) {
+              throw new Error(`Datenquelle wurde extern geändert: ${id}`);
+            }
+          }
+          for (const id of Object.keys(buttonChanges)) {
+            if (JSON.stringify(latest.dynamic_buttons[id]) !== JSON.stringify(baseline.dynamic_buttons[id])) {
+              throw new Error(`Button wurde extern geändert: ${id}`);
+            }
+          }
           return {
             ...latest,
+            data_sources: { ...latest.data_sources, ...sourceChanges },
+            dynamic_buttons: { ...latest.dynamic_buttons, ...buttonChanges },
             widget_instances: { ...latest.widget_instances, ...added },
             pages: { ...latest.pages,
               [pageId]: { ...latest.pages[pageId],
