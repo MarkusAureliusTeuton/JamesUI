@@ -56,6 +56,10 @@ test("catalog House Quick reuses existing light sources and can append explicit 
   assert.throws(() => buildDashboardWidgetSetup({
     moduleId: "widget.house-quick", currentConfig: { data_sources: {} },
   }), /Lichtentität/);
+  assert.throws(() => buildDashboardWidgetSetup({
+    moduleId: "widget.house-quick", currentConfig: config(),
+    inputs: { lightEntityId: "sensor.temperature" },
+  }), /light/);
 });
 
 test("catalog dynamic widget uses existing central button or safely creates explicit URL action", () => {
