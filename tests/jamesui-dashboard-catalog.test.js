@@ -100,7 +100,7 @@ test("device editor selects an explicit source instead of silently preselecting 
   });
   const select = view.root.querySelector('[data-jui-catalog-field="deviceId"]');
   assert.equal(select.value, "", "No implicit first-device selection");
-  assert.equal(view.root.querySelector('[data-jui-catalog-field="deviceName"]').value, "");
+  assert.equal(view.root.querySelector('[data-jui-catalog-field="deviceName"]').value ?? "", "");
   select.value = "device-b";
   select.dispatchEvent(new Event("change"));
   assert.equal(view.root.querySelector('[data-jui-catalog-field="deviceName"]').value, "Lüftung");
