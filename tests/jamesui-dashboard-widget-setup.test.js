@@ -385,3 +385,81 @@ test("energy editor refuses to replace a missing original source", () => {
     inputs: energyInputs(),
   }), /Bisherige Energiequelle/);
 });
+
+test("selecting a specific configured device updates only that record and retains custom status mapping", () => {
+  const current = {
+    data_sources: { "provider.house-devices": { devices: [
+      { id: "fan", name: "Lüftung", primary_entity_id: "switch.ventilation",
+        active: { entity_id: "binary_sensor.fan_active",
+          true_values: ["1"], false_values: ["0"] } },
+      { id: "pump", name: "Pumpe", primary_entity_id: "switch.pump",
+        active: { entity_id: "binary_sensor.pump_active" },
+        warning: { entity_id: "binary_sensor.pump_warning" } },
+    ] } },
+    widget_instances: { devices: { module_id: "widget.house-quick",
+      config: { buttons: [{ id: "devices", type: "devices" }] } } },
+    dynamic_buttons: {},
+  };
+  const plan = buildDashboardWidgetSetup({
+    moduleId: "widget.house-quick",
+    currentConfig: current,
+    priorWidgetConfig: current.widget_instances.devices.config,
+    inputs: {
+      houseType: "devices", deviceId: "fan",
+      sourceName: "Lüftungsanlage", primaryEntity: "switch.ventilation",
+      activeEntity: "binary_sensor.fan_active",
+      warningEntity: "binary_sensor.fan_warning",
+    },
+  });
+  const devices = plan.dataSources["provider.house-devices"].devices;
+  assert.equal(devices.length, 2);
+  assert.equal(devices[0].id, "fan");
+  assert.equal(devices[0].name, "Lüftungsanlage");
+  assert.equal(devices[0].warning.entity_id, "binary_sensor.fan_warning");
+  assert.deepEqual(devices[0].active.true_values, ["1"]);
+  assert.equal(devices[1].name, "Pumpe");
+  assert.equal(devices[1].warning.entity_id, "binary_sensor.pump_warning");
+  assert.equal(current.data_sources["provider.house-devices"].devices[0].name, "Lüftung");
+});
+
+test("device editor never silently modifies the first device when several exist", () => {
+  const current = {
+    data_sources: { "provider.house-devices": { devices: [
+      { id: "first", name: "Erstes", primary_entity_id: "switch.first",
+        active: { entity_id: "binary_sensor.first" } },
+      { id: "second", name: "Zweites", primary_entity_id: "switch.second",
+        active: { entity_id: "binary_sensor.second" } },
+    ] } },
+    dynamic_buttons: {},
+  };
+  const inputs = { houseType: "devices", sourceName: "Zweites aktualisiert",
+    primaryEntity: "switch.second", activeEntity: "binary_sensor.second" };
+  assert.throws(() => buildDashboardWidgetSetup({
+    moduleId: "widget.house-quick", currentConfig: current, inputs,
+  }), /anderen Geräte-ID/);
+  assert.throws(() => buildDashboardWidgetSetup({
+    moduleId: "widget.house-quick", currentConfig: current,
+    inputs: { ...inputs, deviceId: "deleted-device" },
+  }), /existiert nicht mehr/);
+  const plan = buildDashboardWidgetSetup({
+    moduleId: "widget.house-quick", currentConfig: current,
+    inputs: { ...inputs, deviceId: "second" },
+  });
+  assert.equal(plan.dataSources["provider.house-devices"].devices[0].name, "Erstes");
+  assert.equal(plan.dataSources["provider.house-devices"].devices[1].name, "Zweites aktualisiert");
+});
+
+test("unchanged selected device does not rewrite provider sources", () => {
+  const current = {
+    data_sources: { "provider.house-devices": { devices: [
+      { id: "fan", name: "Lüftung", primary_entity_id: "switch.ventilation",
+        active: { entity_id: "binary_sensor.fan_active" } },
+    ] } }, dynamic_buttons: {},
+  };
+  const plan = buildDashboardWidgetSetup({
+    moduleId: "widget.house-quick", currentConfig: current,
+    inputs: { houseType: "devices", deviceId: "fan", sourceName: "Lüftung",
+      primaryEntity: "switch.ventilation", activeEntity: "binary_sensor.fan_active" },
+  });
+  assert.deepEqual(plan.dataSources, {});
+});
