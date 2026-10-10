@@ -54,10 +54,22 @@ export function createDashboardEditSession({ controller, configService, pageId, 
              working.pages[pageId].elements.some((item) => item.id === base + "-" + i)) i += 1;
       const id = base + "-" + i;
       const elements = page().elements;
-      let row = 0;
-      while (elements.some((item) => item.column < columnSpan &&
-          item.row < row + rowSpan && item.row + item.row_span > row)) row += 1;
-      if (maxRows !== null && row + rowSpan > maxRows) return null;
+      let row = 0, column = 0, found = false;
+      // First-fit across all 12 columns before moving downward. Using only
+      // column 0 stacked widgets vertically despite free grid space.
+      while (maxRows === null || row + rowSpan <= maxRows) {
+        for (let candidate = 0; candidate <= 12 - columnSpan; candidate += 1) {
+          const overlaps = elements.some((item) =>
+            candidate < item.column + item.column_span &&
+            candidate + columnSpan > item.column &&
+            row < item.row + item.row_span &&
+            row + rowSpan > item.row);
+          if (!overlaps) { column = candidate; found = true; break; }
+        }
+        if (found) break;
+        row += 1;
+      }
+      if (!found) return null;
       for (const buttonId of Object.keys(dynamicButtons)) {
         if (buttonId in working.dynamic_buttons) throw new Error(`Button-Definition existiert bereits: ${buttonId}`);
       }
@@ -76,7 +88,7 @@ export function createDashboardEditSession({ controller, configService, pageId, 
         pages: { ...working.pages,
           [pageId]: { ...working.pages[pageId], elements: [
             ...working.pages[pageId].elements,
-            { id, kind: "widget", ref_id: id, column: 0, row,
+            { id, kind: "widget", ref_id: id, column, row,
               column_span: columnSpan, row_span: rowSpan },
           ] } },
       };
