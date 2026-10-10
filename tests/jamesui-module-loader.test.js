@@ -335,3 +335,23 @@ test("explicit mount refusal must never be reported as a successful runtime", as
   loader.destroyAll();
   assert.equal(loader.isLoaded("widget.refuses"), false);
 });
+
+test("explicit update refusal is reported instead of falsely succeeding", async () => {
+  const { registry, health, loader } = setup({
+    importer: async () => ({
+      create() {
+        return { mount() { return true; }, update() { return false; }, destroy() {} };
+      },
+    }),
+  });
+  registry.register(manifest("provider.refuses", "provider"), {
+    entryUrl: "https://example.test/provider-refuses.js",
+  });
+  assert.equal(await loader.load("provider.refuses", { config: { revision: 1 } }), true);
+  assert.equal(loader.mount("provider.refuses", {}), true);
+  assert.equal(loader.update("provider.refuses", { revision: 2 }), false);
+  assert.equal(health.get("module:provider.refuses")?.status, "error");
+  assert.match(health.get("module:provider.refuses")?.error?.message ?? "", /returned false/);
+  assert.equal(loader.isLoaded("provider.refuses"), true, "Refused update keeps old instance available for recovery");
+  assert.equal(loader.destroy("provider.refuses"), true);
+});
