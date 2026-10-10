@@ -317,3 +317,21 @@ test("Block 14 reload affects only one occurrence and retains its configuration"
   ]);
   loader.destroyAll();
 });
+
+test("explicit mount refusal must never be reported as a successful runtime", async () => {
+  const { registry, health, loader } = setup({
+    importer: async () => ({
+      create() {
+        return { mount() { return false; }, update() {}, destroy() {} };
+      },
+    }),
+  });
+  registry.register(manifest("widget.refuses"), { entryUrl: "https://example.test/refuses.js" });
+  assert.equal(await loader.load("widget.refuses"), true);
+  const target = {};
+  assert.equal(loader.mount("widget.refuses", target), false);
+  assert.equal(health.get("module:widget.refuses")?.status, "error");
+  assert.match(health.get("module:widget.refuses")?.error?.message ?? "", /returned false/);
+  loader.destroyAll();
+  assert.equal(loader.isLoaded("widget.refuses"), false);
+});
