@@ -374,3 +374,77 @@ test("externally added button reference blocks cleanup even after a previously s
   assert.ok(configService.snapshot().dynamic_buttons.scene);
   assert.equal(editor.workingConfig().dynamic_buttons.scene, undefined);
 });
+
+function versionedSetup() {
+  let remote = initial();
+  let sequence = 1;
+  let saves = 0;
+  const revision = () => sequence.toString(16).padStart(64, "0");
+  const configService = createConfigService({
+    homeAssistant: {
+      async callWS(request) {
+        if (request.type === "jamesui/config/get") {
+          return { config: structuredClone(remote), revision: revision() };
+        }
+        if (request.type !== "jamesui/config/replace") throw new Error("Unexpected HA request");
+        if (request.expected_revision !== revision()) {
+          throw Object.assign(new Error("config_conflict"), { code: "config_conflict" });
+        }
+        remote = structuredClone(request.config);
+        sequence += 1;
+        saves += 1;
+        return { config: structuredClone(remote), revision: revision() };
+      },
+    },
+  });
+  const controller = createDashboardController({ configService });
+  const editor = createDashboardEditSession({ controller, configService, pageId: "start", maxRows: 12 });
+  return {
+    configService, editor, getSaves: () => saves,
+    externalChange(change) {
+      const updated = structuredClone(remote);
+      change(updated);
+      remote = updated;
+      sequence += 1;
+    },
+    remote: () => structuredClone(remote),
+  };
+}
+
+test("explicit reload and retry preserves unrelated remote changes while saving the local draft", async () => {
+  const { configService, editor, externalChange, getSaves, remote } = versionedSetup();
+  await configService.load();
+  editor.enter();
+  editor.removeElement("a");
+  externalChange((value) => { value.module_settings.other_client = { value: 9 }; });
+  await assert.rejects(() => editor.save(), /config_conflict/);
+  assert.equal(editor.active, true);
+  assert.equal(editor.snapshot().elements.length, 1);
+  assert.equal(getSaves(), 0);
+  const saved = await editor.reloadAndSave();
+  assert.equal(saved.elements.length, 1);
+  assert.equal(editor.active, true);
+  assert.equal(editor.canUndo, false);
+  assert.equal(getSaves(), 1);
+  assert.equal(remote().module_settings.other_client.value, 9);
+  assert.equal(remote().pages.start.elements.length, 1);
+  assert.equal(remote().widget_instances.agenda, undefined);
+  editor.finish();
+});
+
+test("explicit retry refuses a genuine cross-client page conflict and Cancel shows latest page", async () => {
+  const { configService, editor, externalChange, getSaves, remote } = versionedSetup();
+  await configService.load();
+  editor.enter();
+  editor.removeElement("a");
+  externalChange((value) => { value.pages.start.elements[1].row = 4; });
+  await assert.rejects(() => editor.save(), /config_conflict/);
+  await assert.rejects(() => editor.reloadAndSave(), /Dashboard changed externally/);
+  assert.equal(getSaves(), 0);
+  assert.equal(editor.snapshot().elements.length, 1, "Draft must remain intact after failed rebase");
+  const restored = editor.cancel();
+  assert.equal(restored.elements.length, 2);
+  assert.equal(restored.elements[1].row, 4, "Cancel must render current committed server layout");
+  assert.equal(remote().pages.start.elements.length, 2);
+  assert.ok(remote().widget_instances.agenda);
+});
