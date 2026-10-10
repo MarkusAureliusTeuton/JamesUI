@@ -1,5 +1,6 @@
 import { createDashboardCatalog, createDashboardCatalogView } from "../modules/dashboard-catalog.js";
 import { createDashboardButtonCleanupView } from "../modules/dashboard-button-cleanup.js";
+import { removeUnusedDynamicButton } from "../modules/dashboard-resource-usage.js";
 import { createDashboardController } from "./dashboard-controller.js";
 import { createDashboardEditSession } from "./dashboard-edit-session.js";
 import { createDashboardEditorToolbar } from "./dashboard-editor-toolbar.js";
@@ -193,7 +194,10 @@ export function createDashboardPageComposer({ document, moduleLoader, getConfig,
   function attachEditor() {
     if (editor) return;
     const controller = createDashboardController({ configService });
-    editor = createDashboardEditSession({ controller, configService, pageId });
+    editor = createDashboardEditSession({
+      controller, configService, pageId,
+      removeUnusedButton: removeUnusedDynamicButton,
+    });
     let renderedInstances = new Map(Object.entries(getConfig().widget_instances)
       .map(([id, definition]) => [id, JSON.stringify(definition)]));
     const preview = (next, { recreateIds = [] } = {}) => {
