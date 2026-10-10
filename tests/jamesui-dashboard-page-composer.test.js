@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createDashboardPageComposer } from "../custom_components/jamesui/frontend/core/dashboard-page-composer.js";
+import { createConfiguredDashboardPageComposer } from "../custom_components/jamesui/frontend/modules/dashboard-composition.js";
 import { createFakeDocument } from "./helpers/fake-dom.js";
 
 function config(kind = "hero-deck") {
@@ -32,7 +32,7 @@ test("Block 14 composes real hero and distinct grid-widget lifecycles", async ()
     mount(id) { calls.push(["mount", id]); return true; },
     destroy(id) { calls.push(["destroy", id]); return true; },
   };
-  const page = createDashboardPageComposer({ document, moduleLoader: loader, getConfig: () => config() });
+  const page = createConfiguredDashboardPageComposer({ document, moduleLoader: loader, getConfig: () => config() });
   await page.mount(target, "start");
   await Promise.resolve();
   assert.ok(target.querySelector('[data-jui-layout="home-hero-deck"]'));
@@ -54,7 +54,7 @@ test("Block 14 fullscreen uses entire content region and no hero", async () => {
     mount() { return true; },
     destroy() { return true; },
   };
-  const page = createDashboardPageComposer({
+  const page = createConfiguredDashboardPageComposer({
     document, moduleLoader: loader, getConfig: () => config("fullscreen"),
   });
   await page.mount(target, "start");
@@ -77,7 +77,7 @@ test("dashboard startup remains pending until every widget finishes loading", as
     mount() { return true; },
     destroy() { return true; },
   };
-  const page = createDashboardPageComposer({ document, moduleLoader: loader, getConfig: () => config() });
+  const page = createConfiguredDashboardPageComposer({ document, moduleLoader: loader, getConfig: () => config() });
   const started = page.mount(target, "start");
   let settled = false;
   void started.then(() => { settled = true; }, () => { settled = true; });
@@ -103,7 +103,7 @@ test("dashboard reports failure when a configured widget cannot load", async () 
     mount() { return true; },
     destroy(id) { destroyed.push(id); return true; },
   };
-  const page = createDashboardPageComposer({ document, moduleLoader: loader, getConfig: () => config() });
+  const page = createConfiguredDashboardPageComposer({ document, moduleLoader: loader, getConfig: () => config() });
   try {
     await assert.rejects(() => page.mount(target, "start"), /Failed to mount one or more dashboard widgets/);
     assert.ok(target.querySelector('[data-jui-dashboard-item="agenda"]'));
