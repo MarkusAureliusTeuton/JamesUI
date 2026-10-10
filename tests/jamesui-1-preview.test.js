@@ -86,7 +86,15 @@ test("preview renders the four Start widgets from persisted instances", async ()
   };
   const target = document.createElement("div");
   try {
-    assert.equal(await preview.mount(target), true);
+    try {
+      assert.equal(await preview.mount(target), true);
+    } catch (error) {
+      const health = preview.core.health.list().map((record) => ({
+        id: record.id, message: record.message,
+        error: record.error?.message ?? null,
+      }));
+      assert.fail("Four-widget startup failed: " + error.message + " / " + JSON.stringify(health));
+    }
     assert.ok(target.querySelector('[data-jui-layout="home-hero-deck"]'));
     assert.ok(target.querySelector('[data-role="bottom-navigation"]'));
     assert.equal(target.querySelectorAll("[data-jui-dashboard-item]").length, 3);
