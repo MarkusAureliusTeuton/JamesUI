@@ -172,6 +172,20 @@ Real `climate.*` data and controls; no demo rooms/temperatures.
 ### Block 18 – Door migration ⬜
 Real door/camera functionality with suitable safety behavior.
 
+## Aktuelle Arbeitsfreigabe – Basissystem und Blöcke 0–14 (2026-10-10)
+
+**Verbindliche Abgrenzung:** Jetzt ausschließlich die Basisarchitektur/Core und die vorhandenen Module aus Blöcken **0–13** sowie deren vollständige Integration/Konfiguration in **Block 14** abschließen. Keine Implementierung von Block **15–21**, insbesondere keine vorgezogene Umschaltung (19/20) oder r11-Löschung (21).
+
+Der unten festgehaltene spätere Sequenzvorschlag **14 → 19 → 20 → 21 → 15 → 16 → 17 → 18** bleibt eine *Planungsreferenz*, **keine Freigabe, direkt nach einem grünen Block-14-Test umzuschalten**. Die nächsten Phasen werden erst nach abgeschlossenem und abgenommenem Basissystem sowie expliziter Freigabe begonnen.
+
+Abschlusskriterien für die laufende Arbeit:
+- vorhandene Module einzeln funktionsfähig und mit ihren Fähigkeiten, Eingaben, Aktionen und Störfällen nachvollziehbar getestet
+- echte, nutzerseitig konfigurierbare Quellen/Instanzen für die bereits vorhandenen Module; keine fingierten Entitäten
+- stabiler Core-/Provider-Lebenszyklus inkl. dynamischer Quellenänderung, Laden, Update, Abbruch und Wiederanlauf
+- zusammengebaute Startseite in echten Browsertests (Gesten, Layout, Fehler, Persistenz) geprüft
+- verbleibende Grenzen und echter Home-Assistant-/Zieltablet-Abnahmeschritt klar gekennzeichnet
+
+
 ## Revised execution order – early clean cutover
 
 **Approved 2026-10-09:** execute **14 → 19 → 20 → 21 → 15 → 16 → 17 → 18**. Block identifiers remain stable. The clean modular Start is released before migrating the remaining pages. The remaining pages are then implemented directly on the new production foundation.
