@@ -211,6 +211,9 @@ export function createDashboardCatalogView({ document, catalog, onSelect, onEdit
       const energy = group("energy");
       createField(energy, fields, "energyName", "Energiequelle", { placeholder: "Hausverbrauch" });
       createField(energy, fields, "powerEntity", "Leistungssensor", { placeholder: "sensor.hausleistung" });
+      createField(energy, fields, "powerAttribute", "HA-Attribut des Leistungssensors (optional)", {
+        placeholder: "power",
+      });
       createField(energy, fields, "averageWindow", "Mittelungszeit (Minuten)", { placeholder: "15" });
       fields.get("averageWindow").value = "15";
       createField(energy, fields, "warningThreshold", "Warnschwelle (W)", { placeholder: "3000" });
@@ -332,6 +335,7 @@ export function createDashboardCatalogView({ document, catalog, onSelect, onEdit
           if (!energy) throw new TypeError("Konfigurierte Energiequelle wurde nicht gefunden");
           set("energyName", energy.name);
           set("powerEntity", energy.power?.entity_id);
+          set("powerAttribute", energy.power?.attribute);
           set("averageWindow", button.average_window_minutes);
           set("warningThreshold", button.warning_threshold_w);
           set("criticalThreshold", button.critical_threshold_w);

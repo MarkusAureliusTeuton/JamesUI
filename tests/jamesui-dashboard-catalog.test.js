@@ -115,3 +115,63 @@ test("device editor selects an explicit source instead of silently preselecting 
   assert.equal(sources[1].id, "device-b");
   assert.equal(sources[1].name, "Lüftungsanlage");
 });
+
+
+test("weather editor clears persisted optional sensor bindings through the visible catalog", () => {
+  const document = createFakeDocument();
+  const current = {
+    data_sources: { "provider.weather": {
+      entity_id: "weather.home", moon_entity_id: "sensor.old_moon",
+    } }, dynamic_buttons: {},
+  };
+  const plans = [];
+  const view = createDashboardCatalogView({
+    document,
+    catalog: createDashboardCatalog({ moduleRegistry: {
+      get: (id) => id === "widget.weather-today" ? { manifest: { type: "widget" } } : null,
+    } }),
+    getConfig: () => current,
+    onSelect() { throw Error("Should edit existing instance"); },
+    onEdit: (...args) => { plans.push(args[2]); return true; },
+  });
+  view.edit("weather-1", { module_id: "widget.weather-today", config: {} });
+  const field = view.root.querySelector('[data-jui-catalog-field="moonEntityId"]');
+  assert.equal(field.value, "sensor.old_moon");
+  field.value = "";
+  view.root.querySelector("[data-jui-catalog-confirm]").dispatchEvent("click");
+  assert.equal(plans.length, 1);
+  assert.deepEqual(plans[0].dataSources["provider.weather"], { entity_id: "weather.home" });
+});
+
+test("energy editor offers and pre-fills power attributes and can remove the attribute", () => {
+  const document = createFakeDocument();
+  const current = {
+    data_sources: { "provider.house-energy": { sources: [{
+      id: "source-1", name: "Haus",
+      power: { entity_id: "sensor.inverter", attribute: "active_power" },
+    }] } },
+    widget_instances: { energy: {
+      module_id: "widget.house-quick",
+      config: { buttons: [{ id: "energy", type: "energy", source_id: "source-1",
+        average_window_minutes: 15, warning_threshold_w: 3000, critical_threshold_w: 5000 }] },
+    } }, dynamic_buttons: {},
+  };
+  const plans = [];
+  const view = createDashboardCatalogView({
+    document,
+    catalog: createDashboardCatalog({ moduleRegistry: {
+      get: (id) => id === "widget.house-quick" ? { manifest: { type: "widget" } } : null,
+    } }),
+    getConfig: () => current,
+    onSelect() { throw Error("Should edit existing instance"); },
+    onEdit: (...args) => { plans.push(args[2]); return true; },
+  });
+  view.edit("energy", current.widget_instances.energy);
+  const field = view.root.querySelector('[data-jui-catalog-field="powerAttribute"]');
+  assert.equal(field.value, "active_power");
+  field.value = "";
+  view.root.querySelector("[data-jui-catalog-confirm]").dispatchEvent("click");
+  assert.equal(plans.length, 1);
+  assert.deepEqual(plans[0].dataSources["provider.house-energy"].sources[0].power,
+    { entity_id: "sensor.inverter" });
+});

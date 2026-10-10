@@ -192,8 +192,20 @@ export function buildHouseQuickSetup({ inputs = {}, currentConfig, priorWidgetCo
     if (previousButton && !previousSource) {
       throw new TypeError("Bisherige Energiequelle existiert nicht mehr");
     }
+    // A HA sensor can expose power in an attribute instead of its main state.
+    // Unspecified input preserves an existing attribute, an explicitly empty
+    // editor field clears it. This must participate in source matching/COW.
+    const priorPower = previousSource?.power;
+    const rawAttribute = inputs.powerAttribute === undefined
+      ? (priorPower?.entity_id === powerEntityId ? priorPower.attribute ?? "" : "")
+      : String(inputs.powerAttribute ?? "").trim();
+    const power = {
+      entity_id: powerEntityId,
+      ...(rawAttribute ? { attribute: rawAttribute } : {}),
+    };
     const matching = sources.find((row) => row.power?.entity_id === powerEntityId);
-    const matchingSame = matching && matching.name === name;
+    const matchingSame = matching && matching.name === name &&
+      (matching.power.attribute ?? "") === (power.attribute ?? "");
     let id;
     if (matchingSame) {
       id = matching.id;
@@ -207,15 +219,14 @@ export function buildHouseQuickSetup({ inputs = {}, currentConfig, priorWidgetCo
           entry.source_id === previousSource.id).length;
       id = uses > 1 ? uniqueId("dashboard-energy-", sources) : previousSource.id;
       const updated = {
-        id, name, power: previousSource.power?.entity_id === powerEntityId
-          ? previousSource.power : { entity_id: powerEntityId },
+        id, name, power,
       };
       if (uses > 1) sources.push(updated);
       else sources[sources.findIndex((entry) => entry.id === id)] = updated;
       dataSources[provider] = validateHouseEnergyConfig({ sources });
     } else {
       id = uniqueId("dashboard-energy-", sources);
-      sources.push({ id, name, power: { entity_id: powerEntityId } });
+      sources.push({ id, name, power });
       dataSources[provider] = validateHouseEnergyConfig({ sources });
     }
     const window = number(inputs.averageWindow ?? "15", "Mittelungszeit", { positive: true });

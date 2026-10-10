@@ -58,7 +58,12 @@ export function buildDashboardWidgetSetup({ moduleId, inputs = {}, currentConfig
         ["illuminanceEntityId", "illuminance_entity_id"],
       ]) {
         const input = String(inputs[key] ?? "").trim();
-        if (input) weather[property] = input;
+        // Explicitly clearing an optional field must remove its old binding.
+        // Omitted inputs (non-interactive callers) retain the prior value.
+        if (Object.hasOwn(inputs, key)) {
+          if (input) weather[property] = input;
+          else delete weather[property];
+        }
       }
       const validated = validateWeatherProviderConfig(weather);
       if (JSON.stringify(validated) !== JSON.stringify(configured)) {

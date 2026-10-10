@@ -463,3 +463,67 @@ test("unchanged selected device does not rewrite provider sources", () => {
   });
   assert.deepEqual(plan.dataSources, {});
 });
+
+
+test("weather editor can remove optional sensors, preserve omitted bindings and reject invalid replacements", () => {
+  const current = config();
+  current.data_sources["provider.weather"] = {
+    entity_id: "weather.home",
+    outdoor_temperature_entity_id: "sensor.outside",
+    moon_entity_id: "sensor.moon",
+  };
+  const omitted = buildDashboardWidgetSetup({
+    moduleId: "widget.weather-today", currentConfig: current,
+    inputs: { weatherEntityId: "weather.home" },
+  });
+  assert.deepEqual(omitted.dataSources, {});
+  const cleared = buildDashboardWidgetSetup({
+    moduleId: "widget.weather-today", currentConfig: current,
+    inputs: { weatherEntityId: "weather.home", outdoorTemperatureEntityId: "",
+      moonEntityId: "   ", illuminanceEntityId: "sensor.lux" },
+  });
+  assert.deepEqual(cleared.dataSources["provider.weather"], {
+    entity_id: "weather.home", illuminance_entity_id: "sensor.lux",
+  });
+  assert.equal(current.data_sources["provider.weather"].moon_entity_id, "sensor.moon");
+  assert.throws(() => buildDashboardWidgetSetup({
+    moduleId: "widget.weather-today", currentConfig: current,
+    inputs: { weatherEntityId: "weather.home", moonEntityId: "bad.entity.INVALID" },
+  }), /moon_entity_id/);
+});
+
+test("energy source supports explicit HA state attribute and preserves it on unrelated edits", () => {
+  const initial = buildDashboardWidgetSetup({
+    moduleId: "widget.house-quick", currentConfig: config(),
+    inputs: { houseType: "energy", sourceName: "Verbrauch",
+      powerEntity: "sensor.inverter", powerAttribute: "power",
+      averageWindow: "10", warningThreshold: "2000", criticalThreshold: "3000" },
+  });
+  assert.equal(initial.dataSources["provider.house-energy"].sources[0].power.attribute, "power");
+  const current = existingEnergy();
+  const edited = buildDashboardWidgetSetup({
+    moduleId: "widget.house-quick", currentConfig: current,
+    priorWidgetConfig: current.priorWidgetConfig,
+    inputs: energyInputs({ warningThreshold: "2900" }),
+  });
+  assert.deepEqual(edited.dataSources, {});
+  assert.equal(current.data_sources["provider.house-energy"].sources[0].power.attribute, "power");
+});
+
+test("energy attribute clearing updates only the selected source and forks shared bindings", () => {
+  for (const shared of [false, true]) {
+    const current = existingEnergy({ shared });
+    const plan = buildDashboardWidgetSetup({
+      moduleId: "widget.house-quick", currentConfig: current,
+      priorWidgetConfig: current.priorWidgetConfig,
+      inputs: energyInputs({ powerAttribute: "" }),
+    });
+    const sources = plan.dataSources["provider.house-energy"].sources;
+    assert.equal(sources.length, shared ? 2 : 1);
+    assert.deepEqual(sources.at(-1).power, { entity_id: "sensor.energy_old" });
+    assert.equal(plan.config.buttons[0].source_id,
+      shared ? "dashboard-energy-1" : "energy-main");
+    assert.equal(current.data_sources["provider.house-energy"].sources[0].power.attribute, "power");
+    if (shared) assert.equal(sources[0].power.attribute, "power");
+  }
+});
