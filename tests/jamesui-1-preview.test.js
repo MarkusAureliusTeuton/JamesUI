@@ -162,3 +162,50 @@ test("preview reuses canonical weather entity mapping migrated from r11", async 
     preview.destroy();
   }
 });
+
+test("preview initializes a missing home dashboard without losing migrated settings", async () => {
+  const document = createFakeDocument();
+  const preview = createJamesUI1Preview({ document });
+  const config = {
+    schema_version: 1, pages: {}, layouts: {}, widget_instances: {}, dynamic_buttons: {},
+    data_sources: { weather: { entity_id: "weather.home" } },
+    module_settings: { start: { background: "existing" } },
+  };
+  const writes = [];
+  preview.core.hass = {
+    connected: true, states: { "weather.home": { state: "sunny", attributes: {} } },
+    callWS: async ({ type, config: next }) => {
+      if (type === "jamesui/config/get") return { config };
+      assert.equal(type, "jamesui/config/replace");
+      writes.push(next);
+      return { config: next };
+    },
+  };
+  try {
+    assert.equal(await preview.mount(document.createElement("div")), true);
+    assert.equal(writes.length, 1);
+    assert.equal(writes[0].pages.home.kind, "dashboard");
+    assert.equal(writes[0].layouts["jamesui-next-home"].kind, "hero-deck");
+    assert.deepEqual(writes[0].data_sources, config.data_sources);
+    assert.deepEqual(writes[0].module_settings, config.module_settings);
+    assert.equal(preview.core.moduleLoader.isLoaded("provider.weather"), true);
+  } finally {
+    preview.destroy();
+  }
+});
+
+test("preview never overwrites an existing incompatible home page", async () => {
+  const document = createFakeDocument();
+  const preview = createJamesUI1Preview({ document });
+  const config = {
+    schema_version: 1, pages: { home: { kind: "legacy" } }, layouts: {},
+    widget_instances: {}, dynamic_buttons: {}, data_sources: {}, module_settings: {},
+  };
+  preview.core.hass = { connected: true, states: {}, callWS: async ({ type }) => {
+    assert.equal(type, "jamesui/config/get");
+    return { config };
+  } };
+  try {
+    await assert.rejects(() => preview.mount(document.createElement("div")), /not a dashboard/);
+  } finally { preview.destroy(); }
+});
