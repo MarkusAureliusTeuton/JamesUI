@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { chromium } from "playwright";
 
-const root = fileURLToPath(new URL("../../", import.meta.url));
+const root = path.resolve(fileURLToPath(new URL("../../", import.meta.url)));
 const mime = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
   ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8" };
 const server = createServer(async (request, response) => {
@@ -37,7 +37,8 @@ try {
     const page = await browser.newPage({ viewport, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
-    await page.goto(base + "/tests/browser/fixture.html", { waitUntil: "load" });
+    const navigation = await page.goto(base + "/tests/browser/fixture.html", { waitUntil: "load" });
+    assert.equal(navigation?.status(), 200, "Browser fixture must be served successfully");
     await page.waitForFunction(() => ["ready", "error"].includes(window.__juiTest?.status), null, { timeout: 20000 });
     const outcome = await page.evaluate(() => ({
       status: window.__juiTest.status,
