@@ -472,3 +472,12 @@ Read the completed Block-13 spec/plan and the cross-block layout planning notes,
 - **Architektur-Gate:** Neuer Test in `tests/test_core_architecture.py` verhindert Domain-Imports aus dem generischen Dashboard-Composer. Separater Node-Test weist fehlende und unvollständige Composition-Contracts zurück.
 - **Prüfung:** Wetter-Fault-Injection sowie Core/Modul-Integration und Chromium werden durch die bestehende GitHub-CI ausgeführt. Aktuelle Änderungen sind auf `feat/jamesui-1-0-block-14-start-configuration` eingecheckt; PR #27 bleibt Draft.
 - **Weiter offen innerhalb 0–14:** umfassende Prüfung zusätzlicher Fehlerpfade und erweiterter Modul-/Widget-Einstellungen, Real-HA-/KNX-Services, Home-Assistant-Hardware und Tablet/Fully-Kiosk-End-to-End-Tests. Kein Start der Blöcke 15–21, kein Produktiv-Cutover.
+
+### Block 14 – Async-Widget-Lifecycle und Reihenfolge der Config-Store-Operationen (2026-10-10)
+
+- **Module Loader:** Abgebrochene asynchrone `load()`-Aufrufe werden jetzt **pro Ladeversuch** statt über eine gemeinsam geteilte Cancellation-ID verwaltet. Nach Entfernen/Undo kann sofort eine neue Instanz mit gleicher ID geladen werden. Alte Importergebnisse oder Importfehler dürfen die neue Laufzeit und deren Health-Status nicht überschreiben/zerstören.
+- **Widget-Host:** Ein bereits entsorgter Host ignoriert verspätete erfolgreiche oder fehlerhafte Imports vollständig. Die Entsorgung erfolgt beim Entfernen, nicht verspätet aus dem alten Host-Promise.
+- **Config Service:** Schreibvorgänge eines Clients werden serialisiert und verwenden jeweils die letzte bestätigte CAS-Revision; `load()` nach bereits angefragtem Write wartet auf dessen Abschluss. `update()` baut auf bereits beauftragten direkten `replace()`-Operationen auf. Die asynchrone `replace()`-Fehlerschnittstelle blieb erhalten.
+- **Fehler-/Racetests:** Unit-Tests für mehrere Importgenerationen, späte Fehler, echte Dashboard-Grid-/Widget-Host-/Loader-Kombination mit Remove/Undo; Config Service testet Delayed Writes, konkurrierende direkte Writes, Queue-Fortsetzung nach Schreibfehler und Stale-Read-Schutz.
+- **Qualitätsnachweis:** [GitHub Actions 38069408258](https://github.com/MarkusAureliusTeuton/JamesUI/actions/runs/38069408258), Commit `7708a784b`: beide Jobs `validate` und `browser-smoke` **grün**.
+- **Abgrenzung:** Weiter nur Blöcke 0–14; kein r11-Cutover, keine nachfolgenden Blöcke 15–21. Echte HA-Entitäten, länger laufende Netztrennung und OnePlus Pad 2 / Fully Kiosk weiterhin nicht geprüft.
