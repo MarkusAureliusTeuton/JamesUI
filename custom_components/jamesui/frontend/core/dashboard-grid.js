@@ -77,7 +77,7 @@ export function createDashboardGrid({ document, createItemHost = () => {} } = {}
         if (dispose !== null && typeof dispose !== "function") {
           throw new TypeError("createItemHost must return a cleanup function or null");
         }
-        entry = { node, dispose, kind: item.kind, refId: item.ref_id };
+        entry = { node, dispose, ready: dispose?.ready ?? null, kind: item.kind, refId: item.ref_id };
         activeItems.set(item.id, entry);
         root.appendChild(node);
       }
@@ -102,5 +102,13 @@ export function createDashboardGrid({ document, createItemHost = () => {} } = {}
     return root;
   };
 
-  return Object.freeze({ mount, render, destroy });
+  // Only widget hosts expose asynchronous readiness. Static hosts are ready immediately.
+  // Resolve false when any configured widget failed to load or mount.
+  const whenReady = async () => {
+    const results = await Promise.all([...activeItems.values()].map((entry) =>
+      entry.ready === null ? true : entry.ready));
+    return results.every((ready) => ready === true);
+  };
+
+  return Object.freeze({ mount, render, whenReady, destroy });
 }
