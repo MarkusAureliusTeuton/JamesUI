@@ -77,6 +77,13 @@ Stand: 2026-10-09. Arbeitsstand des Draft-PR #27, keine Freigabe oder Tablet-Abn
 | Leere Neuinstallation | Chromium: Dashboard wird initialisiert, `Bearbeiten` erreichbar, Widget anlegbar und speicherbar | Echte Home-Assistant-Installation |
 | Widget-Katalog | Geführte Eingaben und Validierung für Wetter, Agenda, Licht-Kurzstatus und vorhandene/URL-Buttons | Erweiterte Konfiguration für alle Haus-/Steuerungs-/Widget-Varianten |
 | Kalender/Aufgaben | Explizite `calendar.*`/`todo.*`-IDs; Provider-Bindings zusammen mit Widget gespeichert | Echte Kalender-/Todo-Berechtigungen, Abruf und Bearbeitung |
-| Quellenänderungen | Undo und atomarer Save; externe konkurrierende Änderungen werden abgewiesen | Live-Aktivierung neuer Provider ohne erneutes Öffnen |
+| Quellenänderungen | Undo, atomarer Save, Konfliktschutz; bestehende Provider nach Save live gestartet/aktualisiert (CI 38033578889) | Reale Home-Assistant-Anbindung und zusätzliche Quellenformulare |
 | Dynamic Buttons | Zentrale Definition oder gültige URL-Action; keine implizite HA-Aktion | Eigene Toggle-/KNX-/Service-Action-Konfiguration |
 | Rollout | Testbereit nur in simulierter Browser-Umgebung | HA-, OnePlus-Pad-2- und Fully-Kiosk-Abnahme |
+
+## Beschränkung der laufenden Arbeit (2026-10-10)
+
+- Nur Basis/Core, bestehende Module aus Block 0–13 und deren Abschluss/Integration in Block 14.
+- Keine Folgeblöcke 15–21 und keine produktive Umschaltung; PR #27 bleibt Draft.
+- Live-Konfigurationsübernahme vorhandener Provider in Unit-/Integration-/Chromium-Tests grün (`38033578889`), echte HA-/Tablet-Tests offen.
+- Abschluss der vorhandenen Module bedeutet auch vollständige nutzerseitige Konfiguration der bereits spezifizierten Heizungs-, Geräte-, Energie- und Steuerzustandsfähigkeiten; diese ist **noch offen**.
