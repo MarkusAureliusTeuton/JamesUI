@@ -17,9 +17,24 @@ function config() {
   };
 }
 
-test("catalog weather plans an empty but valid widget without fake sources", () => {
-  const setup = buildDashboardWidgetSetup({ moduleId: "widget.weather-today", currentConfig: config() });
-  assert.deepEqual(setup, { config: {}, dataSources: {}, dynamicButtons: {} });
+test("catalog weather requires explicit weather entity and preserves optional source fields", () => {
+  assert.throws(() => buildDashboardWidgetSetup({
+    moduleId: "widget.weather-today", currentConfig: config(),
+  }), /Wetter-Entität/);
+  const setup = buildDashboardWidgetSetup({
+    moduleId: "widget.weather-today",
+    currentConfig: config(),
+    inputs: { weatherEntityId: "weather.home", moonEntityId: "sensor.moon_phase" },
+  });
+  assert.deepEqual(setup, {
+    config: {}, dataSources: { "provider.weather": {
+      entity_id: "weather.home", moon_entity_id: "sensor.moon_phase",
+    } }, dynamicButtons: {},
+  });
+  assert.throws(() => buildDashboardWidgetSetup({
+    moduleId: "widget.weather-today", currentConfig: config(),
+    inputs: { weatherEntityId: "sensor.not_weather" },
+  }), /weather/);
 });
 
 test("catalog agenda merges explicit real calendar/todo IDs without losing existing sources", () => {
@@ -78,4 +93,74 @@ test("catalog dynamic widget uses existing central button or safely creates expl
     moduleId: "widget.dynamic-buttons", currentConfig: config(),
     inputs: { buttonName: "Unsafe", url: "javascript:alert(1)" },
   }), /HTTP/);
+});
+
+test("catalog House Quick configures an ambient light without mixing the two lighting groups", () => {
+  const setup = buildDashboardWidgetSetup({
+    moduleId: "widget.house-quick", currentConfig: config(),
+    inputs: { houseType: "ambient_lights", lightEntityId: "light.ambient" },
+  });
+  assert.deepEqual(setup.config.buttons, [{ id: "ambient_lights", type: "ambient_lights" }]);
+  assert.equal(setup.dataSources["provider.house-lighting"].lights.length, 1);
+  assert.equal(setup.dataSources["provider.house-lighting"].ambient_lights[0].state.entity_id, "light.ambient");
+  assert.throws(() => buildDashboardWidgetSetup({
+    moduleId: "widget.house-quick", currentConfig: config(),
+    inputs: { houseType: "ambient_lights", lightEntityId: "light.flur" },
+  }), /anderen Lichtgruppe/);
+});
+
+test("catalog House Quick maps heating zone to explicit KNX/HA entity bindings", () => {
+  const setup = buildDashboardWidgetSetup({
+    moduleId: "widget.house-quick", currentConfig: config(),
+    inputs: {
+      houseType: "heating_zone", sourceName: "Wohnzimmer",
+      currentTemperature: "sensor.raum_ist", targetTemperature: "sensor.raum_soll",
+      heatingDemand: "binary_sensor.heizbedarf", autoRegulation: "binary_sensor.heizung_auto",
+    },
+  });
+  assert.deepEqual(setup.config.buttons, [{
+    id: "heating", type: "heating_zone", source_id: "dashboard-zone-1",
+  }]);
+  const zone = setup.dataSources["provider.house-heating"].zones[0];
+  assert.equal(zone.auto_regulation_enabled.entity_id, "binary_sensor.heizung_auto");
+  assert.equal(zone.heating_demand.entity_id, "binary_sensor.heizbedarf");
+  assert.throws(() => buildDashboardWidgetSetup({
+    moduleId: "widget.house-quick", currentConfig: config(),
+    inputs: { houseType: "heating_zone", sourceName: "Wohnzimmer", currentTemperature: "sensor.raum_ist" },
+  }), /Solltemperatur/);
+});
+
+test("catalog House Quick creates a single device with explicit fault/update status bindings", () => {
+  const setup = buildDashboardWidgetSetup({
+    moduleId: "widget.house-quick", currentConfig: config(),
+    inputs: {
+      houseType: "devices", sourceName: "Lüftung", primaryEntity: "switch.ventilation",
+      activeEntity: "binary_sensor.ventilation_active",
+      updateEntity: "binary_sensor.ventilation_update",
+      faultEntity: "binary_sensor.ventilation_fault",
+    },
+  });
+  assert.deepEqual(setup.config.buttons, [{ id: "devices", type: "devices" }]);
+  const device = setup.dataSources["provider.house-devices"].devices[0];
+  assert.equal(device.primary_entity_id, "switch.ventilation");
+  assert.equal(device.fault.entity_id, "binary_sensor.ventilation_fault");
+  assert.ok(!("warning" in device));
+});
+
+test("catalog energy uses configurable warning and critical thresholds, rejects inverted levels", () => {
+  const setup = buildDashboardWidgetSetup({
+    moduleId: "widget.house-quick", currentConfig: config(),
+    inputs: { houseType: "energy", sourceName: "Haus", powerEntity: "sensor.hausverbrauch",
+      averageWindow: "30", warningThreshold: "3000", criticalThreshold: "5000" },
+  });
+  assert.deepEqual(setup.config.buttons, [{
+    id: "energy", type: "energy", source_id: "dashboard-energy-1",
+    average_window_minutes: 30, warning_threshold_w: 3000, critical_threshold_w: 5000,
+  }]);
+  assert.equal(setup.dataSources["provider.house-energy"].sources[0].power.entity_id, "sensor.hausverbrauch");
+  assert.throws(() => buildDashboardWidgetSetup({
+    moduleId: "widget.house-quick", currentConfig: config(),
+    inputs: { houseType: "energy", sourceName: "Haus", powerEntity: "sensor.hausverbrauch",
+      averageWindow: "15", warningThreshold: "5000", criticalThreshold: "3000" },
+  }), /Kritische Schwelle/);
 });
