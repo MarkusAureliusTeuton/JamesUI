@@ -216,6 +216,36 @@ try {
     await toolbar.waitFor({ state: "hidden" });
     assert.equal(await page.evaluate(() =>
       window.__juiTest.persisted.pages.home.elements.find((item) => item.id === "house").row), 0);
+
+    // The editor must also be reachable without any long-press (including
+    // an initially empty page). The catalog refuses incomplete input and
+    // commits both a valid widget and its real source IDs together.
+    await page.locator('[data-jui-dashboard-edit-entry]').click();
+    await toolbar.waitFor({ state: "visible" });
+    await toolbar.getByRole("button", { name: "+ Hinzufügen" }).click();
+    const catalog = page.locator('[data-jui-dashboard-catalog]');
+    await catalog.waitFor({ state: "visible" });
+    await catalog.locator('[data-jui-catalog-module="widget.calendar-agenda"]').click();
+    await catalog.locator('[data-jui-catalog-confirm]').click();
+    assert.match(await catalog.locator('[data-jui-catalog-error]').innerText(), /Mindestens eine/);
+    assert.equal(await page.locator('[data-jui-dashboard-item]').count(), 3);
+    assert.equal(await page.evaluate(() => window.__juiTest.writes), 2);
+
+    await catalog.locator('[data-jui-catalog-field="calendars"]').fill("calendar.family");
+    await catalog.locator('[data-jui-catalog-field="tasks"]').fill("todo.family");
+    await catalog.locator('[data-jui-catalog-confirm]').click();
+    await catalog.waitFor({ state: "hidden" });
+    await page.waitForFunction(() => document.querySelectorAll('[data-jui-dashboard-item]').length === 4);
+    assert.equal(await page.locator('[data-jui-widget-error]').count(), 0);
+    await toolbar.getByRole("button", { name: "Fertig" }).click();
+    await page.waitForFunction(() => window.__juiTest.writes === 3);
+    const latest = await page.evaluate(() => window.__juiTest.persisted);
+    const agendaInstance = latest.pages.home.elements.find((item) => item.id.startsWith("widget-calendar-agenda-"));
+    assert.ok(agendaInstance, "A unique, separate Agenda widget instance must be persisted");
+    assert.equal(latest.widget_instances[agendaInstance.ref_id].config.instance_id, agendaInstance.ref_id);
+    assert.deepEqual(latest.data_sources["provider.calendar"].source_entity_ids, ["calendar.family"]);
+    assert.deepEqual(latest.data_sources["provider.tasks"].source_entity_ids, ["todo.family"]);
+    assert.equal(latest.widget_instances.agenda.config.instance_id, "browser-agenda");
     assert.deepEqual(errors, [], "Browser JavaScript errors");
     await page.evaluate(() => window.__juiTest.app.destroy());
     assert.equal(await page.locator('[data-role="app-shell"]').count(), 0);
