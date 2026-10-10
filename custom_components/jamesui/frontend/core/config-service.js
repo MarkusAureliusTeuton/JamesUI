@@ -55,6 +55,7 @@ export function createConfigService({ homeAssistant } = {}) {
   requireHomeAssistant(homeAssistant);
 
   let current = null;
+  let currentRevision = null;
   let destroyed = false;
   let operationGeneration = 0;
   let pendingMutation = Promise.resolve();
@@ -77,6 +78,11 @@ export function createConfigService({ homeAssistant } = {}) {
 
   const commitResponse = (response) => {
     const next = extractConfigResponse(response);
+    if (response.revision !== undefined &&
+        (typeof response.revision !== "string" || !/^[a-f0-9]{64}$/.test(response.revision))) {
+      throw new TypeError("Invalid JamesUI configuration revision");
+    }
+    currentRevision = response.revision ?? null;
     current = next;
     notify();
     return cloneValue(next);
@@ -96,14 +102,18 @@ export function createConfigService({ homeAssistant } = {}) {
       return current === null ? null : cloneValue(current);
     },
 
+    get revision() { return currentRevision; },
+
     async replace(config) {
       requireActive();
       const requestConfig = validateAndCloneConfig(config);
       const requestGeneration = ++operationGeneration;
-      const response = await homeAssistant.callWS({
+      const request = {
         type: "jamesui/config/replace",
         config: requestConfig,
-      });
+        ...(currentRevision !== null ? { expected_revision: currentRevision } : {}),
+      };
+      const response = await homeAssistant.callWS(request);
       requireActive();
       if (requestGeneration !== operationGeneration) return current === null ? null : cloneValue(current);
       return commitResponse(response);
