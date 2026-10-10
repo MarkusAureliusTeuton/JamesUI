@@ -277,3 +277,31 @@ test("editing can update central sources and widget atomically without touching 
   assert.equal(saved.widget_instances.agenda.config.instance_id, "agenda");
   assert.ok(saved.dynamic_buttons.scene);
 });
+
+test("Cancel discards widget edits, removal, new sources and definitions without any write", async () => {
+  const { configService, editor, getWrites } = setup();
+  await configService.load();
+  const initialSnapshot = configService.snapshot();
+  editor.enter();
+  editor.updateWidget("a", {
+    config: { instance_id: "agenda", calendar_enabled: true, tasks_enabled: false,
+      calendars: [{ entity_id: "calendar.family" }], task_lists: [] },
+    dataSources: { "provider.calendar": { source_entity_ids: ["calendar.family"] } },
+  });
+  editor.addWidget("widget.dynamic-buttons", {
+    config: { buttons: [{ id: "light", button_id: "new-light", size: "normal" }] },
+    dynamicButtons: { "new-light": {
+      name: "Licht", mode: "trigger", action: { type: "navigate", route: "home" },
+    } },
+  });
+  editor.removeElement("b");
+  assert.equal(editor.canUndo, true);
+  const restored = editor.cancel();
+  assert.equal(editor.active, false);
+  assert.deepEqual(restored.elements, initialSnapshot.pages.start.elements);
+  assert.deepEqual(configService.snapshot(), initialSnapshot);
+  assert.equal(getWrites(), 0);
+  editor.enter();
+  assert.deepEqual(editor.workingConfig(), initialSnapshot);
+  editor.finish();
+});
