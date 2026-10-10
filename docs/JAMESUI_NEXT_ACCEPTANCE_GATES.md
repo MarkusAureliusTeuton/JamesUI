@@ -96,3 +96,9 @@
 - **G2/G4 unverändert:** Bestehende Speichern-/Abbrechen-/Undo-/Bereinigen- und Mehrclient-Konflikttests bleiben erfolgreich.
 - **Prüfnachweis:** `validate` und Chromium `browser-smoke` erfolgreich in [Run 38062902006](https://github.com/MarkusAureliusTeuton/JamesUI/actions/runs/38062902006), Commit `4a068b957`.
 - **Keine vollständige Basisabnahme:** Weiterhin keine reale Home-Assistant-/KNX-/Fully-Kiosk-/OnePlus-Pad-2-Prüfung. Keine Umsetzung von Block 15–21.
+
+## Block-14-Lifecycle-Audit (2026-10-10)
+
+- **G1/G3 nachgebessert:** Kalender- und Todo-Provider binden nach fehlgeschlagenem Update die letzte gültige Konfiguration wieder ein; Teil-Subscriptions werden bereinigt. Module Loader `reload()` lässt nach fehlgeschlagenem Remount keine scheinbar aktive Modulinstanz zurück und bewahrt die Fehlerdiagnose.
+- **Nachweise:** Fehler-Injection-Unit-Tests auf echten Provider-Lebenszyklen und Module Loader, plus unveränderter Chromium-Gesamtsystemtest. CI `validate` und `browser-smoke` beide erfolgreich: [Run 38065899365](https://github.com/MarkusAureliusTeuton/JamesUI/actions/runs/38065899365), Commit `7ff1996c6`.
+- **Offene Architekturprüfung:** Der generische Dashboard Page Composer importiert noch Modul-Integrationsbestandteile; außerdem ist die vollständige Fehler-Wiederherstellung des Wetterproviders separat zu prüfen. G1–G6 weiterhin nicht insgesamt abgenommen; Real-HA, KNX und Tablet weiterhin ungetestet.
