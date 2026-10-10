@@ -19,10 +19,11 @@ export function createDashboardCatalog({ moduleRegistry } = {}) {
   });
 }
 
-export function createDashboardCatalogView({ document, catalog, onSelect, getConfig = null } = {}) {
+export function createDashboardCatalogView({ document, catalog, onSelect, onEdit = null, getConfig = null } = {}) {
   if (!document?.createElement || !catalog?.entries || typeof onSelect !== "function") {
     throw new TypeError("Dashboard catalog view requires document, catalog and onSelect");
   }
+  if (onEdit !== null && typeof onEdit !== "function") throw new TypeError("onEdit must be a function or null");
   if (getConfig !== null && typeof getConfig !== "function") {
     throw new TypeError("getConfig must be a function or null");
   }
@@ -89,11 +90,11 @@ export function createDashboardCatalogView({ document, catalog, onSelect, getCon
     }
   };
 
-  const showSetup = (item) => {
+  const showSetup = (item, editing = null) => {
     root.replaceChildren(close);
     createButton(root, "Zurück", showModules);
     const title = document.createElement("h2");
-    title.textContent = item.title;
+    title.textContent = editing ? item.title + " bearbeiten" : item.title;
     root.appendChild(title);
     const form = document.createElement("form");
     form.setAttribute("data-jui-catalog-setup", item.module_id);
@@ -240,6 +241,67 @@ export function createDashboardCatalogView({ document, catalog, onSelect, getCon
       updateVisible();
     }
 
+    // Prefill only controls representing an existing widget. Preserve advanced
+    // options in the typed setup builder instead of silently replacing them.
+    if (editing) {
+      const instance = editing.definition.config ?? {};
+      const cfg = getConfig();
+      const source = (name, field) => {
+        const raw = cfg.data_sources?.[name];
+        const value = raw?.config ?? raw ?? {};
+        return Array.isArray(value[field]) ? value[field] : [];
+      };
+      const set = (field, value) => {
+        if (fields.has(field)) fields.get(field).value = value === undefined || value === null ? "" : String(value);
+      };
+      if (item.module_id === "widget.calendar-agenda") {
+        set("calendars", (instance.calendars ?? []).map((entry) => entry.entity_id).join(", "));
+        set("tasks", (instance.task_lists ?? []).map((entry) => entry.entity_id).join(", "));
+      } else if (item.module_id === "widget.dynamic-buttons") {
+        if (instance.buttons?.length === 1) set("existingButtonId", instance.buttons[0].button_id);
+        if (fields.get("existingButtonId")) {
+          fields.get("existingButtonId").dispatchEvent(new Event("change"));
+        }
+      } else if (item.module_id === "widget.house-quick") {
+        const button = instance.buttons?.[0];
+        if (instance.buttons?.length !== 1) throw new TypeError("Hausstatus mit mehreren Buttons zuerst auf einzelne Widgets aufteilen");
+        set("houseType", button.type);
+        const lights = source("provider.house-lighting", "lights");
+        const ambient = source("provider.house-lighting", "ambient_lights");
+        if (button.type === "lights" && lights.length === 1) set("lightEntityId", lights[0].state?.entity_id);
+        if (button.type === "ambient_lights" && ambient.length === 1) set("ambientEntityId", ambient[0].state?.entity_id);
+        if (button.type === "heating_zone") {
+          const zone = source("provider.house-heating", "zones").find((value) => value.id === button.source_id);
+          if (!zone) throw new TypeError("Konfigurierte Heizungszone wurde nicht gefunden");
+          set("heatingName", zone.name);
+          set("currentTemperature", zone.current_temperature?.entity_id);
+          set("targetTemperature", zone.target_temperature?.entity_id);
+          set("heatingDemand", zone.heating_demand?.entity_id);
+          set("autoRegulation", zone.auto_regulation_enabled?.entity_id);
+        }
+        if (button.type === "devices") {
+          const device = source("provider.house-devices", "devices")[0];
+          if (!device) throw new TypeError("Konfiguriertes Gerät wurde nicht gefunden");
+          set("deviceName", device.name);
+          set("primaryEntity", device.primary_entity_id);
+          set("activeEntity", device.active?.entity_id);
+          set("updateEntity", device.update_available?.entity_id);
+          set("warningEntity", device.warning?.entity_id);
+          set("faultEntity", device.fault?.entity_id);
+        }
+        if (button.type === "energy") {
+          const energy = source("provider.house-energy", "sources").find((value) => value.id === button.source_id);
+          if (!energy) throw new TypeError("Konfigurierte Energiequelle wurde nicht gefunden");
+          set("energyName", energy.name);
+          set("powerEntity", energy.power?.entity_id);
+          set("averageWindow", button.average_window_minutes);
+          set("warningThreshold", button.warning_threshold_w);
+          set("criticalThreshold", button.critical_threshold_w);
+        }
+        fields.get("houseType")?.dispatchEvent(new Event("change"));
+      }
+    }
+
     const error = document.createElement("p");
     error.setAttribute("data-jui-catalog-error", "");
     error.setAttribute("role", "alert");
@@ -248,7 +310,7 @@ export function createDashboardCatalogView({ document, catalog, onSelect, getCon
     note.textContent = "Datenquellen werden beim Speichern übernommen und aktiviert. Fehlende Home-Assistant-Entitäten bleiben als nicht verfügbar erkennbar.";
     form.appendChild(note);
     form.appendChild(error);
-    const add = createButton(form, "Widget hinzufügen", () => {
+    const add = createButton(form, editing ? "Änderungen übernehmen" : "Widget hinzufügen", () => {
       try {
         const values = Object.fromEntries([...fields.entries()].map(([key, field]) => [key, field.value]));
         if (item.module_id === "widget.house-quick") {
@@ -260,8 +322,12 @@ export function createDashboardCatalogView({ document, catalog, onSelect, getCon
         const plan = buildDashboardWidgetSetup({
           moduleId: item.module_id,
           inputs: values, currentConfig: getConfig(),
+          priorWidgetConfig: editing?.definition.config ?? null,
         });
-        if (onSelect(item.module_id, plan) === false) throw new Error("Kein Platz für das Widget");
+        const accepted = editing
+          ? onEdit(editing.elementId, item.module_id, plan)
+          : onSelect(item.module_id, plan);
+        if (accepted === false) throw new Error("Widget-Änderung konnte nicht übernommen werden");
         root.hidden = true;
       } catch (failure) {
         error.textContent = failure?.message ?? "Widget kann nicht hinzugefügt werden";
@@ -275,6 +341,14 @@ export function createDashboardCatalogView({ document, catalog, onSelect, getCon
   return Object.freeze({
     root,
     open() { showModules(); root.hidden = false; },
+    edit(elementId, definition) {
+      if (!onEdit) throw new Error("Widget editing is not enabled");
+      if (!definition?.module_id) throw new TypeError("Widget-Definition fehlt");
+      const item = catalog.entries().find((entry) => entry.module_id === definition.module_id);
+      if (!item) throw new TypeError("Widgetmodul ist nicht im Katalog registriert");
+      showSetup(item, { elementId, definition });
+      root.hidden = false;
+    },
     close() { root.hidden = true; },
   });
 }
