@@ -164,3 +164,45 @@ test("catalog energy uses configurable warning and critical thresholds, rejects 
       averageWindow: "15", warningThreshold: "5000", criticalThreshold: "3000" },
   }), /Kritische Schwelle/);
 });
+
+test("catalog Dynamic Buttons configures a true state-backed HA toggle", () => {
+  const setup = buildDashboardWidgetSetup({
+    moduleId: "widget.dynamic-buttons",
+    currentConfig: config(),
+    inputs: { buttonKind: "toggle", buttonName: "Wohnzimmerlicht", toggleEntity: "light.wohnzimmer" },
+  });
+  assert.deepEqual(setup.config.buttons, [{ id: "button-1", button_id: "dashboard-toggle-1", size: "normal" }]);
+  assert.deepEqual(setup.dataSources["provider.control-state"].sources[0].active_values, ["on"]);
+  assert.deepEqual(setup.dataSources["provider.control-state"].sources[0].inactive_values, ["off"]);
+  assert.equal(setup.dataSources["provider.control-state"].sources[0].entity_id, "light.wohnzimmer");
+  const definition = setup.dynamicButtons["dashboard-toggle-1"];
+  assert.equal(definition.mode, "toggle");
+  assert.equal(definition.state_source_id, "dashboard-toggle-state-1");
+  assert.deepEqual(definition.activate_action, { type: "entity.toggle", entity_id: "light.wohnzimmer" });
+  assert.deepEqual(definition.deactivate_action, { type: "entity.toggle", entity_id: "light.wohnzimmer" });
+});
+
+test("catalog Dynamic Buttons reuses matching on/off state mappings", () => {
+  const existing = config();
+  existing.data_sources["provider.control-state"] = {
+    sources: [{
+      id: "existing-state", entity_id: "switch.ventilation",
+      active_values: ["on"], inactive_values: ["off"],
+    }],
+  };
+  const setup = buildDashboardWidgetSetup({
+    moduleId: "widget.dynamic-buttons", currentConfig: existing,
+    inputs: { buttonKind: "toggle", buttonName: "Lüftung", toggleEntity: "switch.ventilation" },
+  });
+  assert.deepEqual(setup.dataSources, {});
+  assert.equal(setup.dynamicButtons["dashboard-toggle-1"].state_source_id, "existing-state");
+});
+
+test("catalog refuses control-state toggle on read-only or malformed HA entities", () => {
+  for (const toggleEntity of ["sensor.temperature", "binary_sensor.motion", "Switch.Bad", "light."]) {
+    assert.throws(() => buildDashboardWidgetSetup({
+      moduleId: "widget.dynamic-buttons", currentConfig: config(),
+      inputs: { buttonKind: "toggle", buttonName: "Test", toggleEntity },
+    }), /schaltbare/);
+  }
+});
