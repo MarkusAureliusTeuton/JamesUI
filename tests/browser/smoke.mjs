@@ -371,14 +371,41 @@ try {
     }));
     await toolbar.getByRole("button", { name: "Fertig" }).click();
     await page.locator('[data-jui-editor-save-error]').waitFor({ state: "visible" });
-    assert.match(await page.locator('[data-jui-editor-save-error-message]').innerText(), /config_conflict/);
+    assert.match(await page.locator('[data-jui-editor-save-error-message]').innerText(), /anderen Sitzung/);
     assert.equal(await page.evaluate(() => window.__juiTest.writes), 7);
     assert.equal(await page.evaluate(() =>
       window.__juiTest.persisted.module_settings.foreign_client.setting), "preserve");
     assert.ok(await page.evaluate(() =>
       window.__juiTest.persisted.pages.home.elements.some((entry) => entry.id === "house")));
+    const retryConflict = toolbar.locator('[data-jui-editor-retry-conflict]');
+    assert.equal(await retryConflict.isVisible(), true);
+    await retryConflict.click();
+    await page.waitForFunction(() => window.__juiTest.writes === 8);
+    await toolbar.waitFor({ state: "hidden" });
+    assert.equal(await page.locator('[data-jui-dashboard-item="house"]').count(), 0);
+    assert.equal(await page.evaluate(() =>
+      window.__juiTest.persisted.module_settings.foreign_client.setting), "preserve",
+      "Explicit retry must preserve unrelated remote changes");
+
+    // A genuine same-page conflict cannot be merged automatically.
+    await page.locator('[data-jui-dashboard-edit-entry]').click();
+    await toolbar.waitFor({ state: "visible" });
+    await page.locator('[data-jui-dashboard-item="buttons"] [data-jui-editor-remove]').click();
+    await page.evaluate(() => window.__juiTest.externalConfigChange((config) => {
+      config.pages.home.elements.find((item) => item.id === "agenda").row = 1;
+    }));
+    await toolbar.getByRole("button", { name: "Fertig" }).click();
+    await page.locator('[data-jui-editor-save-error]').waitFor({ state: "visible" });
+    await retryConflict.click();
+    await page.waitForFunction(() =>
+      document.querySelector('[data-jui-editor-save-error-message]')?.textContent?.includes("Dashboard changed externally"));
+    assert.equal(await page.evaluate(() => window.__juiTest.writes), 8);
+    assert.equal(await toolbar.isVisible(), true, "Conflicted draft remains editable");
     await toolbar.getByRole("button", { name: "Abbrechen" }).click();
-    await page.locator('[data-jui-dashboard-item="house"]').waitFor({ state: "visible" });
+    await toolbar.waitFor({ state: "hidden" });
+    assert.equal(await page.locator('[data-jui-dashboard-item="buttons"]').count(), 1);
+    assert.equal(await page.locator('[data-jui-dashboard-item="agenda"]').evaluate(
+      (element) => element.style.gridRow), "2 / span 4");
     assert.deepEqual(errors, [], "Browser JavaScript errors");
     await page.evaluate(() => window.__juiTest.app.destroy());
     assert.equal(await page.locator('[data-role="app-shell"]').count(), 0);
