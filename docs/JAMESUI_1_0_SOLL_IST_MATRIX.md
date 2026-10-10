@@ -59,3 +59,13 @@ Stand: 2026-10-09. Arbeitsstand des Draft-PR #27, keine Freigabe oder Tablet-Abn
 - Getestete Datenkette: Wetter und Licht aus **simulierter HA-State-Liste** in die sichtbare UI; Wertänderung, fehlende Entity, Disconnect/Reconnect. Fehlende Kalenderquelle zeigt eine Nichtverfügbarkeitsmeldung statt Beispieltermine.
 - Gefundene Loader-Lücke geschlossen: Rückgabe `false` bei `mount()` ist ein Fehler.
 - **Nicht getestet:** produktive HA-WebSocket-/Entity-Konfiguration, echte KNX-/Geräteaktionen, Fully Kiosk und Hardware des OnePlus Pad 2. Für G4 fehlen weitere Interaktions- und Visual-Regressionsfälle.
+
+## Browser-Editor und Persistenz (2026-10-10)
+
+| Gegenstand | Nachweis | Rest |
+| --- | --- | --- |
+| Editor-Gesten und Raster | Chromium: Long-Press, Drag, Undo; zwei generische Hochformate | Reales Tablet, weitere Gesten-/Grenzfälle |
+| Konfiguration speichern | Chromium: eine erfolgreiche HA-WebSocket-Schreibtransaktion; Save-Fehler erhält den lokalen Entwurf und Remote-Daten; Retry erfolgreich | Echte HA-Authentifizierung/-Berechtigungen und reale Konfiguration |
+| Sichtbare Positionierung | Chromium: Kacheln nicht überlappend/abgeschnitten; Navigation sichtbar | Pixel-/Screenshot-Abnahme, Fully Kiosk |
+| Widget hinzufügen | Katalog und Edit-Session im Code und Node-Tests | **Offen:** vollständige UI-Formulare, gültige Widget-Defaults und Quellenbindung; leere Standardconfig funktioniert nicht für Agenda |
+| Qualitätsnachweis | Run `38030663272`: `validate` + `browser-smoke` grün | Keine Produktiv-/Tablet-Freigabe |
