@@ -212,3 +212,140 @@ test("invalid backend revisions do not change the active snapshot", async () => 
   assert.equal(service.snapshot().pages.home.label, "good");
   assert.equal(service.revision, "a".repeat(64));
 });
+
+test("loading while an earlier save is awaiting the server cannot replace the committed cache with stale data", async () => {
+  let remote = config("initial");
+  let revisionCounter = 1;
+  let releaseWrite;
+  const revision = () => revisionCounter.toString(16).padStart(64, "0");
+  const requests = [];
+  const service = createConfigService({
+    homeAssistant: {
+      async callWS(request) {
+        requests.push(request);
+        if (request.type === "jamesui/config/get") {
+          return { config: structuredClone(remote), revision: revision() };
+        }
+        return new Promise((resolve) => {
+          releaseWrite = () => {
+            assert.equal(request.expected_revision, revision());
+            remote = structuredClone(request.config);
+            revisionCounter += 1;
+            resolve({ config: structuredClone(remote), revision: revision() });
+          };
+        });
+      },
+    },
+  });
+  await service.load();
+  const save = service.replace(config("saved"));
+  await Promise.resolve();
+  assert.equal(typeof releaseWrite, "function");
+  const reload = service.load();
+  await Promise.resolve();
+  assert.equal(requests.filter((request) => request.type === "jamesui/config/get").length, 1,
+    "GET must wait until the previously requested write is committed");
+  releaseWrite();
+  await save;
+  await reload;
+  assert.equal(service.snapshot().pages.home.label, "saved");
+  assert.equal(service.revision, revision());
+  assert.equal(remote.pages.home.label, "saved");
+  assert.equal(requests.filter((request) => request.type === "jamesui/config/get").length, 2);
+});
+
+test("two concurrent direct replacements are serialized against the newest acknowledged revision", async () => {
+  let remote = config("initial");
+  let seq = 1;
+  let releaseFirst;
+  const revision = () => seq.toString(16).padStart(64, "0");
+  const observed = [];
+  const service = createConfigService({
+    homeAssistant: {
+      async callWS(request) {
+        if (request.type === "jamesui/config/get") {
+          return { config: structuredClone(remote), revision: revision() };
+        }
+        observed.push({ label: request.config.pages.home.label, revision: request.expected_revision });
+        const commit = () => {
+          assert.equal(request.expected_revision, revision(), "Write must use latest revision");
+          remote = structuredClone(request.config);
+          seq += 1;
+          return { config: structuredClone(remote), revision: revision() };
+        };
+        if (observed.length === 1) {
+          return new Promise((resolve) => { releaseFirst = () => resolve(commit()); });
+        }
+        return commit();
+      },
+    },
+  });
+  await service.load();
+  const first = service.replace(config("first"));
+  const second = service.replace(config("second"));
+  await Promise.resolve();
+  assert.equal(observed.length, 1, "Second write must not race the first");
+  releaseFirst();
+  assert.equal((await first).pages.home.label, "first");
+  assert.equal((await second).pages.home.label, "second");
+  assert.deepEqual(observed.map((entry) => entry.label), ["first", "second"]);
+  assert.deepEqual(observed.map((entry) => entry.revision),
+    [1, 2].map((value) => value.toString(16).padStart(64, "0")));
+  assert.equal(service.snapshot().pages.home.label, "second");
+});
+
+test("queued update builds upon an already pending direct replacement", async () => {
+  let remote = config("initial");
+  let releaseFirst;
+  const service = createConfigService({
+    homeAssistant: {
+      async callWS(request) {
+        if (request.type === "jamesui/config/get") return { config: structuredClone(remote) };
+        if (request.config.pages.home.label === "first") {
+          return new Promise((resolve) => {
+            releaseFirst = () => {
+              remote = structuredClone(request.config);
+              resolve({ config: structuredClone(remote) });
+            };
+          });
+        }
+        remote = structuredClone(request.config);
+        return { config: structuredClone(remote) };
+      },
+    },
+  });
+  await service.load();
+  const pending = service.replace(config("first"));
+  const edit = service.update((value) => {
+    assert.equal(value.pages.home.label, "first");
+    value.module_settings.from_update = true;
+    return value;
+  });
+  await Promise.resolve();
+  assert.equal(typeof releaseFirst, "function");
+  releaseFirst();
+  await Promise.all([pending, edit]);
+  assert.equal(remote.pages.home.label, "first");
+  assert.equal(remote.module_settings.from_update, true);
+});
+
+test("failed serialized save does not block a subsequent remote reload", async () => {
+  let first = true;
+  let remote = config("safe");
+  const service = createConfigService({
+    homeAssistant: {
+      async callWS(request) {
+        if (request.type === "jamesui/config/get") return { config: structuredClone(remote) };
+        if (first) { first = false; throw Error("temporary backend rejection"); }
+        remote = structuredClone(request.config);
+        return { config: structuredClone(remote) };
+      },
+    },
+  });
+  await service.load();
+  await assert.rejects(() => service.replace(config("bad")), /temporary backend rejection/);
+  assert.equal(service.snapshot().pages.home.label, "safe");
+  assert.equal((await service.load()).pages.home.label, "safe");
+  await service.replace(config("recovered"));
+  assert.equal(service.snapshot().pages.home.label, "recovered");
+});
