@@ -61,19 +61,30 @@
     window.__juiTest = { status: "loading", app: null, error: null };
     const app = createJamesUI1Preview({ document });
     window.__juiTest.app = app;
-    const callWS = async ({ type, config: nextConfig }) => {
-      if (type === "jamesui/config/get") return { config };
+    let revisionCounter = 1;
+    const revision = () => revisionCounter.toString(16).padStart(64, "0");
+    const callWS = async ({ type, config: nextConfig, expected_revision: expectedRevision }) => {
+      if (type === "jamesui/config/get") return { config, revision: revision() };
       if (type === "jamesui/config/replace") {
+        if (expectedRevision !== revision()) throw new Error("config_conflict: stale JamesUI config");
         if (window.__juiTest.rejectNextReplace) {
           window.__juiTest.rejectNextReplace = false;
           throw new Error("Simulated Home Assistant configuration save failure");
         }
         config = structuredClone(nextConfig);
+        revisionCounter += 1;
         window.__juiTest.persisted = structuredClone(config);
         window.__juiTest.writes += 1;
-        return { config };
+        return { config, revision: revision() };
       }
       throw new Error("Unexpected HA WS: " + type);
+    };
+    window.__juiTest.externalConfigChange = (change) => {
+      const next = structuredClone(config);
+      change(next);
+      config = next;
+      revisionCounter += 1;
+      window.__juiTest.persisted = structuredClone(config);
     };
     window.__juiTest.writes = 0;
     window.__juiTest.serviceCalls = [];
