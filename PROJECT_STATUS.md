@@ -441,3 +441,11 @@ Read the completed Block-13 spec/plan and the cross-block layout planning notes,
 - **Prüfungen:** Python-CAS- und Restart-Tests, HA-API-Konflikttest, JS-Zweiclient-Simulation, Undo/Shared-Resource-Tests und echter Chromium-Test mit simuliertem fremdem HA-Konfigurationsupdate.
 - **Bestätigt:** GitHub Actions `38048180467`, Commit `a355d719d2`: `validate` und `browser-smoke` beide erfolgreich.
 - **Kein Produktivnachweis:** Reale HA-Installation/Authentifizierung, KNX/HA-End-to-End und OnePlus Pad 2 / Fully Kiosk bleiben offen. PR #27 bleibt Draft. Keine Folgeblöcke 15–21.
+
+### Block 14 – sichere Bedienung nach einem Mehrclient-Speicherkonflikt (2026-10-10)
+
+- Der Editor bietet bei `config_conflict` jetzt eine **ausdrücklich auszulösende** Aktion `Serverstand laden und erneut speichern`. Es erfolgt keine stillschweigende Überschreibung oder automatische Wiederholung.
+- Der aktuelle Serverstand wird neu geladen; die bestehende Edit-Session prüft daraufhin vor erneutem CAS-Schreiben den ursprünglichen Seitenstand, geänderte Widgetinstanzen, Providerquellen und zentrale Buttondefinitionen. **Nur nicht widersprüchliche Änderungen** werden zusammengeführt.
+- Bei Konflikten an derselben Dashboard-Seite wird der zweite Versuch abgewiesen; der lokale Entwurf bleibt bestehen. `Abbrechen` zeigt nach bereits erfolgtem Server-Reload den aktuellen gespeicherten Dashboardstand an.
+- **Nachweis:** Integrationstests mit zwei simulierten Clients und Chromium-Browserablauf (erst Fremdänderung in `module_settings`, dann absichtlicher Rasterkonflikt), GitHub Actions [38062640323](https://github.com/MarkusAureliusTeuton/JamesUI/actions/runs/38062640323), Commit `f3c07c690`: `validate` und `browser-smoke` erfolgreich.
+- **Weiterhin offen:** Echte Mehrclient-Kommunikation auf Home Assistant/Tablet, Langzeittests sowie vollständige erweiterte Konfiguration der bestehenden Module. Blöcke 15–21 unverändert zurückgestellt.
