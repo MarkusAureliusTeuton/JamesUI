@@ -66,3 +66,11 @@
 - **Offen G2/G4:** Konfiguration *bestehender* Instanzen und Entfernen/Rückbau, freie Mapping-/Serviceparameter, weitere Fehlerfälle und umfassende Design-/Browserabnahme.
 - **Offen G5/G6:** echte HA-Installation, KNX-Entitäten/Serviceberechtigungen, OnePlus Pad 2, Fully Kiosk und Dauerbetrieb. Kein Gerätetest und kein Cutover vor der Freigabe.
 - **Scope:** Ausschließlich bestehende Module/Core und Block 14. Blöcke 15–21 bleiben vollständig zurückgestellt.
+
+## Aktueller Editor- und Datensicherheitsnachweis (2026-10-10)
+
+- **G2 erweitert:** Vorhandene konfigurierte Widget-Instanzen können über den Katalog bearbeitet und entfernt werden. Bei eindeutiger Nutzung wird die Widgetinstanz beim Entfernen ebenfalls gelöscht; geteilte Instanzen und globale Provider-/Buttondaten bleiben unangetastet. Advanced-Agendaoptionen werden beim Ändern der Quellliste erhalten.
+- **G4 erweitert:** Chromium testet Bearbeiten, selektiven Widget-Runtime-Remount, Rückgängig, atomaren Save, Entfernen, vollständiges Abbrechen ohne Schreibzugriff, Reaktivierung und sichtbare Speicherfehler.
+- **Konflikte:** Externe Änderungen an Seitengeometrie, Widgetdefinitionen oder Providerquellen werden nicht still überschrieben.
+- **Grüne Qualitätsgates:** `validate` + `browser-smoke` in [Run 38043543481](https://github.com/MarkusAureliusTeuton/JamesUI/actions/runs/38043543481), Commit `777274dc9e`.
+- **Nicht freigegeben:** Vollständige Erweitertenkonfiguration und Rückbau nicht mehr genutzter globaler Quellen, echte HA-WebSocket-/KNX-End-to-End-Aktionen, OnePlus Pad 2 und Fully Kiosk. G5/G6 weiter offen; Blöcke 15–21 gesperrt.
