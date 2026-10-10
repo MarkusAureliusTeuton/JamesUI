@@ -15,7 +15,7 @@ from .config_migrations import (
     project_legacy_options,
 )
 from .config_schema import ConfigValidationError
-from .config_service import JamesUIConfigService
+from .config_service import ConfigConflictError, JamesUIConfigService
 from .const import DOMAIN
 
 
@@ -182,7 +182,9 @@ def websocket_get_structured_config(
     if service is None:
         _send_not_configured(connection, msg["id"])
         return
-    connection.send_result(msg["id"], {"config": service.snapshot()})
+    connection.send_result(
+        msg["id"], {"config": service.snapshot(), "revision": service.revision}
+    )
 
 
 @websocket_api.require_admin
@@ -190,6 +192,7 @@ def websocket_get_structured_config(
     {
         vol.Required("type"): "jamesui/config/replace",
         vol.Required("config"): dict,
+        vol.Required("expected_revision"): vol.All(str, vol.Length(min=64, max=64)),
     }
 )
 async def websocket_replace_structured_config(
@@ -203,11 +206,16 @@ async def websocket_replace_structured_config(
         _send_not_configured(connection, msg["id"])
         return
     try:
-        config = await service.async_replace(msg["config"])
+        config = await service.async_replace(
+            msg["config"], expected_revision=msg["expected_revision"]
+        )
+    except ConfigConflictError as error:
+        connection.send_error(msg["id"], "config_conflict", str(error))
+        return
     except ConfigValidationError as error:
         connection.send_error(msg["id"], "invalid_config", str(error))
         return
-    connection.send_result(msg["id"], {"config": config})
+    connection.send_result(msg["id"], {"config": config, "revision": service.revision})
 
 
 def async_register_websocket_commands(hass: HomeAssistant) -> None:
