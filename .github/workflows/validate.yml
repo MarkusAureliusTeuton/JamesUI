@@ -118,6 +118,7 @@ jobs:
             tests/jamesui-dashboard-touch-events.test.js \
             tests/jamesui-dashboard-catalog.test.js \
             tests/jamesui-dashboard-widget-setup.test.js \
+            tests/jamesui-dashboard-provider-coordinator.test.js \
             tests/jamesui-1-preview.test.js \
             tests/jamesui-preview-entry.test.js
 
