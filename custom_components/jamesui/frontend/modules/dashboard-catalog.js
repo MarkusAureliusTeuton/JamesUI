@@ -163,12 +163,50 @@ export function createDashboardCatalogView({ document, catalog, onSelect, onEdit
       createField(heating, fields, "heatingDemand", "Heizanforderung", { placeholder: "binary_sensor.heizung_anforderung" });
       createField(heating, fields, "autoRegulation", "Automatikregelung aktiv", { placeholder: "binary_sensor.heizung_auto" });
       const devices = group("devices");
+      const deviceSelectorLabel = document.createElement("label");
+      deviceSelectorLabel.textContent = "Gerät auswählen";
+      deviceSelectorLabel.style.display = "block";
+      const deviceSelector = document.createElement("select");
+      deviceSelector.setAttribute("data-jui-catalog-field", "deviceId");
+      const newDevice = document.createElement("option");
+      newDevice.value = "";
+      newDevice.textContent = "Neues Gerät hinzufügen";
+      deviceSelector.appendChild(newDevice);
+      const configuredDevices = (() => {
+        const entry = getConfig().data_sources?.["provider.house-devices"];
+        return (entry?.config ?? entry ?? {}).devices ?? [];
+      })();
+      for (const item of configuredDevices) {
+        const option = document.createElement("option");
+        option.value = item.id;
+        option.textContent = item.name;
+        deviceSelector.appendChild(option);
+      }
+      deviceSelectorLabel.appendChild(deviceSelector);
+      devices.appendChild(deviceSelectorLabel);
+      fields.set("deviceId", deviceSelector);
       createField(devices, fields, "deviceName", "Gerätename", { placeholder: "Lüftungsanlage" });
       createField(devices, fields, "primaryEntity", "Haupt-Entität", { placeholder: "switch.lueftung" });
       createField(devices, fields, "activeEntity", "Aktivstatus", { placeholder: "binary_sensor.lueftung_aktiv" });
       createField(devices, fields, "updateEntity", "Update vorhanden (optional)", { placeholder: "binary_sensor.lueftung_update" });
       createField(devices, fields, "warningEntity", "Warnung (optional)", { placeholder: "binary_sensor.lueftung_warnung" });
       createField(devices, fields, "faultEntity", "Störung (optional)", { placeholder: "binary_sensor.lueftung_stoerung" });
+      const populateDevice = () => {
+        const selected = configuredDevices.find((item) => item.id === deviceSelector.value);
+        for (const [field, property] of [
+          ["deviceName", "name"], ["primaryEntity", "primary_entity_id"],
+          ["activeEntity", "active"], ["updateEntity", "update_available"],
+          ["warningEntity", "warning"], ["faultEntity", "fault"],
+        ]) {
+          const value = selected?.[property];
+          fields.get(field).value = typeof value === "object"
+            ? value?.entity_id ?? "" : value ?? "";
+        }
+      };
+      deviceSelector.addEventListener("change", populateDevice);
+      const deviceNotice = document.createElement("p");
+      deviceNotice.textContent = "Änderungen an einem ausgewählten Gerät gelten für alle Widgets, die den Geräte-Provider verwenden.";
+      devices.appendChild(deviceNotice);
       const energy = group("energy");
       createField(energy, fields, "energyName", "Energiequelle", { placeholder: "Hausverbrauch" });
       createField(energy, fields, "powerEntity", "Leistungssensor", { placeholder: "sensor.hausleistung" });
@@ -280,14 +318,13 @@ export function createDashboardCatalogView({ document, catalog, onSelect, onEdit
           set("autoRegulation", zone.auto_regulation_enabled?.entity_id);
         }
         if (button.type === "devices") {
-          const device = source("provider.house-devices", "devices")[0];
-          if (!device) throw new TypeError("Konfiguriertes Gerät wurde nicht gefunden");
-          set("deviceName", device.name);
-          set("primaryEntity", device.primary_entity_id);
-          set("activeEntity", device.active?.entity_id);
-          set("updateEntity", device.update_available?.entity_id);
-          set("warningEntity", device.warning?.entity_id);
-          set("faultEntity", device.fault?.entity_id);
+          const configured = source("provider.house-devices", "devices");
+          // Never guess which device the user intended to edit. Preselect
+          // only when there is exactly one configured device.
+          if (configured.length === 1) {
+            set("deviceId", configured[0].id);
+            fields.get("deviceId").dispatchEvent(new Event("change"));
+          }
         }
         if (button.type === "energy") {
           const energy = source("provider.house-energy", "sources").find((value) => value.id === button.source_id);
