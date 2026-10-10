@@ -71,8 +71,12 @@ test("preview renders the four Start widgets from persisted instances", async ()
     layouts: { main: { kind: "hero-deck", scroll: "fixed", hero_ratio: 0.42 } },
     widget_instances: {
       weather: { module_id: "widget.weather-today", config: {} },
-      ...Object.fromEntries(modules.map((moduleId, index) =>
-        ["instance-" + index, { module_id: moduleId, config: {} }])),
+      "instance-0": { module_id: "widget.calendar-agenda", config: {
+        instance_id: "agenda-fixture", calendar_enabled: true, tasks_enabled: false,
+        calendars: [{ entity_id: "calendar.fixture" }],
+      } },
+      "instance-1": { module_id: "widget.house-quick", config: { buttons: [] } },
+      "instance-2": { module_id: "widget.dynamic-buttons", config: { buttons: [] } },
     },
     dynamic_buttons: {}, data_sources: {}, module_settings: {},
   };
@@ -87,6 +91,10 @@ test("preview renders the four Start widgets from persisted instances", async ()
     assert.ok(target.querySelector('[data-role="bottom-navigation"]'));
     assert.equal(target.querySelectorAll("[data-jui-dashboard-item]").length, 3);
     assert.equal(preview.core.moduleLoader.isLoaded("dashboard:home:hero"), true);
+    for (const element of elements) {
+      assert.equal(preview.core.moduleLoader.isLoaded("dashboard:" + element.id), true);
+      assert.equal(target.querySelector('[data-jui-dashboard-item="' + element.id + '"]').getAttribute("data-jui-widget-error"), null);
+    }
   } finally {
     preview.destroy();
   }
