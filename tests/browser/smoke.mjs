@@ -205,6 +205,8 @@ try {
     await page.evaluate(() => { window.__juiTest.rejectNextReplace = true; });
     await toolbar.getByRole("button", { name: "Fertig" }).click();
     await page.locator('[data-jui-editor-save-error]').waitFor({ state: "visible" });
+    assert.match(await page.locator('[data-jui-editor-save-error-message]').innerText(),
+      /Simulated Home Assistant configuration save failure/);
     assert.equal(await page.evaluate(() => window.__juiTest.writes), 1);
     assert.equal(await page.evaluate(() =>
       window.__juiTest.persisted.pages.home.elements.find((item) => item.id === "house").row), 4);
@@ -312,6 +314,18 @@ try {
     assert.ok(removedConfig.widget_instances.agenda, "Unrelated Agenda instance must survive");
     assert.deepEqual(removedConfig.data_sources["provider.calendar"].source_entity_ids,
       ["calendar.family", "calendar.extra"], "Shared sources are never deleted implicitly");
+
+    // Cancel must restore unsaved tile removal and never issue a Config Store write.
+    await page.locator('[data-jui-dashboard-edit-entry]').click();
+    await toolbar.waitFor({ state: "visible" });
+    await houseItem.locator('[data-jui-editor-remove]').click();
+    assert.equal(await page.locator('[data-jui-dashboard-item]').count(), 2);
+    await toolbar.getByRole("button", { name: "Abbrechen" }).click();
+    await toolbar.waitFor({ state: "hidden" });
+    assert.equal(await page.locator('[data-jui-dashboard-item]').count(), 3);
+    assert.equal(await page.evaluate(() => window.__juiTest.writes), 5);
+    assert.ok(await page.locator('[data-jui-widget="house-quick"]').count());
+    assert.equal(await page.locator('[data-jui-editor-remove]').count(), 0);
     assert.deepEqual(errors, [], "Browser JavaScript errors");
     await page.evaluate(() => window.__juiTest.app.destroy());
     assert.equal(await page.locator('[data-role="app-shell"]').count(), 0);
