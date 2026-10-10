@@ -42,7 +42,7 @@ export function createDashboardEditSession({ controller, configService, pageId, 
       working = next;
       return page();
     },
-    addWidget(moduleId, { config = {}, dataSources = {}, dynamicButtons = {}, columnSpan = 4, rowSpan = 3 } = {}) {
+    addWidget(moduleId, { config = {}, dataSources = {}, dynamicButtons = {}, instanceIdConfigKey = null, columnSpan = 4, rowSpan = 3 } = {}) {
       ensureActive();
       if (busy) throw new Error("Dashboard editor is saving");
       if (typeof moduleId !== "string" || !moduleId.startsWith("widget.")) throw new TypeError("invalid widget module");
@@ -62,7 +62,10 @@ export function createDashboardEditSession({ controller, configService, pageId, 
         if (buttonId in working.dynamic_buttons) throw new Error(`Button-Definition existiert bereits: ${buttonId}`);
       }
       const instanceConfig = structuredClone(config);
-      if (moduleId === "widget.calendar-agenda") instanceConfig.instance_id = id;
+      if (instanceIdConfigKey !== null) {
+        if (instanceIdConfigKey !== "instance_id") throw new TypeError("unsupported instance ID config key");
+        instanceConfig[instanceIdConfigKey] = id;
+      }
       history.push(working);
       working = {
         ...working,
