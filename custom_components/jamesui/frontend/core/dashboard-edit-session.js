@@ -228,12 +228,23 @@ export function createDashboardEditSession({ controller, configService, pageId, 
         busy = false;
       }
     },
+    cancel() {
+      ensureActive();
+      if (busy) throw new Error("Dashboard editor is saving");
+      const restored = validateDashboardPage(baseline, pageId);
+      active = false;
+      working = null;
+      history = [];
+      baseline = null;
+      return restored;
+    },
     finish() {
       ensureActive();
       if (busy) throw new Error("Dashboard editor is saving");
       active = false;
       working = null;
       history = [];
+      baseline = null;
     },
   });
 }
