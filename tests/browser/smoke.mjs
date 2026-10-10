@@ -276,13 +276,19 @@ try {
   const blankCatalog = emptyPage.locator('[data-jui-dashboard-catalog]');
   await blankCatalog.locator('[data-jui-catalog-module="widget.weather-today"]').click();
   await blankCatalog.locator('[data-jui-catalog-confirm]').click();
+  assert.match(await blankCatalog.locator('[data-jui-catalog-error]').innerText(), /Wetter-Entität/);
+  await blankCatalog.locator('[data-jui-catalog-field="weatherEntityId"]').fill("weather.browser_fixture");
+  await blankCatalog.locator('[data-jui-catalog-confirm]').click();
   await emptyPage.waitForFunction(() => document.querySelectorAll('[data-jui-dashboard-item]').length === 1);
   assert.equal(await emptyPage.locator('[data-jui-widget-error]').count(), 0);
   await blankToolbar.getByRole("button", { name: "Fertig" }).click();
   await emptyPage.waitForFunction(() => window.__juiTest.writes === 2);
   assert.equal(await emptyPage.evaluate(() =>
     window.__juiTest.persisted.pages.home.elements.length), 1);
-  assert.deepEqual(await emptyPage.evaluate(() => window.__juiTest.persisted.data_sources), {});
+  assert.deepEqual(await emptyPage.evaluate(() => window.__juiTest.persisted.data_sources),
+    { "provider.weather": { entity_id: "weather.browser_fixture" } });
+  await emptyPage.waitForFunction(() => window.__juiTest.app.core.moduleLoader.isLoaded("provider.weather"));
+  assert.equal(await emptyPage.evaluate(() => window.__juiTest.app.core.capabilities.get("weather.current").status), "available");
   assert.deepEqual(emptyErrors, []);
   await emptyPage.evaluate(() => window.__juiTest.app.destroy());
   await emptyPage.close();
