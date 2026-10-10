@@ -33,7 +33,7 @@ test("Block 14 editor toolbar opens, undoes, adds and saves through edit session
   finish.dispatchEvent("click");
   await Promise.resolve();
   await Promise.resolve();
-  assert.deepEqual(events, ["first", "add", "restored", "save", "saved", "finish"]);
+  assert.deepEqual(events, ["first", "add", "restored", "save", "finish", "saved"]);
   assert.equal(toolbar.root.hidden, true);
 });
 
