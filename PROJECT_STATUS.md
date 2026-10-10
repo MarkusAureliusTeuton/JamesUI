@@ -386,3 +386,11 @@ Read the completed Block-13 spec/plan and the cross-block layout planning notes,
 - Core Module Loader wertet ein explizites `mount() === false` nun als Fehler statt als Erfolg; Regressionstest ergänzt.
 - GitHub Actions **beide Jobs erfolgreich**: Run `38028627815` / Commit `88d3667f` (inkl. vorangegangener Module-Loader-Korrektur `4fc0337e` und Test `bbc2c5b9`).
 - Umfangsgrenze: simulierte HA-Daten in echtem Chromium-Browser; keine reale HA-Installation, kein tatsächliches OnePlus Pad 2, kein Fully Kiosk. Browser-Gestentests, erweiterte Widgetzustände und Integrationsabnahme stehen noch aus.
+
+### Block 14 Browser-Editor und Persistenz (2026-10-10)
+
+- Reale Chromium-Gestentests (in zwei generischen Tablet-Portrait-Viewports): Long-Press aktiviert den Dashboard-Editor, Drag bewegt die Rasterkachel, Undo stellt die Ausgangslage her.
+- Die Test-HA-Konfiguration akzeptiert erfolgreiche `jamesui/config/replace`-Schreibvorgänge und kann einen Schreibvorgang explizit ablehnen. Browser-E2E verifiziert: nach Fehler bleiben lokale Änderungen/Editor sichtbar, Remote-Konfiguration unverändert; erneutes Speichern führt zu genau einer erfolgreichen Aktualisierung.
+- Browsergeometrie validiert Sichtbarkeit aller drei Deck-Kacheln, fehlende gegenseitige Überlappung, horizontale Grenzen und Abstand zur Bottom-Navigation.
+- Beide CI-Jobs `validate` und `browser-smoke` erfolgreich: Run `38030663272`, Commit `1c47d75e`.
+- Noch offen (Block-14-Konfiguration): vollständige nutzbare Einrichtung der Widgetinstanzen und Datenquellen über die Oberfläche. Der Dashboard-Katalog erzeugt bislang nicht für jedes Widget einen gültigen Satz an Einstellungen; insbesondere Agenda benötigt Kalender-/Todo-Quellen. Kein OnePlus-Pad-2-/Fully-Kiosk-/Real-HA-Nachweis.
