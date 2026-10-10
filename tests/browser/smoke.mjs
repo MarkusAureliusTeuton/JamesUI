@@ -289,6 +289,36 @@ try {
     { "provider.weather": { entity_id: "weather.browser_fixture" } });
   await emptyPage.waitForFunction(() => window.__juiTest.app.core.moduleLoader.isLoaded("provider.weather"));
   assert.equal(await emptyPage.evaluate(() => window.__juiTest.app.core.capabilities.get("weather.current").status), "available");
+
+  // The same empty-installation editor can compose an existing Block-12
+  // heating-zone widget with explicit signals and immediately bind its provider.
+  await emptyPage.locator('[data-jui-dashboard-edit-entry]').click();
+  await blankToolbar.waitFor({ state: "visible" });
+  await blankToolbar.getByRole("button", { name: "+ Hinzufügen" }).click();
+  await blankCatalog.locator('[data-jui-catalog-module="widget.house-quick"]').click();
+  await blankCatalog.locator('[data-jui-catalog-field="houseType"]').selectOption("heating_zone");
+  await blankCatalog.locator('[data-jui-catalog-field="heatingName"]').fill("Wohnzimmer");
+  await blankCatalog.locator('[data-jui-catalog-field="currentTemperature"]').fill("sensor.living_actual");
+  await blankCatalog.locator('[data-jui-catalog-field="targetTemperature"]').fill("sensor.living_target");
+  await blankCatalog.locator('[data-jui-catalog-field="heatingDemand"]').fill("binary_sensor.living_heat");
+  await blankCatalog.locator('[data-jui-catalog-field="autoRegulation"]').fill("binary_sensor.living_auto");
+  await blankCatalog.locator('[data-jui-catalog-confirm]').click();
+  await blankCatalog.waitFor({ state: "hidden" });
+  await emptyPage.waitForFunction(() => document.querySelectorAll('[data-jui-dashboard-item]').length === 2);
+  assert.equal(await emptyPage.locator('[data-jui-widget-error]').count(), 0);
+  await blankToolbar.getByRole("button", { name: "Fertig" }).click();
+  await emptyPage.waitForFunction(() => window.__juiTest.writes === 3);
+  await emptyPage.waitForFunction(() => window.__juiTest.app.core.moduleLoader.isLoaded("provider.house-heating"));
+  const heating = await emptyPage.evaluate(() => ({
+    zone: window.__juiTest.persisted.data_sources["provider.house-heating"].zones[0],
+    instance: window.__juiTest.persisted.pages.home.elements.find((element) =>
+      element.ref_id.startsWith("widget-house-quick-")),
+    status: window.__juiTest.app.core.capabilities.get("house.heatingZones").status,
+  }));
+  assert.equal(heating.zone.name, "Wohnzimmer");
+  assert.equal(heating.zone.auto_regulation_enabled.entity_id, "binary_sensor.living_auto");
+  assert.ok(heating.instance, "Configured heating widget is saved");
+  assert.equal(heating.status, "available");
   assert.deepEqual(emptyErrors, []);
   await emptyPage.evaluate(() => window.__juiTest.app.destroy());
   await emptyPage.close();
