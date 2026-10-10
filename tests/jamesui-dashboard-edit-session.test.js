@@ -319,3 +319,58 @@ test("concurrent external grid movement is rejected even when element IDs remain
   assert.equal(configService.snapshot().pages.start.elements[1].row, 4);
   assert.equal(editor.snapshot().elements.find((entry) => entry.id === "a").row, 6);
 });
+
+test("central button cleanup requires explicit action, supports Undo and commits safely", async () => {
+  const { configService, editor, getWrites } = setup();
+  await configService.load();
+  editor.enter();
+  assert.throws(() => editor.removeUnusedButtonDefinition("scene"), /noch verwendet/);
+  editor.removeElement("b");
+  editor.removeUnusedButtonDefinition("scene");
+  assert.equal(editor.workingConfig().dynamic_buttons.scene, undefined);
+  assert.equal(getWrites(), 0);
+  editor.undo();
+  assert.ok(editor.workingConfig().dynamic_buttons.scene);
+  editor.removeUnusedButtonDefinition("scene");
+  await editor.save();
+  assert.equal(getWrites(), 1);
+  assert.equal(configService.snapshot().dynamic_buttons.scene, undefined);
+  assert.equal(configService.snapshot().pages.start.elements.length, 1);
+  assert.ok(configService.snapshot().widget_instances.agenda);
+});
+
+test("global shared button definitions survive cleanup when referenced on another page", async () => {
+  const { configService, editor } = setup();
+  await configService.load();
+  const shared = configService.snapshot();
+  shared.pages.another = {
+    kind: "dashboard", layout_id: "main",
+    elements: [{ id: "shared-scene", kind: "button", ref_id: "scene",
+      column: 0, row: 0, column_span: 4, row_span: 2 }],
+  };
+  await configService.replace(shared);
+  editor.enter();
+  editor.removeElement("b");
+  assert.throws(() => editor.removeUnusedButtonDefinition("scene"), /noch verwendet/);
+  await editor.save();
+  assert.ok(configService.snapshot().dynamic_buttons.scene);
+});
+
+test("externally added button reference blocks cleanup even after a previously safe local draft", async () => {
+  const { configService, editor } = setup();
+  await configService.load();
+  editor.enter();
+  editor.removeElement("b");
+  editor.removeUnusedButtonDefinition("scene");
+  const external = configService.snapshot();
+  external.pages.other = {
+    kind: "dashboard", layout_id: "main",
+    elements: [{ id: "foreign", kind: "button", ref_id: "scene",
+      column: 0, row: 0, column_span: 3, row_span: 2 }],
+  };
+  await configService.replace(external);
+  await assert.rejects(() => editor.save(), /Button-Definition wird noch verwendet/);
+  assert.equal(editor.active, true);
+  assert.ok(configService.snapshot().dynamic_buttons.scene);
+  assert.equal(editor.workingConfig().dynamic_buttons.scene, undefined);
+});
