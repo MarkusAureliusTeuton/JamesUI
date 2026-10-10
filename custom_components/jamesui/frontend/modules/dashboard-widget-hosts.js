@@ -64,9 +64,13 @@ export function createDashboardWidgetHosts({ moduleLoader, getConfig, getButtonD
     node.setAttribute("data-jui-widget-instance", element.ref_id);
     // Keep async failures from turning unhandled; UI remains the owning grid host.
     void ready;
-    return () => {
+    const dispose = () => {
       alive = false;
       moduleLoader.destroy(instanceId); // Also cancels in-flight loading.
     };
+    // Expose readiness to the layout without changing the cleanup contract.
+    // A dashboard must not report successful startup while a widget is still loading.
+    dispose.ready = ready;
+    return dispose;
   };
 }
