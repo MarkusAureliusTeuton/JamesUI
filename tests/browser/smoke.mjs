@@ -326,6 +326,38 @@ try {
     assert.equal(await page.evaluate(() => window.__juiTest.writes), 5);
     await page.locator('[data-jui-widget="house-quick"]').waitFor({ state: "visible", timeout: 10000 });
     assert.equal(await page.locator('[data-jui-editor-remove]').count(), 0);
+
+    // Explicit cleanup is separate from tile deletion. It never removes
+    // shared definitions and is still subject to Undo and one atomic save.
+    await page.evaluate(async () => {
+      const config = window.__juiTest.app.core.config.snapshot();
+      config.dynamic_buttons.unused_definition = {
+        name: "Ungenutzter Testbutton", mode: "trigger",
+        action: { type: "navigate", route: "home" },
+      };
+      await window.__juiTest.app.core.config.replace(config);
+    });
+    await page.waitForFunction(() => window.__juiTest.writes === 6);
+    await page.locator('[data-jui-dashboard-edit-entry]').click();
+    await toolbar.waitFor({ state: "visible" });
+    await toolbar.getByRole("button", { name: "Bereinigen" }).click();
+    const cleanup = page.locator('[data-jui-button-cleanup]');
+    await cleanup.waitFor({ state: "visible" });
+    assert.equal(await cleanup.locator('[data-jui-cleanup-remove="unused_definition"]').count(), 1);
+    await cleanup.locator('[data-jui-cleanup-remove="unused_definition"]').click();
+    assert.equal(await cleanup.locator('[data-jui-cleanup-remove="unused_definition"]').count(), 0);
+    assert.equal(await page.evaluate(() => window.__juiTest.writes), 6);
+    await cleanup.getByRole("button", { name: "Schließen" }).click();
+    await toolbar.getByRole("button", { name: "Rückgängig" }).click();
+    await toolbar.getByRole("button", { name: "Bereinigen" }).click();
+    assert.equal(await cleanup.locator('[data-jui-cleanup-remove="unused_definition"]').count(), 1,
+      "Undo must restore the orphan definition in the unsaved draft");
+    await cleanup.locator('[data-jui-cleanup-remove="unused_definition"]').click();
+    await cleanup.getByRole("button", { name: "Schließen" }).click();
+    await toolbar.getByRole("button", { name: "Fertig" }).click();
+    await page.waitForFunction(() => window.__juiTest.writes === 7);
+    assert.equal(await page.evaluate(() =>
+      window.__juiTest.persisted.dynamic_buttons.unused_definition), undefined);
     assert.deepEqual(errors, [], "Browser JavaScript errors");
     await page.evaluate(() => window.__juiTest.app.destroy());
     assert.equal(await page.locator('[data-role="app-shell"]').count(), 0);
