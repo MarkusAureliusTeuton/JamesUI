@@ -162,7 +162,15 @@ export function createModuleLoader({
       if (!loader.destroy(id)) return false;
       reloadGenerations.set(id, (reloadGenerations.get(id) ?? 0) + 1);
       if (!await loader.load(moduleId, { instanceId: id, config })) return false;
-      if (target !== null && !loader.mount(id, target)) return false;
+      if (target !== null && !loader.mount(id, target)) {
+        // A failed remount must not leave a loaded, detached runtime behind.
+        // Keep the failure visible after the teardown clears the old health record.
+        const failure = health.get(moduleHealthId(id))?.error ??
+          new Error("Reloaded module refused mount");
+        loader.destroy(id);
+        reportError(id, "reload", failure);
+        return false;
+      }
       clearError(id);
       return true;
     },
