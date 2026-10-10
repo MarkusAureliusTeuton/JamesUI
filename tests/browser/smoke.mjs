@@ -539,6 +539,14 @@ try {
   assert.equal(await blankCatalog.locator('[data-jui-catalog-field="targetTemperature"]').inputValue(),
     "sensor.living_target");
   await blankCatalog.locator('[data-jui-catalog-field="targetTemperature"]').fill("sensor.living_target_new");
+  const mappingSection = blankCatalog.locator('[data-jui-advanced-mapping="heating"]');
+  assert.equal(await mappingSection.getAttribute("open"), null,
+    "Optional signal mappings must not overwhelm the default editor");
+  await mappingSection.locator("summary").click();
+  await blankCatalog.locator('[data-jui-catalog-field="autoRegulationTrueValues"]')
+    .fill("on, true, 1, enabled");
+  await blankCatalog.locator('[data-jui-catalog-field="autoRegulationFalseValues"]')
+    .fill("off, false, 0, disabled");
   await blankCatalog.locator('[data-jui-catalog-confirm]').click();
   await blankCatalog.waitFor({ state: "hidden" });
   await blankToolbar.getByRole("button", { name: "Fertig" }).click();
@@ -550,6 +558,11 @@ try {
   assert.equal(editedHeating.zones.length, 1, "Editing a unique zone must not duplicate its source");
   assert.equal(editedHeating.zones[0].id, heating.zone.id);
   assert.equal(editedHeating.zones[0].target_temperature.entity_id, "sensor.living_target_new");
+  assert.deepEqual(editedHeating.zones[0].auto_regulation_enabled.true_values,
+    ["on", "true", "1", "enabled"],
+    "Edited status mapping must persist through the HA-backed configuration save");
+  assert.deepEqual(editedHeating.zones[0].auto_regulation_enabled.false_values,
+    ["off", "false", "0", "disabled"]);
   assert.equal(editedHeating.button.source_id, heating.zone.id);
 
   // Block 12 devices: add one, append a second through the same widget,

@@ -99,6 +99,16 @@ export function createDashboardCatalogView({ document, catalog, onSelect, onEdit
     }
   };
 
+  const advancedMapping = (parent, kind) => {
+    const details = document.createElement("details");
+    details.setAttribute("data-jui-advanced-mapping", kind);
+    const summary = document.createElement("summary");
+    summary.textContent = "Erweiterte Signalzuordnung (optional)";
+    details.appendChild(summary);
+    parent.appendChild(details);
+    return details;
+  };
+
   const close = document.createElement("button");
   close.setAttribute("type", "button");
   close.textContent = "Schließen";
@@ -206,12 +216,13 @@ export function createDashboardCatalogView({ document, catalog, onSelect, onEdit
       createField(heating, fields, "targetTemperature", "Solltemperatur", { placeholder: "sensor.wohnzimmer_soll" });
       createField(heating, fields, "heatingDemand", "Heizanforderung", { placeholder: "binary_sensor.heizung_anforderung" });
       createField(heating, fields, "autoRegulation", "Automatikregelung aktiv", { placeholder: "binary_sensor.heizung_auto" });
+      const heatingAdvanced = advancedMapping(heating, "heating");
       for (const [prefix, name, bool] of [
         ["currentTemperature", "Isttemperatur", false],
         ["targetTemperature", "Solltemperatur", false],
         ["heatingDemand", "Heizanforderung", true],
         ["autoRegulation", "Automatikregelung", true],
-      ]) addSourceMapping(heating, fields, prefix, name, bool);
+      ]) addSourceMapping(heatingAdvanced, fields, prefix, name, bool);
       const devices = group("devices");
       const deviceSelectorLabel = document.createElement("label");
       deviceSelectorLabel.textContent = "Gerät auswählen";
@@ -242,9 +253,10 @@ export function createDashboardCatalogView({ document, catalog, onSelect, onEdit
       createField(devices, fields, "updateEntity", "Update vorhanden (optional)", { placeholder: "binary_sensor.lueftung_update" });
       createField(devices, fields, "warningEntity", "Warnung (optional)", { placeholder: "binary_sensor.lueftung_warnung" });
       createField(devices, fields, "faultEntity", "Störung (optional)", { placeholder: "binary_sensor.lueftung_stoerung" });
+      const deviceAdvanced = advancedMapping(devices, "devices");
       for (const [prefix, name] of [
         ["active", "Aktivstatus"], ["update", "Update"], ["warning", "Warnung"], ["fault", "Störung"],
-      ]) addSourceMapping(devices, fields, prefix, name, true);
+      ]) addSourceMapping(deviceAdvanced, fields, prefix, name, true);
       const populateDevice = () => {
         const selected = configuredDevices.find((item) => item.id === deviceSelector.value);
         for (const [field, property] of [
