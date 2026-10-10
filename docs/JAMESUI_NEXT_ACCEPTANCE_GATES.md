@@ -74,3 +74,11 @@
 - **Konflikte:** Externe Änderungen an Seitengeometrie, Widgetdefinitionen oder Providerquellen werden nicht still überschrieben.
 - **Grüne Qualitätsgates:** `validate` + `browser-smoke` in [Run 38043543481](https://github.com/MarkusAureliusTeuton/JamesUI/actions/runs/38043543481), Commit `777274dc9e`.
 - **Nicht freigegeben:** Vollständige Erweitertenkonfiguration und Rückbau nicht mehr genutzter globaler Quellen, echte HA-WebSocket-/KNX-End-to-End-Aktionen, OnePlus Pad 2 und Fully Kiosk. G5/G6 weiter offen; Blöcke 15–21 gesperrt.
+
+## Datenintegritäts-Nachweis: Ressourcen und mehrere Clients (2026-10-10)
+
+- **G2 verbessert:** Freiwillige Bereinigung zentraler Dynamic-Button-Definitionen nur ohne Referenzen auf anderen Dashboard-Seiten oder in Widgetinstanzen; keine automatische Löschung von Datenquellen. Browser testet Undo, explizite Bereinigung und Save.
+- **G1/G2 verbessert:** Der strukturierte Home-Assistant-WebSocket-Schreibweg setzt einen 64-stelligen **`expected_revision`**-Token voraus. Server verifiziert atomar gegen die aktuelle kanonische SHA-256-Konfigurationsrevision; stale Saves erhalten `config_conflict`. Alle bestehenden r11-Legacy-Updates ändern die Revision ebenfalls.
+- **G4 verbessert:** Chromium simuliert parallel geänderte HA-Konfiguration und bestätigt: konfliktbehafteter Save schlägt sichtbar fehl; der Server behält die jüngeren Fremdänderungen, und der Editor kann den lokalen Entwurf verwerfen.
+- **Prüfnachweis:** [GitHub Actions 38048180467](https://github.com/MarkusAureliusTeuton/JamesUI/actions/runs/38048180467), Commit `a355d719d2`; `validate` und `browser-smoke` grün.
+- **Weitere Gates offen:** Reale HA-Integration einschließlich Authentifizierung, nutzerfreundlicher Reload/Rebase bei Fremdänderungen und echte OnePlus-Pad-2-/Fully-Kiosk-Prüfung. **Keine Freigabe der Blöcke 15–21.**
