@@ -300,3 +300,88 @@ test("editing a missing heating source refuses to fabricate a replacement", () =
     inputs: heatingInputs(),
   }), /Bisherige Heizungszone/);
 });
+
+function existingEnergy({ shared = false } = {}) {
+  const button = {
+    id: "energy", type: "energy", source_id: "energy-main",
+    average_window_minutes: 15, warning_threshold_w: 2500, critical_threshold_w: 4200,
+    navigation: { route: "home" },
+  };
+  return {
+    data_sources: { "provider.house-energy": { sources: [{
+      id: "energy-main", name: "Hausverbrauch",
+      power: { entity_id: "sensor.energy_old", attribute: "power" },
+    }] } },
+    widget_instances: {
+      first: { module_id: "widget.house-quick", config: { buttons: [button] } },
+      ...(shared ? { other: { module_id: "widget.house-quick",
+        config: { buttons: [{ ...button, id: "other" }] } } } : {}),
+    },
+    dynamic_buttons: {},
+    priorWidgetConfig: { buttons: [button] },
+  };
+}
+
+function energyInputs(overrides = {}) {
+  return {
+    houseType: "energy", sourceName: "Hausverbrauch", powerEntity: "sensor.energy_old",
+    averageWindow: "15", warningThreshold: "2500", criticalThreshold: "4200",
+    ...overrides,
+  };
+}
+
+test("changing energy thresholds keeps the existing source and button options", () => {
+  const current = existingEnergy();
+  const setup = buildDashboardWidgetSetup({
+    moduleId: "widget.house-quick", currentConfig: current,
+    priorWidgetConfig: current.priorWidgetConfig,
+    inputs: energyInputs({ warningThreshold: "2900" }),
+  });
+  assert.deepEqual(setup.dataSources, {}, "Threshold-only edits must not rewrite shared provider sources");
+  assert.equal(setup.config.buttons[0].source_id, "energy-main");
+  assert.equal(setup.config.buttons[0].warning_threshold_w, 2900);
+  assert.equal(setup.config.buttons[0].navigation.route, "home");
+});
+
+test("renaming a uniquely owned energy source preserves its ID and advanced power binding", () => {
+  const current = existingEnergy();
+  const setup = buildDashboardWidgetSetup({
+    moduleId: "widget.house-quick", currentConfig: current,
+    priorWidgetConfig: current.priorWidgetConfig,
+    inputs: energyInputs({ sourceName: "Neuer Hausverbrauch" }),
+  });
+  const sources = setup.dataSources["provider.house-energy"].sources;
+  assert.equal(sources.length, 1);
+  assert.equal(sources[0].id, "energy-main");
+  assert.equal(sources[0].name, "Neuer Hausverbrauch");
+  assert.equal(sources[0].power.attribute, "power");
+  assert.equal(setup.config.buttons[0].source_id, "energy-main");
+});
+
+test("changing a shared energy sensor forks the source instead of modifying other widgets", () => {
+  const current = existingEnergy({ shared: true });
+  const setup = buildDashboardWidgetSetup({
+    moduleId: "widget.house-quick", currentConfig: current,
+    priorWidgetConfig: current.priorWidgetConfig,
+    inputs: energyInputs({ powerEntity: "sensor.energy_new" }),
+  });
+  const sources = setup.dataSources["provider.house-energy"].sources;
+  assert.equal(sources.length, 2);
+  assert.equal(sources[0].id, "energy-main");
+  assert.equal(sources[0].power.entity_id, "sensor.energy_old");
+  assert.equal(sources[1].id, "dashboard-energy-1");
+  assert.equal(sources[1].power.entity_id, "sensor.energy_new");
+  assert.equal(setup.config.buttons[0].source_id, "dashboard-energy-1");
+  assert.equal(setup.config.buttons[0].navigation.route, "home");
+  assert.equal(current.widget_instances.other.config.buttons[0].source_id, "energy-main");
+});
+
+test("energy editor refuses to replace a missing original source", () => {
+  const current = existingEnergy();
+  current.data_sources["provider.house-energy"].sources = [];
+  assert.throws(() => buildDashboardWidgetSetup({
+    moduleId: "widget.house-quick", currentConfig: current,
+    priorWidgetConfig: current.priorWidgetConfig,
+    inputs: energyInputs(),
+  }), /Bisherige Energiequelle/);
+});
