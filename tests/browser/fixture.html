@@ -58,6 +58,10 @@
     const callWS = async ({ type, config: nextConfig }) => {
       if (type === "jamesui/config/get") return { config };
       if (type === "jamesui/config/replace") {
+        if (window.__juiTest.rejectNextReplace) {
+          window.__juiTest.rejectNextReplace = false;
+          throw new Error("Simulated Home Assistant configuration save failure");
+        }
         config = structuredClone(nextConfig);
         window.__juiTest.persisted = structuredClone(config);
         window.__juiTest.writes += 1;
