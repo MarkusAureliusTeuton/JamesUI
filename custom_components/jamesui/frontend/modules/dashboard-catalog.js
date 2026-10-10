@@ -144,7 +144,7 @@ export function createDashboardCatalogView({ document, catalog, onSelect, getCon
     error.setAttribute("role", "alert");
     error.hidden = true;
     const note = document.createElement("p");
-    note.textContent = "Neue Datenquellen werden nach dem nächsten Öffnen von JamesUI Next aktiv. Es werden keine Beispiel-Entitäten angelegt.";
+    note.textContent = "Datenquellen werden beim Speichern übernommen und aktiviert. Fehlende Home-Assistant-Entitäten bleiben als nicht verfügbar erkennbar.";
     form.appendChild(note);
     form.appendChild(error);
     const add = createButton(form, "Widget hinzufügen", () => {
