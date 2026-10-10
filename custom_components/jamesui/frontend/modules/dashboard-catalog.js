@@ -100,9 +100,18 @@ export function createDashboardCatalogView({ document, catalog, onSelect, getCon
     const fields = new Map();
 
     if (item.module_id === "widget.weather-today") {
-      const info = document.createElement("p");
-      info.textContent = "Verwendet eine konfigurierte Wetterdatenquelle oder die verfügbare Home-Assistant-Wetterentität.";
-      form.appendChild(info);
+      createField(form, fields, "weatherEntityId", "Wetterentität", { placeholder: "weather.zuhause" });
+      createField(form, fields, "outdoorTemperatureEntityId", "Außentemperatur (optional)", { placeholder: "sensor.aussentemperatur" });
+      createField(form, fields, "moonEntityId", "Mondphase (optional)", { placeholder: "sensor.mondphase" });
+      createField(form, fields, "illuminanceEntityId", "Helligkeit (optional)", { placeholder: "sensor.helligkeit" });
+      const prior = getConfig().data_sources?.["provider.weather"] ?? getConfig().data_sources?.weather;
+      if (prior) {
+        const source = prior.config ?? prior;
+        for (const [field, property] of [
+          ["weatherEntityId", "entity_id"], ["outdoorTemperatureEntityId", "outdoor_temperature_entity_id"],
+          ["moonEntityId", "moon_entity_id"], ["illuminanceEntityId", "illuminance_entity_id"],
+        ]) fields.get(field).value = source[property] ?? "";
+      }
     } else if (item.module_id === "widget.calendar-agenda") {
       createField(form, fields, "calendars", "Kalender-Entitäten (durch Komma getrennt)", {
         placeholder: "calendar.familie, calendar.privat", multiline: true,
@@ -111,9 +120,66 @@ export function createDashboardCatalogView({ document, catalog, onSelect, getCon
         placeholder: "todo.haus, todo.einkauf", multiline: true,
       });
     } else if (item.module_id === "widget.house-quick") {
-      createField(form, fields, "lightEntityId", "Licht-Entität (bei bereits konfigurierten Lichtquellen optional)", {
+      const selectorLabel = document.createElement("label");
+      selectorLabel.textContent = "Hausstatus-Typ";
+      selectorLabel.style.display = "block";
+      const select = document.createElement("select");
+      select.setAttribute("data-jui-catalog-field", "houseType");
+      for (const [id, label] of [
+        ["lights", "Licht"], ["ambient_lights", "Ambientelicht"],
+        ["heating_zone", "Heizungszone"], ["devices", "Geräte"], ["energy", "Energie"],
+      ]) {
+        const option = document.createElement("option");
+        option.value = id;
+        option.textContent = label;
+        select.appendChild(option);
+      }
+      selectorLabel.appendChild(select);
+      form.appendChild(selectorLabel);
+      fields.set("houseType", select);
+      const sections = new Map();
+      const group = (kind) => {
+        const section = document.createElement("section");
+        section.setAttribute("data-jui-house-setup", kind);
+        form.appendChild(section);
+        sections.set(kind, section);
+        return section;
+      };
+      const lights = group("lights");
+      createField(lights, fields, "lightEntityId", "Lichtentität (optional bei vorhandener Gruppe)", {
         placeholder: "light.wohnzimmer",
       });
+      const ambient = group("ambient_lights");
+      // Both light groups intentionally share the same optional entity input.
+      // Keep one field binding per type by copying the visible value at submit.
+      createField(ambient, fields, "ambientEntityId", "Ambientelicht-Entität", {
+        placeholder: "light.ambient",
+      });
+      const heating = group("heating_zone");
+      createField(heating, fields, "heatingName", "Heizungszone", { placeholder: "Wohnzimmer" });
+      createField(heating, fields, "currentTemperature", "Isttemperatur", { placeholder: "sensor.wohnzimmer_ist" });
+      createField(heating, fields, "targetTemperature", "Solltemperatur", { placeholder: "sensor.wohnzimmer_soll" });
+      createField(heating, fields, "heatingDemand", "Heizanforderung", { placeholder: "binary_sensor.heizung_anforderung" });
+      createField(heating, fields, "autoRegulation", "Automatikregelung aktiv", { placeholder: "binary_sensor.heizung_auto" });
+      const devices = group("devices");
+      createField(devices, fields, "deviceName", "Gerätename", { placeholder: "Lüftungsanlage" });
+      createField(devices, fields, "primaryEntity", "Haupt-Entität", { placeholder: "switch.lueftung" });
+      createField(devices, fields, "activeEntity", "Aktivstatus", { placeholder: "binary_sensor.lueftung_aktiv" });
+      createField(devices, fields, "updateEntity", "Update vorhanden (optional)", { placeholder: "binary_sensor.lueftung_update" });
+      createField(devices, fields, "warningEntity", "Warnung (optional)", { placeholder: "binary_sensor.lueftung_warnung" });
+      createField(devices, fields, "faultEntity", "Störung (optional)", { placeholder: "binary_sensor.lueftung_stoerung" });
+      const energy = group("energy");
+      createField(energy, fields, "energyName", "Energiequelle", { placeholder: "Hausverbrauch" });
+      createField(energy, fields, "powerEntity", "Leistungssensor", { placeholder: "sensor.hausleistung" });
+      createField(energy, fields, "averageWindow", "Mittelungszeit (Minuten)", { placeholder: "15" });
+      fields.get("averageWindow").value = "15";
+      createField(energy, fields, "warningThreshold", "Warnschwelle (W)", { placeholder: "3000" });
+      createField(energy, fields, "criticalThreshold", "Kritische Schwelle (W)", { placeholder: "5000" });
+      const updateVisible = () => {
+        for (const [kind, section] of sections) section.hidden = kind !== select.value;
+      };
+      select.addEventListener("change", updateVisible);
+      updateVisible();
     } else if (item.module_id === "widget.dynamic-buttons") {
       const current = getConfig();
       const definitions = current.dynamic_buttons ?? {};
@@ -150,6 +216,12 @@ export function createDashboardCatalogView({ document, catalog, onSelect, getCon
     const add = createButton(form, "Widget hinzufügen", () => {
       try {
         const values = Object.fromEntries([...fields.entries()].map(([key, field]) => [key, field.value]));
+        if (item.module_id === "widget.house-quick") {
+          if (values.houseType === "ambient_lights") values.lightEntityId = values.ambientEntityId;
+          if (values.houseType === "heating_zone") values.sourceName = values.heatingName;
+          if (values.houseType === "devices") values.sourceName = values.deviceName;
+          if (values.houseType === "energy") values.sourceName = values.energyName;
+        }
         const plan = buildDashboardWidgetSetup({
           moduleId: item.module_id,
           inputs: values, currentConfig: getConfig(),
