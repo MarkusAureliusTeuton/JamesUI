@@ -99,7 +99,7 @@ test("configured widget plus real source bindings save together, and undo remove
   await configService.load();
   const unchanged = configService.snapshot();
   editor.enter();
-  const setup = {
+  const plan = {
     instanceIdConfigKey: "instance_id",
     config: {
       instance_id: "pending", calendar_enabled: true, tasks_enabled: false,
@@ -107,7 +107,7 @@ test("configured widget plus real source bindings save together, and undo remove
     },
     dataSources: { "provider.calendar": { source_entity_ids: ["calendar.family"] } },
   };
-  let next = editor.addWidget("widget.calendar-agenda", setup);
+  let next = editor.addWidget("widget.calendar-agenda", plan);
   const id = next.elements.at(-1).ref_id;
   assert.equal(editor.workingConfig().widget_instances[id].config.instance_id, id);
   assert.deepEqual(editor.workingConfig().data_sources["provider.calendar"].source_entity_ids, ["calendar.family"]);
@@ -116,7 +116,7 @@ test("configured widget plus real source bindings save together, and undo remove
   assert.deepEqual(configService.snapshot(), unchanged);
   assert.equal(editor.workingConfig().widget_instances[id], undefined);
   assert.equal(editor.workingConfig().data_sources["provider.calendar"], undefined);
-  next = editor.addWidget("widget.calendar-agenda", setup);
+  next = editor.addWidget("widget.calendar-agenda", plan);
   assert.equal(next.elements.at(-1).ref_id, id);
   await editor.save();
   assert.equal(getWrites(), 1);
