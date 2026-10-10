@@ -163,3 +163,22 @@ test("new dynamic definitions are included atomically with configured button wid
   const ref = saved.pages.start.elements.at(-1).ref_id;
   assert.equal(saved.widget_instances[ref].config.buttons[0].button_id, "dashboard-link-1");
 });
+
+test("new widgets fill free 12-column grid horizontally before starting another row", async () => {
+  const { configService, editor } = setup();
+  await configService.load();
+  const empty = configService.snapshot();
+  empty.pages.start.elements = [];
+  await configService.replace(empty);
+  editor.enter();
+  const placements = [];
+  for (let index = 0; index < 4; index++) {
+    const next = editor.addWidget("widget.weather-today", { config: {}, columnSpan: 4, rowSpan: 3 });
+    placements.push([next.elements.at(-1).column, next.elements.at(-1).row]);
+  }
+  assert.deepEqual(placements, [[0, 0], [4, 0], [8, 0], [0, 3]]);
+  assert.equal(new Set(editor.snapshot().elements.map((entry) => entry.id)).size, 4);
+  await editor.save();
+  const saved = configService.snapshot();
+  assert.deepEqual(saved.pages.start.elements.map((entry) => [entry.column, entry.row]), placements);
+});
