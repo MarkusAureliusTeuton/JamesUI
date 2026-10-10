@@ -324,7 +324,7 @@ try {
     await toolbar.waitFor({ state: "hidden" });
     assert.equal(await page.locator('[data-jui-dashboard-item]').count(), 3);
     assert.equal(await page.evaluate(() => window.__juiTest.writes), 5);
-    assert.ok(await page.locator('[data-jui-widget="house-quick"]').count());
+    await page.locator('[data-jui-widget="house-quick"]').waitFor({ state: "visible", timeout: 10000 });
     assert.equal(await page.locator('[data-jui-editor-remove]').count(), 0);
     assert.deepEqual(errors, [], "Browser JavaScript errors");
     await page.evaluate(() => window.__juiTest.app.destroy());
