@@ -1,5 +1,5 @@
 import { createJamesUICore } from "./core/index.js";
-import { createDashboardPageComposer } from "./core/dashboard-page-composer.js";
+import { createConfiguredDashboardPageComposer } from "./modules/dashboard-composition.js";
 import { createDashboardPageConfig } from "./core/dashboard-config.js";
 import { createDashboardProviderCoordinator } from "./modules/dashboard-provider-coordinator.js";
 import { MANIFEST as WEATHER } from "./modules/widget.weather-today/manifest.js";
@@ -19,7 +19,7 @@ import { MANIFEST as CONTROL_PROVIDER } from "./modules/provider.control-state/m
 // Explicit opt-in preview. Neither the r11 panel nor its bootstrap imports this.
 export function createJamesUI1Preview({ document = globalThis.document } = {}) {
   const core = createJamesUICore({ document, availableRoutes: ["home"] });
-  const composer = createDashboardPageComposer({
+  const composer = createConfiguredDashboardPageComposer({
     document, moduleLoader: core.moduleLoader, moduleRegistry: core.moduleRegistry,
     configService: core.config, getConfig: () => core.config.snapshot(),
   });
