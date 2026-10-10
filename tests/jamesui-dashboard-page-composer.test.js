@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createConfiguredDashboardPageComposer } from "../custom_components/jamesui/frontend/modules/dashboard-composition.js";
+import { createDashboardPageComposer } from "../custom_components/jamesui/frontend/core/dashboard-page-composer.js";
 import { createFakeDocument } from "./helpers/fake-dom.js";
 
 function config(kind = "hero-deck") {
@@ -113,4 +114,18 @@ test("dashboard reports failure when a configured widget cannot load", async () 
   }
   assert.ok(destroyed.includes("dashboard:house"));
   assert.ok(destroyed.includes("dashboard:start:hero"));
+});
+
+test("Core dashboard composer refuses missing module composition contracts", () => {
+  const document = createFakeDocument();
+  const loader = { load: async () => true, mount: () => true, destroy: () => true };
+  assert.throws(() => createDashboardPageComposer({
+    document, moduleLoader: loader, getConfig: () => config(),
+  }), /requires integration: createDashboardCatalog/);
+  assert.throws(() => createDashboardPageComposer({
+    document, moduleLoader: loader, getConfig: () => config(),
+    integrations: {
+      createDashboardCatalog: () => ({ entries: () => [] }),
+    },
+  }), /requires integration: createDashboardCatalogView/);
 });
