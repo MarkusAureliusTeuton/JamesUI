@@ -281,6 +281,9 @@ try {
     assert.equal(await catalog.locator('[data-jui-catalog-field="calendars"]').inputValue(), "calendar.family",
       "Undo must restore the edited widget's configuration");
     await catalog.locator('[data-jui-catalog-field="calendars"]').fill("calendar.family, calendar.extra");
+    await catalog.locator('[data-jui-catalog-field="agendaTaskVisibility"]').selectOption("off");
+    await catalog.locator('[data-jui-catalog-field="agendaPresentation"]').selectOption("day");
+    await catalog.locator('[data-jui-catalog-field="agendaLookaheadDays"]').fill("21");
     await catalog.locator('[data-jui-catalog-confirm]').click();
     await catalog.waitFor({ state: "hidden" });
     await toolbar.getByRole("button", { name: "Fertig" }).click();
@@ -291,6 +294,14 @@ try {
     assert.deepEqual(await page.evaluate(() =>
       window.__juiTest.persisted.data_sources["provider.calendar"].source_entity_ids),
       ["calendar.family", "calendar.extra"]);
+    const agendaConfig = await page.evaluate((id) =>
+      window.__juiTest.persisted.widget_instances[id].config, agendaInstance.ref_id);
+    assert.equal(agendaConfig.tasks_enabled, false,
+      "Disabling task display must persist independently of task source configuration");
+    assert.deepEqual(agendaConfig.task_lists.map((entry) => entry.entity_id), ["todo.family"]);
+    assert.deepEqual(latest.data_sources["provider.tasks"].source_entity_ids, ["todo.family"]);
+    assert.equal(agendaConfig.presentation_mode, "day");
+    assert.equal(agendaConfig.lookahead_days, 21);
     assert.equal(await page.locator('[data-jui-editor-edit]').count(), 0);
 
     // Removing a tile is undoable. Saving removes an unshared widget instance
