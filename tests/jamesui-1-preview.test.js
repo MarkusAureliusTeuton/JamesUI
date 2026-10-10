@@ -259,3 +259,62 @@ test("disconnect during pending config load cannot mount a detached preview", as
   await assert.rejects(mounting, /destroyed/i);
   assert.equal(target.querySelector('[data-jui-layout="home-hero-deck"]'), null);
 });
+
+test("saved provider sources activate and update without reopening Next", async () => {
+  const document = createFakeDocument();
+  let remote = {
+    schema_version: 1,
+    pages: { home: { kind: "dashboard", layout_id: "main", elements: [] } },
+    layouts: { main: { kind: "hero-deck", scroll: "fixed", hero_ratio: 0.42 } },
+    widget_instances: {}, dynamic_buttons: {}, data_sources: {}, module_settings: {},
+  };
+  const preview = createJamesUI1Preview({ document });
+  preview.core.hass = {
+    connected: true,
+    config: { time_zone: "Europe/Berlin" },
+    states: {},
+    callWS: async (request) => {
+      if (request.type === "jamesui/config/get") return { config: remote };
+      if (request.type === "jamesui/config/replace") {
+        remote = structuredClone(request.config);
+        return { config: remote };
+      }
+      throw new Error("Unexpected HA request");
+    },
+  };
+  const waitFor = async (predicate) => {
+    for (let i = 0; i < 150; i++) {
+      if (predicate()) return;
+      await new Promise((resolve) => setTimeout(resolve, 3));
+    }
+    assert.fail("Timed out waiting for provider synchronization");
+  };
+  try {
+    assert.equal(await preview.mount(document.createElement("div")), true);
+    assert.equal(preview.core.moduleLoader.isLoaded("provider.calendar"), false);
+    assert.equal(preview.core.moduleLoader.isLoaded("provider.tasks"), false);
+
+    const added = preview.core.config.snapshot();
+    added.data_sources["provider.calendar"] = { source_entity_ids: ["calendar.family"] };
+    added.data_sources["provider.tasks"] = { source_entity_ids: ["todo.family"] };
+    await preview.core.config.replace(added);
+    await waitFor(() => preview.core.moduleLoader.isLoaded("provider.calendar") &&
+      preview.core.moduleLoader.isLoaded("provider.tasks"));
+    assert.equal(preview.core.capabilities.get("calendar.events")?.status, "available");
+    assert.equal(preview.core.capabilities.get("tasks.items")?.status, "available");
+
+    const updated = preview.core.config.snapshot();
+    updated.data_sources["provider.calendar"].source_entity_ids.push("calendar.work");
+    await preview.core.config.replace(updated);
+    await waitFor(() => preview.core.capabilities.get("calendar.events")?.value
+      ?.configured_sources?.length === 2);
+
+    const removed = preview.core.config.snapshot();
+    delete removed.data_sources["provider.calendar"];
+    await preview.core.config.replace(removed);
+    await waitFor(() => !preview.core.moduleLoader.isLoaded("provider.calendar"));
+    assert.equal(preview.core.moduleLoader.isLoaded("provider.tasks"), true);
+  } finally {
+    preview.destroy();
+  }
+});
