@@ -1,8 +1,8 @@
 import { validateCalendarAgendaConfig } from "./widget.calendar-agenda/config.js";
 import { validateCalendarProviderConfig } from "./provider.calendar/config.js";
 import { validateTasksProviderConfig } from "./provider.tasks/config.js";
-import { validateHouseQuickConfig } from "./widget.house-quick/config.js";
-import { validateHouseLightingConfig } from "./provider.house-lighting/config.js";
+import { buildHouseQuickSetup } from "./dashboard-house-setup.js";
+import { validateWeatherProviderConfig } from "./provider.weather/config.js";
 import { validateWeatherTodayConfig } from "./widget.weather-today/config.js";
 import { validateDynamicButtonDefinitions, validateDynamicButtonInstanceConfig } from "./widget.dynamic-buttons/config.js";
 
@@ -41,9 +41,30 @@ export function buildDashboardWidgetSetup({ moduleId, inputs = {}, currentConfig
   let widgetConfig;
 
   switch (moduleId) {
-    case "widget.weather-today":
+    case "widget.weather-today": {
+      const configured = configuredSource(currentConfig, "provider.weather");
+      const legacy = configuredSource(currentConfig, "weather");
+      const prior = Object.keys(configured).length ? configured : legacy;
+      const weatherId = String(inputs.weatherEntityId ?? prior.entity_id ?? "").trim();
+      if (!weatherId) throw new TypeError("Wetter-Entität (weather.*) angeben");
+      const weather = {
+        ...prior, entity_id: weatherId,
+      };
+      for (const [key, property] of [
+        ["outdoorTemperatureEntityId", "outdoor_temperature_entity_id"],
+        ["moonEntityId", "moon_entity_id"],
+        ["illuminanceEntityId", "illuminance_entity_id"],
+      ]) {
+        const input = String(inputs[key] ?? "").trim();
+        if (input) weather[property] = input;
+      }
+      const validated = validateWeatherProviderConfig(weather);
+      if (JSON.stringify(validated) !== JSON.stringify(configured)) {
+        dataSources["provider.weather"] = validated;
+      }
       widgetConfig = validateWeatherTodayConfig({});
       break;
+    }
 
     case "widget.calendar-agenda": {
       const calendars = ids(inputs.calendars, "calendar");
@@ -66,24 +87,9 @@ export function buildDashboardWidgetSetup({ moduleId, inputs = {}, currentConfig
     }
 
     case "widget.house-quick": {
-      const entityId = String(inputs.lightEntityId ?? "").trim();
-      const existing = configuredSource(currentConfig, "provider.house-lighting");
-      const lights = [...(existing.lights ?? [])];
-      const ambientLights = [...(existing.ambient_lights ?? [])];
-      if (entityId) {
-        if (!/^light\.[a-z0-9_]+$/.test(entityId)) {
-          throw new TypeError("Bitte eine gültige light.*-Entität angeben");
-        }
-        if (![...lights, ...ambientLights].some((item) => item.state?.entity_id === entityId)) {
-          let index = lights.length + ambientLights.length + 1;
-          while ([...lights, ...ambientLights].some((item) => item.id === `dashboard-light-${index}`)) index++;
-          lights.push({ id: `dashboard-light-${index}`, name: entityId, state: { entity_id: entityId } });
-        }
-      }
-      if (!lights.length) throw new TypeError("Bitte eine Lichtentität angeben oder zuerst Lichtquellen konfigurieren");
-      if (entityId) dataSources["provider.house-lighting"] =
-        validateHouseLightingConfig({ lights, ambient_lights: ambientLights });
-      widgetConfig = validateHouseQuickConfig({ buttons: [{ id: "lights", type: "lights" }] });
+      const planned = buildHouseQuickSetup({ inputs, currentConfig });
+      widgetConfig = planned.config;
+      Object.assign(dataSources, planned.dataSources);
       break;
     }
 
