@@ -1,56 +1,44 @@
-# JamesUI Next – Integrations- und Abnahme-Gate
+# JamesUI Next – Integrations- und Abnahme-Gates
 
-Stand: 2026-10-09. Technischer Audit anhand des Feature-Branches und der GitHub-Actions-Konfiguration. Kein HA-/Browser-/Tablet-Test.
+**Stand:** 2026-10-10 · Feature-Branch `feat/jamesui-1-0-block-14-start-configuration` · Draft-PR #27. **Keine HA-/Tablet-Freigabe.**
 
-## Prüfbare Fakten
+## Nachweis und Reichweite
 
-- Blöcke 0–13 sind laut Ausführungsroadmap zusammengeführt. Die neue Vorschau liegt separat unter `jamesui-1-preview`; r11 bleibt produktiv.
-- Die Vorschau registriert vier Widgettypen und acht Provider. Der Router lässt aktuell nur `home` zu.
-- Ein Startseiten-Dashboard muss bereits als strukturierte Konfiguration in `pages.home` vorliegen. Die Vorschau erzeugt es nicht selbst; ohne Konfiguration bricht der Start mit einer Fehlermeldung ab.
-- Das Backend speichert die kanonische Konfiguration in HA `.storage` und stellt WebSocket `jamesui/config/get` und `jamesui/config/replace` bereit.
-- Die Provider werden nur für konfigurierte Datenquellen aktiviert. Wetter übernimmt zusätzlich das kanonisch migrierte `data_sources.weather`; andere HA-Entitäten werden nicht geraten.
-- GitHub Actions führt Python-/Node-Syntax- und Modul-/Integrations-Vertragstests aus. Die letzte geprüfte CI `68005c2b` ist grün.
-- Im Repository gibt es aktuell keine Playwright-/Puppeteer-/Selenium-Konfiguration und damit keinen nachgewiesenen echten Browser-Renderingtest.
-- Keine tatsächliche Home-Assistant-Instanz, kein OnePlus Pad 2 und kein Fully Kiosk wurden in dieser Arbeitssitzung getestet.
+- **Letzte vollständig grüne Prüfung:** GitHub Actions [Run 38030663272](https://github.com/MarkusAureliusTeuton/JamesUI/actions/runs/38030663272), Commit `1c47d75e`. Sowohl `validate` als auch `browser-smoke` erfolgreich.
+- **Architektur:** Die Next-Vorschau ist von der alten r11-Ansicht getrennt; `home` ist bislang die einzige freigegebene Route. Vier Widgettypen und acht Provider sind registriert. Das allein belegt keine vollständige HA-Integration.
+- **Persistenz:** Kanonische Konfiguration in Home Assistants `.storage`, WebSocket-Endpunkte `jamesui/config/get` und `jamesui/config/replace`.
+- **Erststart:** Fehlt `pages.home`, legt Next eine **leere**, editierbare Dashboard-Seite mit Layout an und erhält vorhandene Einstellungen; eine inkompatible bestehende Seite wird nicht überschrieben. Der vollständige Vier-Widget-Start ist bisher nur mit einer expliziten Testkonfiguration belegt.
+- **Daten:** Provider verwenden explizite `data_sources`; Wetter kann kanonisch migrierte Wetter-IDs übernehmen. Keine erfundenen produktiven HA-Entitäten.
+- **Automatisierte Browserprüfung:** Echtes Headless Chromium in **zwei generischen Hochformat-Viewports** (800 × 1280, 1024 × 1366); simulierte HA-Daten, kein echter HA-Server.
+- **Nicht getestet:** tatsächliche Home-Assistant-Installation, die dortigen Entitätszuordnungen und Berechtigungen, OnePlus Pad 2, Fully Kiosk und längerer Realbetrieb.
 
-## Freigabegates (Reihenfolge verbindlich)
+## Verbindliche Gates
 
-| Gate | Nachweis | Status |
+| Gate | Prüfgegenstand | Aktueller Status |
 | --- | --- | --- |
-| G1 Architektur/Abhängigkeiten | Neue Vorschau unabhängig von r11, Modulgrenzen und HA-Adapter kontrolliert | Teilweise: getrennte Entry-Points, vollständiger Audit offen |
-| G2 Konfiguration | Reproduzierbarer, schema-konformer Startstand mit expliziten HA-Bindings; keine unbeabsichtigte r11-Überschreibung | Offen |
-| G3 Komponenten/Provider | Erfolgs-, Fehler-, Abbruch- und Wiederanlaufpfade in automatisierten Tests | Teilweise: viele Tests grün, Vollständigkeit nicht belegt |
-| G4 Gesamtsystem | Browserbasierter E2E-Test von Start, Navigation, Widgets, Layout, Interaktion und simulierten HA-Updates | Offen |
-| G5 HA-Integration | Installation und echte Entity-/Action-Bindings in einer Testinstanz geprüft | Offen |
-| G6 Tablet | Hochformat, Touch, Fully Kiosk, Skalierung und Wiederverbindung auf OnePlus Pad 2 | Offen |
+| **G1 Architektur** | Eigenständigkeit, Modulgrenzen, Lebenszyklen, Altlasten | **Teilweise:** getrennte Entry-Points und Lifecycle-Tests vorhanden; vollständige Abhängigkeitsprüfung offen |
+| **G2 Konfiguration** | Nutzbare Erstkonfiguration, Widget-Instanzen und HA-Bindings | **Teilweise:** sichere leere Erstseite und persistente Editier-Operationen geprüft; vollständige nutzerseitige Datenquellen-/Widgetkonfiguration offen |
+| **G3 Modul-Integration** | Vier Widgets, Provider, Aktionen, Störfälle | **Teilweise:** alle vier Widget-Runtimes im Integrationstest geprüft; vollständige Kombinationen/Quelleinstellungen offen |
+| **G4 Browser-Gesamtsystem** | Rendering, Interaktionen, Touch, Persistenz, Fehler/Reconnect | **Teilweise:** grüne Chromium-E2E-Szenarien; weitere Zustände und Langlauf-/Visual-Regressionen offen |
+| **G5 Real-HA** | Installation, WebSocket, konkrete Quellen und Befehle | **Offen** |
+| **G6 Zieltablet** | OnePlus Pad 2, Hochformat, Fully Kiosk, Alltag | **Offen** |
 
-## Sofortige technische Risiken
+## Bereits nachgewiesene Browser-E2E-Szenarien
 
-1. **Startblocker:** `pages.home` fehlt bei einer frisch initialisierten bzw. ausschließlich aus r11 migrierten Konfiguration; der Preview-Start ist dann bewusst nicht möglich.
-2. **Datenvollständigkeit:** Vorhandene r11-Wetterwerte können übernommen werden. Für Kalender, Todo, KNX/Haus und dynamische Buttons ist kein realer, vollständiger Zielsystem-Binding-Nachweis vorhanden.
-3. **Darstellung:** DOM-Vertragstests belegen keine Pixel-/Touch-/Viewport-Korrektheit.
-4. **Lebenszyklus:** Asynchrone Mount-/Unmount-Rennen und Netzwerkunterbrechungen müssen systematisch im Gesamtsystem geprüft werden.
-5. **Rollout:** PR #27 bleibt Draft; r11 darf erst nach G1–G6 und Rollback-Nachweis abgelöst werden.
+- Wetter-Hero + Kalender-Agenda + House Quick + Dynamic Buttons werden gleichzeitig real im Browser gemountet, ohne vorgespiegelten Erfolg bei fehlgeschlagenen Widget-Starts.
+- Navigation ist auf `home` beschränkt; Prognose-Overlay lässt sich öffnen und schließen; der Dynamic-Button-Trigger führt eine Core-Aktion aus.
+- Explizite Testentitäten `weather.browser_fixture` und `light.browser_fixture`: Werteänderungen gelangen über Adapter → Provider → Capability → Widget; fehlende Entitäten zeigen Warn-/Leerzustände; Disconnect/Reconnect stellt aktuelle Daten ohne Remount wieder her.
+- Long-Press öffnet den Dashboard-Editor. Elementverschiebung, Rückgängig, einmaliges Speichern, gescheiterter Speicherversuch ohne Verlust der lokalen Änderung und anschließender erfolgreicher Retry sind automatisiert geprüft.
+- Tatsächliche Browsergeometrie: keine horizontal abgeschnittenen oder überlappenden Dashboard-Kacheln in den geprüften Viewports; Navigation bleibt sichtbar. App-Destroy entfernt die Shell.
 
-## Nächste Umsetzung ohne Tablet-Update
+**Einschränkung:** „Browser-E2E grün“ heißt **nicht** „alle denkbaren Funktionalitäten vollständig getestet“. Insbesondere keine echten KNX-/HA-Steuerbefehle, keine echte Kalender-/Todo-Abfrage und keine reale Hardware.
 
-1. Reproduzierbare Testkonfiguration und HA-Simulator-Fälle für die vier Start-Widgets schaffen, ohne reale Entity-IDs zu erfinden.
-2. Browser-E2E-Lauf in CI ergänzen; Lade-/Fehler-/Reconnect-, Touch- und Viewport-Szenarien prüfen.
-3. Gefundene Integrationsfehler beheben und Regressionstests hinzufügen.
-4. Erst nach grünen G1–G4 eine **einzige** gezielte HA-/Tablet-Abnahmerunde vorbereiten.
+## Verbleibende Risiken / nächste Reihenfolge
 
-**Regel:** Implementiert, Unit-Test grün, Integrationstest grün, Browser-E2E grün, HA geprüft und Tablet geprüft sind getrennte Aussagen. Keine Freigabe aus einer grünen CI allein ableiten.
+1. **Produktive Konfigurierbarkeit:** Für Kalender, Aufgaben, Haus/KNX, Steuerbuttons und ihre Provider fehlen nachgewiesene vollständige nutzerseitige Konfigurations- und Initialisierungswege. Der leere Erststart ist stabil, aber noch kein fertig eingerichteter Homescreen.
+2. **Fehler- und Lebenszyklen:** Wiederholtes Laden, Modulwechsel, fehlende Berechtigungen, verzögerte/fehlerhafte HA-WebSocket-Antworten und unerwartete Datenkombinationen weiter prüfen.
+3. **Visuelle Abnahme:** Weitere Browser-Vergleiche und tatsächliche Tablet-Skalierung, Gesten und Fully Kiosk prüfen. Zwei generische Chromium-Viewports ersetzen das Gerät nicht.
+4. **Real-HA:** Entitätsmapping und reale Funktionsketten erst nach grünen technischen Gates gemeinsam testen.
+5. **Rollout/Rollback:** PR #27 bleibt Draft; r11 erst nach G1–G6 und dokumentiertem Rollback kontrolliert ablösen.
 
-## Fortschritt 2026-10-10
-
-- **G3:** Vier-Widget-Komposition wird erst nach erfolgreichem Laden aller Widgetruntimes freigegeben; ungültige Konfigurationen werden durch die Regressionstests erkannt.
-- **G4 teilweise:** Echter Headless-Chromium-Smoke-Test in CI: zwei generische Tablet-Portrait-Viewports, Navigation, DOM-Widgets, horizontales Overflow und App-Destroy erfolgreich. Vollständige Browser-Interaktions-, Fehler- und Reconnect-Tests stehen aus.
-- **CI-Nachweis:** Run `38028254684`, beide Jobs `validate` und `browser-smoke` erfolgreich.
-- **G5/G6:** Reale Home-Assistant-Integration, OnePlus Pad 2 und Fully Kiosk unverändert nicht geprüft; kein Rollout.
-
-## Ergänzung zum Browser-Gate (2026-10-10)
-
-- Chromium prüft Interaktion und Störfälle zusätzlich zum Layout: Forecast-Overlay, Core-Navigations-Trigger, Wetter-/Licht-Wertänderungen, fehlende HA-Entitäten und Disconnect/Reconnect.
-- Simulationsstatus bleibt explizit: Test benutzt ausschließlich `weather.browser_fixture` und `light.browser_fixture` (keine Nutzer-IDs).
-- Run `38028627815` ist grün (beide Jobs); im Modul-Loader zählt `mount() === false` nicht mehr als Erfolg.
-- **G4 weiterhin teilweise**, **G5/G6 offen**; weder Tablet-Test noch Produktionsfreigabe.
+**Regel:** „Implementiert“, „Unit-Test grün“, „Integration grün“, „Browser grün“, „Real-HA geprüft“ und „Tablet geprüft“ sind getrennte Aussagen. Keine Produktivfreigabe allein aufgrund grüner CI.
