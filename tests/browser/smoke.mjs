@@ -104,7 +104,8 @@ try {
     await page.waitForFunction(() =>
       document.querySelector('[data-jui-weather-temperature]')?.textContent?.includes("—"));
     await page.waitForFunction(() =>
-      document.querySelector('[data-jui-house-quick-id="lights"]')?.textContent?.includes("Keine Daten"));
+      document.querySelector('[data-jui-house-quick-id="lights"]')?.textContent?.includes("1 nicht erreichbar"));
+    assert.match(await lights.innerText(), /0 von 1 an/);
     assert.equal(await lights.getAttribute("data-jui-house-quick-status"), "warning");
 
     // Disconnect clears values; reconnect must restore fresh values without remount.
