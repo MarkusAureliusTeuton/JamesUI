@@ -5,6 +5,7 @@ import { buildHouseQuickSetup } from "./dashboard-house-setup.js";
 import { validateWeatherProviderConfig } from "./provider.weather/config.js";
 import { validateWeatherTodayConfig } from "./widget.weather-today/config.js";
 import { validateDynamicButtonDefinitions, validateDynamicButtonInstanceConfig } from "./widget.dynamic-buttons/config.js";
+import { validateControlStateConfig } from "./provider.control-state/config.js";
 
 // A configuration plan is strictly local until the dashboard edit session commits.
 // Only explicit user-entered entity IDs become source bindings.
@@ -103,13 +104,48 @@ export function buildDashboardWidgetSetup({ moduleId, inputs = {}, currentConfig
       } else {
         const label = String(inputs.buttonName ?? "").trim();
         if (!label) throw new TypeError("Bitte einen Button-Namen angeben");
-        const url = requireAbsoluteWebUrl(inputs.url);
-        let index = 1;
-        while (`dashboard-link-${index}` in existing) index++;
-        buttonId = `dashboard-link-${index}`;
-        dynamicButtons[buttonId] = {
-          name: label, mode: "trigger", action: { type: "url.open", url },
-        };
+        if (inputs.buttonKind === "toggle") {
+          const entityId = String(inputs.toggleEntity ?? "").trim();
+          if (!/^(light|switch|input_boolean|fan)\.[a-z0-9_]+$/.test(entityId)) {
+            throw new TypeError("Toggle benötigt eine schaltbare light.*, switch.*, input_boolean.* oder fan.* Entität");
+          }
+          const entry = configuredSource(currentConfig, "provider.control-state");
+          const sources = [...(entry.sources ?? [])];
+          const match = sources.find((source) => source.entity_id === entityId &&
+            !source.attribute && Array.isArray(source.active_values) &&
+            Array.isArray(source.inactive_values) &&
+            source.active_values.length === 1 && source.active_values[0] === "on" &&
+            source.inactive_values.length === 1 && source.inactive_values[0] === "off" &&
+            (!source.intermediate || source.intermediate.length === 0));
+          let sourceId;
+          if (match) sourceId = match.id;
+          else {
+            let index = 1;
+            while (sources.some((source) => source.id === `dashboard-toggle-state-${index}`)) index++;
+            sourceId = `dashboard-toggle-state-${index}`;
+            sources.push({
+              id: sourceId, entity_id: entityId,
+              active_values: ["on"], inactive_values: ["off"],
+            });
+            dataSources["provider.control-state"] = validateControlStateConfig({ sources });
+          }
+          let index = 1;
+          while (`dashboard-toggle-${index}` in existing) index++;
+          buttonId = `dashboard-toggle-${index}`;
+          const toggle = { type: "entity.toggle", entity_id: entityId };
+          dynamicButtons[buttonId] = {
+            name: label, mode: "toggle", state_source_id: sourceId,
+            activate_action: toggle, deactivate_action: toggle,
+          };
+        } else {
+          const url = requireAbsoluteWebUrl(inputs.url);
+          let index = 1;
+          while (`dashboard-link-${index}` in existing) index++;
+          buttonId = `dashboard-link-${index}`;
+          dynamicButtons[buttonId] = {
+            name: label, mode: "trigger", action: { type: "url.open", url },
+          };
+        }
         validateDynamicButtonDefinitions(dynamicButtons);
       }
       widgetConfig = validateDynamicButtonInstanceConfig({
