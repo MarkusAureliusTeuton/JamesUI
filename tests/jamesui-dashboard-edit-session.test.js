@@ -305,3 +305,17 @@ test("Cancel discards widget edits, removal, new sources and definitions without
   assert.deepEqual(editor.workingConfig(), initialSnapshot);
   editor.finish();
 });
+
+test("concurrent external grid movement is rejected even when element IDs remain identical", async () => {
+  const { configService, editor } = setup();
+  await configService.load();
+  editor.enter();
+  editor.move("a", { row: 6 });
+  const external = configService.snapshot();
+  external.pages.start.elements[1].row = 4;
+  await configService.replace(external);
+  await assert.rejects(() => editor.save(), /Dashboard changed externally/);
+  assert.equal(editor.active, true);
+  assert.equal(configService.snapshot().pages.start.elements[1].row, 4);
+  assert.equal(editor.snapshot().elements.find((entry) => entry.id === "a").row, 6);
+});
