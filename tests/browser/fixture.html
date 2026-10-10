@@ -15,7 +15,7 @@
     import { createJamesUI1Preview } from "/custom_components/jamesui/frontend/jamesui-1-preview.js";
 
     // Test-only source ID. No fabricated Home Assistant entities are saved.
-    const config = {
+    let config = {
       schema_version: 1,
       pages: { home: {
         kind: "dashboard", layout_id: "main", hero_widget_id: "weather",
@@ -55,10 +55,18 @@
     window.__juiTest = { status: "loading", app: null, error: null };
     const app = createJamesUI1Preview({ document });
     window.__juiTest.app = app;
-    const callWS = async ({ type }) => {
-      if (type !== "jamesui/config/get") throw new Error("Unexpected HA WS: " + type);
-      return { config };
+    const callWS = async ({ type, config: nextConfig }) => {
+      if (type === "jamesui/config/get") return { config };
+      if (type === "jamesui/config/replace") {
+        config = structuredClone(nextConfig);
+        window.__juiTest.persisted = structuredClone(config);
+        window.__juiTest.writes += 1;
+        return { config };
+      }
+      throw new Error("Unexpected HA WS: " + type);
     };
+    window.__juiTest.writes = 0;
+    window.__juiTest.persisted = structuredClone(config);
     // Explicit local test entities; no customer entities or settings are saved.
     window.__juiTest.setHass = ({
       connected = true, light = "off", temperature = 21,
