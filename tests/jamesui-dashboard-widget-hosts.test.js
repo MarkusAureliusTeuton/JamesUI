@@ -2,6 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createDashboardWidgetHosts } from "../custom_components/jamesui/frontend/modules/dashboard-widget-hosts.js";
 import { createDashboardGrid } from "../custom_components/jamesui/frontend/core/dashboard-grid.js";
+import { createHealthService } from "../custom_components/jamesui/frontend/core/health-service.js";
+import { createModuleRegistry } from "../custom_components/jamesui/frontend/core/module-registry.js";
+import { createModuleLoader } from "../custom_components/jamesui/frontend/core/module-loader.js";
 import { createFakeDocument } from "./helpers/fake-dom.js";
 
 const item = (id, ref_id, column) => ({
@@ -253,4 +256,64 @@ test("late failure from cancelled widget host does not erase healthy replacement
   assert.equal(oldNode.getAttribute("data-jui-widget-error"), null);
   assert.equal(nextNode.getAttribute("data-jui-widget-error"), null);
   second();
+});
+
+test("real loader plus dashboard grid survives remove/Undo while first import is pending", async () => {
+  const document = createFakeDocument();
+  const registry = createModuleRegistry();
+  const health = createHealthService();
+  const imports = [];
+  const lifecycle = [];
+  registry.register({
+    id: "widget.pending",
+    type: "widget", version: "1.0.0", core_api: "1.x",
+    depends_on: [], requires_capabilities: [], provides_capabilities: [],
+    config_schema: "widget.pending.schema.json",
+  }, { entryUrl: "https://example.test/pending.js" });
+  const loader = createModuleLoader({
+    registry, health,
+    importer: () => new Promise((resolve) => imports.push(resolve)),
+    getContext: () => ({}),
+  });
+  const grid = createDashboardGrid({
+    document,
+    createItemHost: createDashboardWidgetHosts({
+      moduleLoader: loader,
+      getConfig: () => ({ module_id: "widget.pending", config: {} }),
+    }),
+  });
+  const target = document.createElement("main");
+  grid.mount(target);
+  const agenda = item("agenda", "agenda", 0);
+  grid.render([agenda]);
+  assert.equal(imports.length, 1);
+  grid.render([]);
+  grid.render([agenda]);
+  assert.equal(imports.length, 2, "Undo must start a new import immediately");
+  imports[1]({
+    create() {
+      return {
+        mount(node) {
+          lifecycle.push("mount-new");
+          const element = document.createElement("p");
+          element.setAttribute("data-jui-fast-undo-content", "");
+          node.appendChild(element);
+          return true;
+        },
+        update() { return true; },
+        destroy() { lifecycle.push("destroy-new"); },
+      };
+    },
+  });
+  assert.equal(await grid.whenReady(), true);
+  assert.ok(target.querySelector("[data-jui-fast-undo-content]"));
+  imports[0]({ create() { throw Error("stale import must not instantiate"); } });
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(loader.isLoaded("dashboard:agenda"), true);
+  assert.equal(health.get("module:dashboard:agenda"), null);
+  assert.ok(target.querySelector("[data-jui-fast-undo-content]"));
+  assert.deepEqual(lifecycle, ["mount-new"]);
+  grid.destroy();
+  assert.deepEqual(lifecycle, ["mount-new", "destroy-new"]);
 });
