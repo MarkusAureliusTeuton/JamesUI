@@ -1,4 +1,5 @@
 import { moveDashboardElement, validateDashboardPage } from "./dashboard-config.js";
+import { removeUnusedDynamicButton } from "../modules/dashboard-resource-usage.js";
 
 // Session state is detached from persisted config. Only commit writes.
 export function createDashboardEditSession({ controller, configService, pageId, maxRows = null } = {}) {
@@ -149,6 +150,15 @@ export function createDashboardEditSession({ controller, configService, pageId, 
       // never implicitly deleted when a tile is removed.
       return page();
     },
+    removeUnusedButtonDefinition(buttonId) {
+      ensureActive();
+      if (busy) throw new Error("Dashboard editor is saving");
+      const result = removeUnusedDynamicButton(working, buttonId);
+      if (result === null) return null;
+      history.push(working);
+      working = result;
+      return page();
+    },
     undo() {
       ensureActive();
       if (busy) throw new Error("Dashboard editor is saving");
@@ -202,17 +212,19 @@ export function createDashboardEditSession({ controller, configService, pageId, 
           const buttonChanges = Object.fromEntries(
             Object.entries(working.dynamic_buttons).filter(([id, value]) =>
               JSON.stringify(value) !== JSON.stringify(baseline.dynamic_buttons[id])));
+          const buttonRemovals = Object.keys(baseline.dynamic_buttons).filter(
+            (id) => !(id in working.dynamic_buttons));
           for (const id of Object.keys(sourceChanges)) {
             if (JSON.stringify(latest.data_sources[id]) !== JSON.stringify(baseline.data_sources[id])) {
               throw new Error(`Datenquelle wurde extern geändert: ${id}`);
             }
           }
-          for (const id of Object.keys(buttonChanges)) {
+          for (const id of [...Object.keys(buttonChanges), ...buttonRemovals]) {
             if (JSON.stringify(latest.dynamic_buttons[id]) !== JSON.stringify(baseline.dynamic_buttons[id])) {
               throw new Error(`Button wurde extern geändert: ${id}`);
             }
           }
-          return {
+          const next = {
             ...latest,
             data_sources: { ...latest.data_sources, ...sourceChanges },
             dynamic_buttons: { ...latest.dynamic_buttons, ...buttonChanges },
@@ -221,6 +233,15 @@ export function createDashboardEditSession({ controller, configService, pageId, 
               [pageId]: { ...latest.pages[pageId],
                 elements: structuredClone(working.pages[pageId].elements) } },
           };
+          // Check the final merged document, not only the local draft. A
+          // different page or runtime may have started using the definition
+          // while this edit session was open.
+          for (const id of buttonRemovals) {
+            const cleaned = removeUnusedDynamicButton(next, id);
+            if (cleaned === null) throw new Error(`Button wurde extern entfernt: ${id}`);
+            next.dynamic_buttons = cleaned.dynamic_buttons;
+          }
+          return next;
         });
         if (result !== null) {
           working = result;
