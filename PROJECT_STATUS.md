@@ -449,3 +449,10 @@ Read the completed Block-13 spec/plan and the cross-block layout planning notes,
 - Bei Konflikten an derselben Dashboard-Seite wird der zweite Versuch abgewiesen; der lokale Entwurf bleibt bestehen. `Abbrechen` zeigt nach bereits erfolgtem Server-Reload den aktuellen gespeicherten Dashboardstand an.
 - **Nachweis:** Integrationstests mit zwei simulierten Clients und Chromium-Browserablauf (erst Fremdänderung in `module_settings`, dann absichtlicher Rasterkonflikt), GitHub Actions [38062640323](https://github.com/MarkusAureliusTeuton/JamesUI/actions/runs/38062640323), Commit `f3c07c690`: `validate` und `browser-smoke` erfolgreich.
 - **Weiterhin offen:** Echte Mehrclient-Kommunikation auf Home Assistant/Tablet, Langzeittests sowie vollständige erweiterte Konfiguration der bestehenden Module. Blöcke 15–21 unverändert zurückgestellt.
+
+### Block 14 – Core-/Modulgrenzen geprüft (2026-10-10)
+
+- Der generische `core/dashboard-edit-session.js` importiert keine fachlichen Dynamic-Button-Module mehr. Die ausdrückliche Prüfung/Löschung ungenutzter Buttondefinitionen wird vom Dashboard-Composer als optionale Funktion `removeUnusedButton` injiziert.
+- Ein Architektur-Regressionstest verhindert einen erneuten direkten Import `../modules/` aus der Core-Edit-Session. Bisherige Unit-/Browserfälle für Bereinigen, Undo, Speichern, parallele Bearbeitung und Konfliktwiederholung bleiben unverändert abgedeckt.
+- **Nachweis:** [GitHub Actions 38062902006](https://github.com/MarkusAureliusTeuton/JamesUI/actions/runs/38062902006), Commit `4a068b957`: `validate` und `browser-smoke` beide erfolgreich.
+- **Rest bis Block 14:** weitere Modulgrenzen/Abhängigkeiten, vollständige fortgeschrittene Konfigurationsmöglichkeiten und echte HA-/Tablet-Funktionstests. Blöcke 15–21 weiter nicht freigegeben.
