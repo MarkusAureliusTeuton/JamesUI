@@ -122,3 +122,40 @@ test("Block 14 rejects missing button definitions without mounting a fake contro
     id: "missing", kind: "button", ref_id: "not-found",
   }), /definition is missing/);
 });
+
+test("failed widget load shows an error in its tile instead of staying blank", async () => {
+  const document = createFakeDocument();
+  const node = document.createElement("div");
+  const host = createDashboardWidgetHosts({
+    moduleLoader: { load: async () => false, mount() { throw Error("must not mount"); }, destroy() {} },
+    getConfig: () => ({ module_id: "widget.calendar-agenda" }),
+  });
+  const dispose = host(node, item("failed", "agenda", 0));
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(node.getAttribute("data-jui-widget-error"), "");
+  assert.match(node.textContent, /nicht geladen/);
+  dispose();
+});
+
+test("failed widget mount and rejected load are visible and cleaned up", async () => {
+  for (const mode of ["mount", "reject"]) {
+    const document = createFakeDocument();
+    const node = document.createElement("div");
+    const destroyed = [];
+    const host = createDashboardWidgetHosts({
+      moduleLoader: {
+        load: mode === "reject" ? async () => { throw Error("network"); } : async () => true,
+        mount: () => false,
+        destroy: (id) => destroyed.push(id),
+      },
+      getConfig: () => ({ module_id: "widget.calendar-agenda" }),
+    });
+    const dispose = host(node, item(mode, "agenda", 0));
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.equal(node.getAttribute("data-jui-widget-error"), "");
+    assert.ok(destroyed.includes("dashboard:" + mode));
+    dispose();
+  }
+});
