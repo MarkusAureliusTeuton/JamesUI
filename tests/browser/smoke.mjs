@@ -251,6 +251,62 @@ try {
     assert.equal(await page.evaluate(() => window.__juiTest.app.core.capabilities.get("calendar.events").status), "available");
     assert.equal(await page.evaluate(() => window.__juiTest.app.core.capabilities.get("tasks.items").status), "available");
     assert.equal(latest.widget_instances.agenda.config.instance_id, "browser-agenda");
+    assert.equal(await page.locator('[data-jui-editor-remove]').count(), 0,
+      "Editing controls must disappear after saving");
+
+    // Existing widget edit uses the same validation, preserves its identity,
+    // and remounts the changed runtime while leaving sibling widgets alone.
+    await page.locator('[data-jui-dashboard-edit-entry]').click();
+    await toolbar.waitFor({ state: "visible" });
+    const newAgendaTile = page.locator('[data-jui-dashboard-item="' + agendaInstance.id + '"]');
+    const originalAgendaWidget = await newAgendaTile.locator('[data-jui-widget="calendar-agenda"]').elementHandle();
+    await newAgendaTile.locator('[data-jui-editor-edit]').click();
+    await catalog.waitFor({ state: "visible" });
+    assert.equal(await catalog.locator('[data-jui-catalog-field="calendars"]').inputValue(), "calendar.family");
+    assert.equal(await catalog.locator('[data-jui-catalog-field="tasks"]').inputValue(), "todo.family");
+    await catalog.locator('[data-jui-catalog-field="calendars"]').fill("calendar.family, calendar.extra");
+    await catalog.locator('[data-jui-catalog-confirm]').click();
+    await catalog.waitFor({ state: "hidden" });
+    await page.waitForFunction(() =>
+      document.querySelector('[data-jui-dashboard-item="' + agendaInstance.id + '"] [data-jui-widget="calendar-agenda"]') !== null);
+    assert.notEqual(await newAgendaTile.locator('[data-jui-widget="calendar-agenda"]').elementHandle(),
+      originalAgendaWidget, "Changed widget must remount");
+
+    await toolbar.getByRole("button", { name: "Rückgängig" }).click();
+    await newAgendaTile.locator('[data-jui-editor-edit]').click();
+    await catalog.waitFor({ state: "visible" });
+    assert.equal(await catalog.locator('[data-jui-catalog-field="calendars"]').inputValue(), "calendar.family",
+      "Undo must restore the edited widget's configuration");
+    await catalog.locator('[data-jui-catalog-field="calendars"]').fill("calendar.family, calendar.extra");
+    await catalog.locator('[data-jui-catalog-confirm]').click();
+    await catalog.waitFor({ state: "hidden" });
+    await toolbar.getByRole("button", { name: "Fertig" }).click();
+    await page.waitForFunction(() => window.__juiTest.writes === 4);
+    assert.deepEqual(await page.evaluate((id) =>
+      window.__juiTest.persisted.widget_instances[id].config.calendars.map((entry) => entry.entity_id),
+      agendaInstance.ref_id), ["calendar.family", "calendar.extra"]);
+    assert.deepEqual(await page.evaluate(() =>
+      window.__juiTest.persisted.data_sources["provider.calendar"].source_entity_ids),
+      ["calendar.family", "calendar.extra"]);
+    assert.equal(await page.locator('[data-jui-editor-edit]').count(), 0);
+
+    // Removing a tile is undoable. Saving removes an unshared widget instance
+    // but retains common provider sources and other agenda instances.
+    await page.locator('[data-jui-dashboard-edit-entry]').click();
+    await toolbar.waitFor({ state: "visible" });
+    await newAgendaTile.locator('[data-jui-editor-remove]').click();
+    assert.equal(await page.locator('[data-jui-dashboard-item]').count(), 3);
+    await toolbar.getByRole("button", { name: "Rückgängig" }).click();
+    assert.equal(await page.locator('[data-jui-dashboard-item]').count(), 4);
+    await newAgendaTile.locator('[data-jui-editor-remove]').click();
+    await toolbar.getByRole("button", { name: "Fertig" }).click();
+    await page.waitForFunction(() => window.__juiTest.writes === 5);
+    assert.equal(await page.locator('[data-jui-dashboard-item]').count(), 3);
+    const removedConfig = await page.evaluate(() => window.__juiTest.persisted);
+    assert.equal(removedConfig.widget_instances[agendaInstance.ref_id], undefined);
+    assert.ok(removedConfig.widget_instances.agenda, "Unrelated Agenda instance must survive");
+    assert.deepEqual(removedConfig.data_sources["provider.calendar"].source_entity_ids,
+      ["calendar.family", "calendar.extra"], "Shared sources are never deleted implicitly");
     assert.deepEqual(errors, [], "Browser JavaScript errors");
     await page.evaluate(() => window.__juiTest.app.destroy());
     assert.equal(await page.locator('[data-role="app-shell"]').count(), 0);
