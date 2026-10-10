@@ -355,3 +355,35 @@ test("explicit update refusal is reported instead of falsely succeeding", async 
   assert.equal(loader.isLoaded("provider.refuses"), true, "Refused update keeps old instance available for recovery");
   assert.equal(loader.destroy("provider.refuses"), true);
 });
+
+test("failed remount after module reload destroys new runtime and keeps health error", async () => {
+  let generations = 0;
+  const events = [];
+  const { registry, health, loader } = setup({
+    importer: async () => ({
+      create() {
+        const current = ++generations;
+        return {
+          mount() {
+            events.push(["mount", current]);
+            return current === 1;
+          },
+          update() { return true; },
+          destroy() { events.push(["destroy", current]); return true; },
+        };
+      },
+    }),
+  });
+  registry.register(manifest("widget.reload-refuses"), {
+    entryUrl: "https://example.test/widget-reload-refuses.js",
+  });
+  assert.equal(await loader.load("widget.reload-refuses"), true);
+  assert.equal(loader.mount("widget.reload-refuses", {}), true);
+  assert.equal(await loader.reload("widget.reload-refuses"), false);
+  assert.equal(loader.isLoaded("widget.reload-refuses"), false);
+  assert.deepEqual(events, [
+    ["mount", 1], ["destroy", 1], ["mount", 2], ["destroy", 2],
+  ]);
+  assert.equal(health.get("module:widget.reload-refuses")?.status, "error");
+  assert.match(health.get("module:widget.reload-refuses")?.error?.message ?? "", /returned false/);
+});
