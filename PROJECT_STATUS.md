@@ -394,3 +394,13 @@ Read the completed Block-13 spec/plan and the cross-block layout planning notes,
 - Browsergeometrie validiert Sichtbarkeit aller drei Deck-Kacheln, fehlende gegenseitige Überlappung, horizontale Grenzen und Abstand zur Bottom-Navigation.
 - Beide CI-Jobs `validate` und `browser-smoke` erfolgreich: Run `38030663272`, Commit `1c47d75e`.
 - Noch offen (Block-14-Konfiguration): vollständige nutzbare Einrichtung der Widgetinstanzen und Datenquellen über die Oberfläche. Der Dashboard-Katalog erzeugt bislang nicht für jedes Widget einen gültigen Satz an Einstellungen; insbesondere Agenda benötigt Kalender-/Todo-Quellen. Kein OnePlus-Pad-2-/Fully-Kiosk-/Real-HA-Nachweis.
+
+### Block 14 – guided widget configuration and empty first-run editing (2026-10-10)
+
+- Added an always-available `Bearbeiten` entry point, allowing dashboard editing even when a fresh Start page has zero widgets.
+- Catalog now requests actual configuration and validates it **before** adding the widget: Weather Today (available HA weather), Agenda (explicit calendar/todo entity IDs), House Quick (existing configured lights or an explicit `light.*` source), Dynamic Buttons (existing central button or new explicitly configured HTTPS/HTTP URL action). No sample HA source IDs are persisted.
+- Dashboard edit session atomically persists new widget instances, provider `data_sources` and central dynamic button definitions; Undo drops all associated local changes. Concurrent remote source modifications reject save instead of overwriting them.
+- The dynamic-buttons host resolves new instance references against central definitions. The configurator remains in the `modules/` domain; Core is generic, preserving Block-11 architecture guards.
+- Chromium covers an empty initial configuration, direct editing without long-press, guided Agenda validation, insertion and atomic saving. Unit tests cover valid/invalid source bindings, buttons, undo and concurrent changes.
+- **Activation caveat:** a newly configured provider starts on the next opening of JamesUI Next; no live provider re-registration after editor save is claimed or tested.
+- This is **an initial, guided subset**, not a full settings implementation for every heating/device/energy/control-state source or every advanced widget option. Real HA and Fully Kiosk remain untested. PR #27 remains draft.
