@@ -109,3 +109,10 @@
 - **G3 – Rückfall bei Provider-Update:** Kalender und Todo (vorheriger Stand) sowie nun Wetter stellen bei fehlerhaften Subscribe-Bindings die vorherige Laufzeit wieder her. Beim Wetter sind alte Quelle/Subscriptions, eine bestehende Timer-Instanz und danach vollständige Bereinigung gezielt getestet.
 - **G4 – Browser/Unit:** Bereits vorhandene Tests wurden auf die neue Composer-Composition umgestellt; gezielte Core-Contract-Tests prüfen fehlende und unvollständige Injection.
 - **Nicht geschlossen:** Die grüne CI bestätigt eine simulierte Umgebung, keine Live-HA-End-to-End-Verifikation. G5/G6 und finale Modul-/Geräteabnahme offen, spätere Blöcke 15–21 nicht freigegeben.
+
+## Asynchrone Lebenszyklen und lokale Config-Konsistenz (2026-10-10)
+
+- **G1/G3:** Schnelles Entfernen und Rückgängig während eines laufenden Widgetimports erzeugt eine neue unabhängige Importgeneration. Späte Antworten früherer Generationen können weder dessen neue Modulinstanz löschen noch deren Health-Meldung verändern. Ein kombinierter Grid/Module-Loader/Widget-Host-Test weist dies nach.
+- **G2:** Config-Store-Client ordnet direkte CAS-Writes und danach angefragte Reads; dadurch kann keine verspätete Lesebestätigung einen zuvor abgeschlossenen Schreibvorgang lokal verdecken. Queue-Tests decken Zweitschreibvorgänge, Revisionen und Recovery nach einer Serverablehnung ab.
+- **Automatisierter Nachweis:** `validate` + Chromium `browser-smoke` grün in [Run 38069408258](https://github.com/MarkusAureliusTeuton/JamesUI/actions/runs/38069408258), Commit `7708a784b`.
+- **G5/G6 weiterhin offen:** Tests arbeiten mit simulierten HA-Quellen. Keine Live-HA-/KNX-/Tablet-Freigabe und keine Arbeit an Blöcken 15–21.
