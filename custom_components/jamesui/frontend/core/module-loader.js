@@ -105,7 +105,11 @@ export function createModuleLoader({
       const runtime = runtimes.get(id);
       if (!runtime) return false;
       try {
-        runtime.instance.mount(target);
+        const mounted = runtime.instance.mount(target);
+        if (mounted === false) {
+          reportError(id, "mount", new Error("Module lifecycle mount returned false"));
+          return false;
+        }
         runtime.target = target;
         clearError(id);
         return true;
