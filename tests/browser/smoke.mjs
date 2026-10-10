@@ -245,6 +245,11 @@ try {
     assert.equal(latest.widget_instances[agendaInstance.ref_id].config.instance_id, agendaInstance.ref_id);
     assert.deepEqual(latest.data_sources["provider.calendar"].source_entity_ids, ["calendar.family"]);
     assert.deepEqual(latest.data_sources["provider.tasks"].source_entity_ids, ["todo.family"]);
+    await page.waitForFunction(() =>
+      window.__juiTest.app.core.moduleLoader.isLoaded("provider.calendar") &&
+      window.__juiTest.app.core.moduleLoader.isLoaded("provider.tasks"));
+    assert.equal(await page.evaluate(() => window.__juiTest.app.core.capabilities.get("calendar.events").status), "available");
+    assert.equal(await page.evaluate(() => window.__juiTest.app.core.capabilities.get("tasks.items").status), "available");
     assert.equal(latest.widget_instances.agenda.config.instance_id, "browser-agenda");
     assert.deepEqual(errors, [], "Browser JavaScript errors");
     await page.evaluate(() => window.__juiTest.app.destroy());
