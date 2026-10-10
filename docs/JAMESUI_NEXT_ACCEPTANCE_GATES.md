@@ -48,4 +48,12 @@
 - **G2 erweitert, aber nicht abgeschlossen:** Neue leere Startseite kann direkt bearbeitet werden. Im Katalog werden Eingaben vor dem Hinzufügen validiert; Agenda erhält explizite Kalender-/Todo-Quellen, House Quick einen belegten Lichtstatus, Dynamic Buttons zentral vorhandene oder ausdrücklich konfigurierte URL-Aktionen.
 - **Persistenz:** Widgetinstanz, neue Provider-Bindings und Buttondefinitionen werden zusammen gespeichert; Rückgängig entfernt den kompletten lokalen Entwurf, externe Quelländerungen werden konfliktfrei nicht überschrieben.
 - **Browser-Smoke:** Zusätzlich zu vorhandenen Vier-Widget- und Gestentests wird eine echte leere Erstkonfiguration durchgespielt und anschließend ein weiteres Agenda-Widget mit Kalender-/Todo-Bindings erzeugt.
-- **Grenzen:** Nicht alle fortgeschrittenen Quellentypen und Widgetoptionen sind in der UI konfigurierbar. Neu eingerichtete Provider werden erst bei erneutem Öffnen der Vorschau initialisiert. Echte HA-Systemtests/Tablet/Fully weiter offen.
+- **Grenzen:** Nicht alle fortgeschrittenen Quellentypen und Widgetoptionen sind in der UI konfigurierbar. Bereits vorhandene Provider werden nach gespeicherten Änderungen ohne Neustart synchronisiert (Browser-/Integrationsprüfung). Echte HA-Systemtests/Tablet/Fully weiter offen.
+
+## Scope- und Live-Provider-Gate (2026-10-10)
+
+- **Keine Folgeblöcke:** Bis zur vollständigen technischen Basisabnahme ausschließlich Blöcke 0–14; spätere Blöcke 15–21 nicht starten.
+- **Core-Korrektur:** Explizites `update() === false` gilt als Fehler und kann nicht mehr grün durchlaufen.
+- **Provider-Laufzeit:** Der Coordinator in `modules/` reagiert auf *gespeicherte* Änderungen der kanonischen `data_sources`: neue Provider laden, bestehende aktualisieren, entfernte abmelden. Sequenzierung und Destroy bei spätem Import sind getestet; Fehler werden im Health-Service angezeigt.
+- **Prüfnachweis:** `validate` + Chromium-`browser-smoke` grün, GitHub Actions `38033578889`; Browser überprüft sofortige Verfügbarkeit der nach dem Speichern hinzugefügten Kalender-/Todo-Provider.
+- **G1–G4 nicht vollständig freigegeben:** Es fehlen weiterhin erweiterte Quellkonfigurationen der bestehenden Module, reale HA-Services/Autorisierung sowie visuelle/device-spezifische Abnahmen; G5/G6 ausdrücklich offen.
