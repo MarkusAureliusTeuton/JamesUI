@@ -168,6 +168,7 @@ export function createDashboardCatalogView({ document, catalog, onSelect, onEdit
       deviceSelectorLabel.style.display = "block";
       const deviceSelector = document.createElement("select");
       deviceSelector.setAttribute("data-jui-catalog-field", "deviceId");
+      deviceSelector.value = ""; // Also deterministic in non-browser DOM fixtures.
       const newDevice = document.createElement("option");
       newDevice.value = "";
       newDevice.textContent = "Neues Gerät hinzufügen";
