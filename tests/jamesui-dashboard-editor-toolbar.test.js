@@ -16,6 +16,7 @@ test("Block 14 editor toolbar opens, undoes, adds and saves through edit session
     async save() { events.push("save"); return { elements: ["saved"] }; },
     finish() { active = false; events.push("finish"); },
     cancel() { active = false; events.push("cancel"); return { elements: ["restored"] }; },
+    async reloadAndSave() { events.push("reload"); return { elements: ["merged"] }; },
   };
   const document = createFakeDocument();
   const toolbar = createDashboardEditorToolbar({
@@ -49,6 +50,7 @@ test("Block 14 editor keeps unsaved state visible if save fails", async () => {
     async save() { throw new Error("offline"); },
     finish() { throw new Error("finish must not be called"); },
     cancel() { return {}; },
+    async reloadAndSave() { throw new Error("offline"); },
   };
   const toolbar = createDashboardEditorToolbar({
     document, session, onChange() {}, onAdd() {},
@@ -77,6 +79,7 @@ test("Cancel discards editing immediately and clears the visible toolbar without
     async save() { throw Error("Save must not be called"); },
     finish() { throw Error("Finish must not be called"); },
     cancel() { active = false; events.push("cancel"); return { elements: ["persisted"] }; },
+    async reloadAndSave() { throw Error("Reload must not be called"); },
   };
   const toolbar = createDashboardEditorToolbar({
     document, session,
@@ -88,4 +91,57 @@ test("Cancel discards editing immediately and clears the visible toolbar without
   assert.equal(toolbar.root.hidden, true);
   assert.equal(session.active, false);
   assert.deepEqual(events, ["draft", "cancel", "persisted"]);
+});
+
+test("conflict offers explicit reload, retries only on user action and keeps draft if reload fails", async () => {
+  const document = createFakeDocument();
+  const actions = [];
+  let active = true;
+  let failMerge = true;
+  const session = {
+    enter() { active = true; },
+    get active() { return active; },
+    get canUndo() { return true; },
+    snapshot() { return { elements: ["draft"] }; },
+    undo() { return null; },
+    async save() { actions.push("save"); throw Object.assign(new Error("config_conflict"), { code: "config_conflict" }); },
+    async reloadAndSave() {
+      actions.push("reload");
+      if (failMerge) throw new Error("Dashboard changed externally during editing");
+      return { elements: ["committed"] };
+    },
+    finish() { actions.push("finish"); active = false; },
+    cancel() { active = false; return { elements: ["original"] }; },
+  };
+  const toolbar = createDashboardEditorToolbar({
+    document, session, onChange: (page) => actions.push(page.elements[0]), onAdd() {},
+  });
+  toolbar.open();
+  const finish = toolbar.root.children[2];
+  const retry = toolbar.root.querySelector('[data-jui-editor-retry-conflict]');
+  assert.equal(retry.hidden, true);
+  finish.dispatchEvent("click");
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.deepEqual(actions, ["draft", "save"]);
+  assert.equal(retry.hidden, false);
+  assert.match(toolbar.root.querySelector('[data-jui-editor-save-error-message]').textContent,
+    /anderen Sitzung/);
+  retry.dispatchEvent("click");
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(active, true);
+  assert.equal(retry.hidden, true, "Do not offer blind reload on a genuine same-page conflict");
+  assert.match(toolbar.root.querySelector('[data-jui-editor-save-error-message]').textContent, /Dashboard changed externally/);
+  assert.deepEqual(actions, ["draft", "save", "reload"]);
+  failMerge = false;
+  finish.dispatchEvent("click");
+  await Promise.resolve();
+  await Promise.resolve();
+  retry.dispatchEvent("click");
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(active, false);
+  assert.equal(toolbar.root.hidden, true);
+  assert.deepEqual(actions, ["draft", "save", "reload", "save", "reload", "finish", "committed"]);
 });
