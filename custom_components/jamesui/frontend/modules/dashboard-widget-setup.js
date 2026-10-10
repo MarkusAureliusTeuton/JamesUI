@@ -2,6 +2,7 @@ import { validateCalendarAgendaConfig } from "./widget.calendar-agenda/config.js
 import { validateCalendarProviderConfig } from "./provider.calendar/config.js";
 import { validateTasksProviderConfig } from "./provider.tasks/config.js";
 import { buildHouseQuickSetup } from "./dashboard-house-setup.js";
+import { validateHouseQuickConfig } from "./widget.house-quick/config.js";
 import { validateWeatherProviderConfig } from "./provider.weather/config.js";
 import { validateWeatherTodayConfig } from "./widget.weather-today/config.js";
 import { validateDynamicButtonDefinitions, validateDynamicButtonInstanceConfig } from "./widget.dynamic-buttons/config.js";
@@ -35,7 +36,7 @@ function requireAbsoluteWebUrl(raw) {
   return url.href;
 }
 
-export function buildDashboardWidgetSetup({ moduleId, inputs = {}, currentConfig } = {}) {
+export function buildDashboardWidgetSetup({ moduleId, inputs = {}, currentConfig, priorWidgetConfig = null } = {}) {
   if (!currentConfig || typeof currentConfig !== "object") throw new TypeError("Konfiguration fehlt");
   const dataSources = {};
   const dynamicButtons = {};
@@ -73,12 +74,16 @@ export function buildDashboardWidgetSetup({ moduleId, inputs = {}, currentConfig
       if (calendars.length === 0 && taskLists.length === 0) {
         throw new TypeError("Mindestens eine Kalender- oder Aufgaben-Entität angeben");
       }
+      const previous = priorWidgetConfig ?? {};
       widgetConfig = validateCalendarAgendaConfig({
-        instance_id: "dashboard-pending",
+        ...previous,
+        instance_id: previous.instance_id ?? "dashboard-pending",
         calendar_enabled: calendars.length > 0,
         tasks_enabled: taskLists.length > 0,
-        calendars: calendars.map((entity_id) => ({ entity_id })),
-        task_lists: taskLists.map((entity_id) => ({ entity_id })),
+        calendars: calendars.map((entity_id) =>
+          previous.calendars?.find((entry) => entry.entity_id === entity_id) ?? { entity_id }),
+        task_lists: taskLists.map((entity_id) =>
+          previous.task_lists?.find((entry) => entry.entity_id === entity_id) ?? { entity_id }),
       });
       if (calendars.length) dataSources["provider.calendar"] =
         mergeSourceIds(configuredSource(currentConfig, "provider.calendar"), calendars, validateCalendarProviderConfig);
@@ -89,7 +94,16 @@ export function buildDashboardWidgetSetup({ moduleId, inputs = {}, currentConfig
 
     case "widget.house-quick": {
       const planned = buildHouseQuickSetup({ inputs, currentConfig });
-      widgetConfig = planned.config;
+      const oldButtons = priorWidgetConfig?.buttons ?? [];
+      if (priorWidgetConfig && oldButtons.length !== 1) {
+        throw new TypeError("Hausstatus mit mehreren Buttons zunächst über separate Instanzen konfigurieren");
+      }
+      const nextButton = planned.config.buttons[0];
+      const matching = oldButtons.find((button) =>
+        button.type === nextButton.type && button.source_id === nextButton.source_id);
+      widgetConfig = matching
+        ? validateHouseQuickConfig({ buttons: [{ ...matching, ...nextButton }] })
+        : planned.config;
       Object.assign(dataSources, planned.dataSources);
       break;
     }
@@ -148,8 +162,12 @@ export function buildDashboardWidgetSetup({ moduleId, inputs = {}, currentConfig
         }
         validateDynamicButtonDefinitions(dynamicButtons);
       }
+      const prior = priorWidgetConfig?.buttons ?? [];
+      if (priorWidgetConfig && prior.length !== 1) {
+        throw new TypeError("Buttons mit mehreren Einträgen zunächst über separate Instanzen konfigurieren");
+      }
       widgetConfig = validateDynamicButtonInstanceConfig({
-        buttons: [{ id: "button-1", button_id: buttonId, size: "normal" }],
+        buttons: [{ id: prior[0]?.id ?? "button-1", button_id: buttonId, size: prior[0]?.size ?? "normal" }],
       });
       break;
     }
