@@ -45,6 +45,12 @@
         if (this._panel !== undefined) preview.core.panel = this._panel;
         try {
           await preview.mount(host);
+          // A disconnect may happen while configuration/providers are loading.
+          // Never leave a completed, detached preview running.
+          if (generation !== this._generation) {
+            preview.destroy();
+            return;
+          }
         } catch (error) {
           if (generation !== this._generation) return;
           preview.destroy();
