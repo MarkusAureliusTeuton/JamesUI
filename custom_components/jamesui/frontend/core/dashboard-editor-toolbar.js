@@ -2,7 +2,7 @@
 // separately; this layer never invokes Home Assistant directly.
 export function createDashboardEditorToolbar({ document, session, onChange, onAdd } = {}) {
   if (!document || typeof document.createElement !== "function") throw new TypeError("editor toolbar requires document");
-  if (!session || typeof session.enter !== "function" || typeof session.finish !== "function") {
+  if (!session || typeof session.enter !== "function" || typeof session.finish !== "function" || typeof session.cancel !== "function") {
     throw new TypeError("editor toolbar requires edit session");
   }
   if (typeof onChange !== "function" || typeof onAdd !== "function") {
@@ -33,28 +33,57 @@ export function createDashboardEditorToolbar({ document, session, onChange, onAd
       const page = await session.save();
       session.finish();
       root.removeAttribute("data-jui-editor-save-error");
+      errorMessage.hidden = true;
+      errorMessage.textContent = "";
       root.hidden = true;
       // Re-render *after* leaving edit mode: no stale resize/edit/delete
       // controls should remain over the ordinary interactive widgets.
       if (page) onChange(page);
-    } catch {
+    } catch (error) {
       // Keep editing and the unsaved layout intact for an explicit retry.
-      if (session.active) root.setAttribute("data-jui-editor-save-error", "");
+      if (session.active) {
+        root.setAttribute("data-jui-editor-save-error", "");
+        errorMessage.hidden = false;
+        errorMessage.textContent = error?.message ?? "Konfiguration konnte nicht gespeichert werden";
+      }
     } finally {
       saving = false;
       refresh();
     }
   });
+  const cancel = createAction("Abbrechen", () => {
+    if (saving) return;
+    const restored = session.cancel();
+    root.removeAttribute("data-jui-editor-save-error");
+    errorMessage.hidden = true;
+    errorMessage.textContent = "";
+    root.hidden = true;
+    onChange(restored);
+    refresh();
+  });
+  const errorMessage = document.createElement("p");
+  errorMessage.setAttribute("data-jui-editor-save-error-message", "");
+  errorMessage.setAttribute("role", "alert");
+  errorMessage.hidden = true;
+  root.appendChild(errorMessage);
   let saving = false;
   const refresh = () => {
     root.hidden = !session.active;
     undo.disabled = saving || !session.canUndo;
     add.disabled = saving;
     finish.disabled = saving;
+    cancel.disabled = saving;
   };
   return Object.freeze({
     root,
-    open() { session.enter(); root.removeAttribute("data-jui-editor-save-error"); refresh(); onChange(session.snapshot()); },
+    open() {
+      session.enter();
+      root.removeAttribute("data-jui-editor-save-error");
+      errorMessage.hidden = true;
+      errorMessage.textContent = "";
+      refresh();
+      onChange(session.snapshot());
+    },
     refresh,
   });
 }
