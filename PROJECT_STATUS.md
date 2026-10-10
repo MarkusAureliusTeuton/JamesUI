@@ -368,3 +368,5 @@ Read the completed Block-13 spec/plan and the cross-block layout planning notes,
 - Binding release criteria and concrete risks: `docs/JAMESUI_NEXT_ACCEPTANCE_GATES.md`.
 - Highest-priority blocker: a fresh/migrated config has no `pages.home` dashboard; preview rejects startup until a configured dashboard exists.
 - PR #27 stays draft; no tablet rollout until automated browser/system integration is demonstrated.
+
+- 2026-10-10: Startup initialization CI passed at `58fd1d95`. Async panel disconnect cleanup and pending-load regression test added (`53faba66`, `9b6bf43e`); CI confirmation pending. Browser/HA/tablet acceptance still open.
