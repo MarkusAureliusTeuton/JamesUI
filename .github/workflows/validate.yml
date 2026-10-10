@@ -221,3 +221,20 @@ jobs:
 
       - name: Test Start calendar and scene data
         run: node --experimental-default-type=module --test tests/jamesui-home-data.test.js
+
+  browser-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install pinned Chromium test environment
+        run: |
+          npm install --no-save --no-package-lock playwright@1.58.2
+          npx playwright install --with-deps chromium
+
+      - name: Test actual browser startup and portrait layout
+        run: node tests/browser/smoke.mjs
