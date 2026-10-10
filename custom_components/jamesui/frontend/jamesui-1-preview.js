@@ -1,5 +1,6 @@
 import { createJamesUICore } from "./core/index.js";
 import { createDashboardPageComposer } from "./core/dashboard-page-composer.js";
+import { createDashboardPageConfig } from "./core/dashboard-config.js";
 import { MANIFEST as WEATHER } from "./modules/widget.weather-today/manifest.js";
 import { MANIFEST as AGENDA } from "./modules/widget.calendar-agenda/manifest.js";
 import { MANIFEST as HOUSE } from "./modules/widget.house-quick/manifest.js";
@@ -46,9 +47,23 @@ export function createJamesUI1Preview({ document = globalThis.document } = {}) {
     async mount(target) {
       if (mounted) throw new Error("Preview is already mounted");
       await core.config.load();
-      const config = core.config.snapshot();
-      if (!config?.pages?.home || config.pages.home.kind !== "dashboard") {
-        throw new Error("No configured JamesUI 1.0 dashboard. Existing r11 data is not auto-migrated.");
+      let config = core.config.snapshot();
+      if (!config.pages.home) {
+        // Initialize only the missing page and layout; preserve all migrated settings.
+        // This is an intentionally empty, editable dashboard, never a fake HA binding.
+        const layoutId = "jamesui-next-home";
+        if (config.layouts[layoutId]) {
+          throw new Error("Cannot initialize home dashboard: reserved layout ID already exists");
+        }
+        const initial = createDashboardPageConfig({ pageId: "home", layoutId });
+        config = await core.config.replace({
+          ...config,
+          pages: { ...config.pages, home: initial.page },
+          layouts: { ...config.layouts, [layoutId]: initial.layout },
+        });
+      }
+      if (config.pages.home.kind !== "dashboard") {
+        throw new Error("JamesUI Next home page is not a dashboard; existing configuration was preserved.");
       }
       try {
         // Provider definitions come from the canonical persisted data_sources section.
