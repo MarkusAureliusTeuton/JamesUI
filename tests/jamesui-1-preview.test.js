@@ -55,6 +55,14 @@ test("Block 14 preview loads a configured weather provider without fabricated en
 
 test("preview renders the four Start widgets from persisted instances", async () => {
   const document = createFakeDocument();
+  // Agenda measures its row probe during mount. Supply geometry in this
+  // non-browser integration fixture; visual accuracy needs browser E2E tests.
+  const createElement = document.createElement;
+  document.createElement = (tag) => {
+    const element = createElement(tag);
+    element.getBoundingClientRect = () => ({ width: 120, height: 36, top: 0, left: 0, right: 120, bottom: 36 });
+    return element;
+  };
   const preview = createJamesUI1Preview({ document });
   const modules = [
     "widget.calendar-agenda", "widget.house-quick", "widget.dynamic-buttons",
