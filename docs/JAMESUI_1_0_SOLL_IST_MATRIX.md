@@ -87,3 +87,16 @@ Stand: 2026-10-09. Arbeitsstand des Draft-PR #27, keine Freigabe oder Tablet-Abn
 - Keine Folgeblöcke 15–21 und keine produktive Umschaltung; PR #27 bleibt Draft.
 - Live-Konfigurationsübernahme vorhandener Provider in Unit-/Integration-/Chromium-Tests grün (`38033578889`), echte HA-/Tablet-Tests offen.
 - Abschluss der vorhandenen Module bedeutet auch vollständige nutzerseitige Konfiguration der bereits spezifizierten Heizungs-, Geräte-, Energie- und Steuerzustandsfähigkeiten; diese ist **noch offen**.
+
+## Aktueller Stand der Modul-Konfiguration – 2026-10-10
+
+| Bereich in Blöcken 0–14 | Implementiert und automatisiert nachgewiesen | Noch offen |
+| --- | --- | --- |
+| Wetter | Manuelle `weather.*`-Quelle und optionale Sensoren; Migration bestehender Bindings | Reale Entitäten / HA-Abrufe; umfassende Wetter-Präsentationsabnahme |
+| Kalender/Aufgaben | Eigene Instanzen, explizite `calendar.*`/`todo.*`-Quellen, Quellaktivierung nach Save | Erweiterte Agenda-Optionen und reale Kalender-/Aufgabenbearbeitung |
+| House Quick | Licht, Ambientelicht, Heizung, Geräte, Energie über explizite Datenquellen; Energiegrenzwerte | Benutzerdefinierte State-Mappings, Editieren bestehender Provider-Einträge, Real-HA-Prüfung |
+| Dynamische Buttons | Vorhandene Definition, URL-Trigger und echte State-Backed Toggles; Chromium HA-Aktion/Zustandswechsel | Erweiterte HA-Serviceaktionen, freies Button-Management / Einstellungen |
+| Dashboard | Direktes Editieren leerer Seite, Hinzufügen, Undo, Save/Retry, 12-Spalten-First-Fit mit Browserprüfung | Bearbeiten/Entfernen vorhandener Widgets, visuelle/Tablet-Langlaufabnahme |
+| CI | **Beide Jobs grün**, `38041841417`, Commit `e065e7bae6` | Echte Home-Assistant-Instanz und Fully Kiosk / OnePlus Pad 2 |
+
+Ältere Tabellen oben dokumentieren den damaligen Zwischenstand; für die derzeitigen Abnahmekriterien gilt die vorstehende Matrix. Keine Arbeiten an Folgeblöcken 15–21.
