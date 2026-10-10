@@ -40,3 +40,10 @@ Stand: 2026-10-09. Technischer Audit anhand des Feature-Branches und der GitHub-
 4. Erst nach grünen G1–G4 eine **einzige** gezielte HA-/Tablet-Abnahmerunde vorbereiten.
 
 **Regel:** Implementiert, Unit-Test grün, Integrationstest grün, Browser-E2E grün, HA geprüft und Tablet geprüft sind getrennte Aussagen. Keine Freigabe aus einer grünen CI allein ableiten.
+
+## Fortschritt 2026-10-10
+
+- **G3:** Vier-Widget-Komposition wird erst nach erfolgreichem Laden aller Widgetruntimes freigegeben; ungültige Konfigurationen werden durch die Regressionstests erkannt.
+- **G4 teilweise:** Echter Headless-Chromium-Smoke-Test in CI: zwei generische Tablet-Portrait-Viewports, Navigation, DOM-Widgets, horizontales Overflow und App-Destroy erfolgreich. Vollständige Browser-Interaktions-, Fehler- und Reconnect-Tests stehen aus.
+- **CI-Nachweis:** Run `38028254684`, beide Jobs `validate` und `browser-smoke` erfolgreich.
+- **G5/G6:** Reale Home-Assistant-Integration, OnePlus Pad 2 und Fully Kiosk unverändert nicht geprüft; kein Rollout.
