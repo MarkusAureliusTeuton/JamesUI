@@ -252,6 +252,36 @@ try {
     await page.close();
     console.log("PASS browser viewport " + viewport.width + "x" + viewport.height);
   }
+
+  // A fresh installation starts with no page and no configured widgets.
+  // The first-run initialization must be editable even without a tile to long-press.
+  const emptyPage = await browser.newPage({ viewport: { width: 800, height: 1280 }, isMobile: true, hasTouch: true });
+  const emptyErrors = [];
+  emptyPage.on("pageerror", (error) => emptyErrors.push(error.message));
+  await emptyPage.goto(base + "/tests/browser/fixture.html?empty=1", { waitUntil: "load" });
+  await emptyPage.waitForFunction(() => ["ready", "error"].includes(window.__juiTest?.status), null, { timeout: 20000 });
+  assert.equal(await emptyPage.evaluate(() => window.__juiTest.status),
+    "ready", await emptyPage.evaluate(() => window.__juiTest.error));
+  assert.equal(await emptyPage.locator('[data-jui-dashboard-item]').count(), 0);
+  assert.equal(await emptyPage.evaluate(() => window.__juiTest.writes), 1, "Empty first-run config was initialized once");
+  await emptyPage.locator('[data-jui-dashboard-edit-entry]').click();
+  const blankToolbar = emptyPage.locator('[data-jui-editor-toolbar]');
+  await blankToolbar.waitFor({ state: "visible" });
+  await blankToolbar.getByRole("button", { name: "+ Hinzufügen" }).click();
+  const blankCatalog = emptyPage.locator('[data-jui-dashboard-catalog]');
+  await blankCatalog.locator('[data-jui-catalog-module="widget.weather-today"]').click();
+  await blankCatalog.locator('[data-jui-catalog-confirm]').click();
+  await emptyPage.waitForFunction(() => document.querySelectorAll('[data-jui-dashboard-item]').length === 1);
+  assert.equal(await emptyPage.locator('[data-jui-widget-error]').count(), 0);
+  await blankToolbar.getByRole("button", { name: "Fertig" }).click();
+  await emptyPage.waitForFunction(() => window.__juiTest.writes === 2);
+  assert.equal(await emptyPage.evaluate(() =>
+    window.__juiTest.persisted.pages.home.elements.length), 1);
+  assert.deepEqual(await emptyPage.evaluate(() => window.__juiTest.persisted.data_sources), {});
+  assert.deepEqual(emptyErrors, []);
+  await emptyPage.evaluate(() => window.__juiTest.app.destroy());
+  await emptyPage.close();
+  console.log("PASS empty first-run dashboard editor");
 } finally {
   await browser?.close();
   await new Promise((resolve) => server.close(resolve));
