@@ -267,10 +267,11 @@ try {
     await catalog.locator('[data-jui-catalog-field="calendars"]').fill("calendar.family, calendar.extra");
     await catalog.locator('[data-jui-catalog-confirm]').click();
     await catalog.waitFor({ state: "hidden" });
-    await page.waitForFunction(() =>
-      document.querySelector('[data-jui-dashboard-item="' + agendaInstance.id + '"] [data-jui-widget="calendar-agenda"]') !== null);
-    assert.notEqual(await newAgendaTile.locator('[data-jui-widget="calendar-agenda"]').elementHandle(),
-      originalAgendaWidget, "Changed widget must remount");
+    await page.waitForFunction((id) =>
+      document.querySelector('[data-jui-dashboard-item="' + id + '"] [data-jui-widget="calendar-agenda"]') !== null,
+      agendaInstance.id);
+    assert.equal(await originalAgendaWidget.evaluate((node) => node.isConnected), false,
+      "Changed widget must unmount its previous runtime");
 
     await toolbar.getByRole("button", { name: "Rückgängig" }).click();
     await newAgendaTile.locator('[data-jui-editor-edit]').click();
