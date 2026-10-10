@@ -69,3 +69,14 @@ Stand: 2026-10-09. Arbeitsstand des Draft-PR #27, keine Freigabe oder Tablet-Abn
 | Sichtbare Positionierung | Chromium: Kacheln nicht überlappend/abgeschnitten; Navigation sichtbar | Pixel-/Screenshot-Abnahme, Fully Kiosk |
 | Widget hinzufügen | Katalog und Edit-Session im Code und Node-Tests | **Offen:** vollständige UI-Formulare, gültige Widget-Defaults und Quellenbindung; leere Standardconfig funktioniert nicht für Agenda |
 | Qualitätsnachweis | Run `38030663272`: `validate` + `browser-smoke` grün | Keine Produktiv-/Tablet-Freigabe |
+
+## Block 14 – konfigurierte Widget-Instanzen und Erststart (2026-10-10)
+
+| Funktion | Aktueller Nachweis | Noch offen |
+| --- | --- | --- |
+| Leere Neuinstallation | Chromium: Dashboard wird initialisiert, `Bearbeiten` erreichbar, Widget anlegbar und speicherbar | Echte Home-Assistant-Installation |
+| Widget-Katalog | Geführte Eingaben und Validierung für Wetter, Agenda, Licht-Kurzstatus und vorhandene/URL-Buttons | Erweiterte Konfiguration für alle Haus-/Steuerungs-/Widget-Varianten |
+| Kalender/Aufgaben | Explizite `calendar.*`/`todo.*`-IDs; Provider-Bindings zusammen mit Widget gespeichert | Echte Kalender-/Todo-Berechtigungen, Abruf und Bearbeitung |
+| Quellenänderungen | Undo und atomarer Save; externe konkurrierende Änderungen werden abgewiesen | Live-Aktivierung neuer Provider ohne erneutes Öffnen |
+| Dynamic Buttons | Zentrale Definition oder gültige URL-Action; keine implizite HA-Aktion | Eigene Toggle-/KNX-/Service-Action-Konfiguration |
+| Rollout | Testbereit nur in simulierter Browser-Umgebung | HA-, OnePlus-Pad-2- und Fully-Kiosk-Abnahme |
