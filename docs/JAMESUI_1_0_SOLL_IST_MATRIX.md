@@ -135,3 +135,15 @@ Die vorstehenden Nachweise betreffen **nur Basissoftware und vorhandene Module b
 | Gesamt-CI | **`validate` / `browser-smoke` grün:** `38069408258` (`7708a784b`) | G5 Real-HA, G6 OnePlus Pad 2 / Fully Kiosk und finale 0–14-Abnahme |
 
 Folgeblöcke 15–21 werden **nicht** gestartet; bisherige r11-Produktivumgebung unverändert.
+
+## Block 14 – aktualisierte Quellbearbeitung (2026-10-10)
+
+| Bereich | Nachweisbar umgesetzt | Grenze |
+| --- | --- | --- |
+| Provider-Koordination | Einzel-/Mehrfachfehler isoliert, weitere Provider werden verarbeitet, aggregierte Health-/Fehlerdiagnose | Real-HA-Fault-Injection / reale Providerrechte |
+| Heizungszonen | Vorhandene Quellen bearbeiten ohne Duplikate, geteilte Quell-IDs per Copy-on-Write geschützt; Signal-Mappings erhalten | Erweiterte Wertmapping-Bearbeitung über UI |
+| Energie | Schwellen/Mittelung unabhängig bearbeiten; geteilte Quellen mit Kopierschutz, individuelle Power-Signalattribute erhalten | Erweiterte Energie-Binding-UI / echte Sensorprüfung |
+| Geräte | Explizite Auswahl per Geräte-ID, mehrere Geräte hinzufügen/bearbeiten, bestehende Statusmappings erhalten; globale Wirkung benannt | Erweiterte Status-Mapping-Einstellungen |
+| Integration/CI | **`validate` + `browser-smoke` grün**, `38070564157` (`0f5201048`) | Echte Home Assistant-/KNX-/Tablet-Abnahme |
+
+Blöcke 15–21 weiterhin nicht begonnen; PR #27 bleibt Draft, keine produktive r11-Umstellung.
