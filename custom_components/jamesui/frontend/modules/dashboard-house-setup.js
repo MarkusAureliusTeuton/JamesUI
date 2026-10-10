@@ -47,7 +47,7 @@ function getSource(config, providerId, field) {
   return rows;
 }
 
-export function buildHouseQuickSetup({ inputs = {}, currentConfig } = {}) {
+export function buildHouseQuickSetup({ inputs = {}, currentConfig, priorWidgetConfig = null } = {}) {
   if (!currentConfig || typeof currentConfig !== "object") throw new TypeError("Hauskonfiguration fehlt");
   const kind = String(inputs.houseType ?? "lights");
   const dataSources = {};
@@ -88,20 +88,54 @@ export function buildHouseQuickSetup({ inputs = {}, currentConfig } = {}) {
     const demand = entity(inputs.heatingDemand, "Heizanforderung");
     const auto = entity(inputs.autoRegulation, "Automatikstatus");
     const name = title(inputs.sourceName, "Zonenname");
-    const existing = zones.find((row) => row.name === name &&
+    const previousButton = priorWidgetConfig?.buttons?.find((entry) => entry.type === kind);
+    const previousZone = previousButton
+      ? zones.find((entry) => entry.id === previousButton.source_id)
+      : null;
+    if (previousButton && !previousZone) {
+      throw new TypeError("Bisherige Heizungszone existiert nicht mehr");
+    }
+    const binding = (key, entityId) =>
+      previousZone?.[key]?.entity_id === entityId
+        ? previousZone[key]
+        : { entity_id: entityId };
+    const desired = {
+      name,
+      current_temperature: binding("current_temperature", current),
+      target_temperature: binding("target_temperature", target),
+      heating_demand: binding("heating_demand", demand),
+      auto_regulation_enabled: binding("auto_regulation_enabled", auto),
+    };
+    const matching = zones.find((row) =>
+      row.name === name &&
       row.current_temperature?.entity_id === current &&
       row.target_temperature?.entity_id === target &&
       row.heating_demand?.entity_id === demand &&
       row.auto_regulation_enabled?.entity_id === auto);
-    const id = existing?.id ?? uniqueId("dashboard-zone-", zones);
-    if (!existing) {
-      zones.push({
-        id, name,
-        current_temperature: { entity_id: current },
-        target_temperature: { entity_id: target },
-        heating_demand: { entity_id: demand },
-        auto_regulation_enabled: { entity_id: auto },
-      });
+    let id;
+    if (matching) {
+      id = matching.id;
+    } else if (previousZone) {
+      // Editing a shared zone may change several unrelated widgets. Fork the
+      // source if any other widget instance references it. Never silently
+      // mutate that shared reference.
+      const uses = Object.values(currentConfig.widget_instances ?? {})
+        .filter((instance) => instance?.module_id === "widget.house-quick")
+        .flatMap((instance) => instance.config?.buttons ?? [])
+        .filter((entry) => entry.type === "heating_zone" &&
+          entry.source_id === previousZone.id).length;
+      if (uses > 1) {
+        id = uniqueId("dashboard-zone-", zones);
+        zones.push({ id, ...desired });
+      } else {
+        id = previousZone.id;
+        const index = zones.findIndex((entry) => entry.id === id);
+        zones[index] = { id, ...desired };
+      }
+      dataSources[provider] = validateHouseHeatingConfig({ zones });
+    } else {
+      id = uniqueId("dashboard-zone-", zones);
+      zones.push({ id, ...desired });
       dataSources[provider] = validateHouseHeatingConfig({ zones });
     }
     button = { id: "heating", type: "heating_zone", source_id: id };
