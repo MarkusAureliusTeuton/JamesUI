@@ -57,3 +57,12 @@
 - **Provider-Laufzeit:** Der Coordinator in `modules/` reagiert auf *gespeicherte* Änderungen der kanonischen `data_sources`: neue Provider laden, bestehende aktualisieren, entfernte abmelden. Sequenzierung und Destroy bei spätem Import sind getestet; Fehler werden im Health-Service angezeigt.
 - **Prüfnachweis:** `validate` + Chromium-`browser-smoke` grün, GitHub Actions `38033578889`; Browser überprüft sofortige Verfügbarkeit der nach dem Speichern hinzugefügten Kalender-/Todo-Provider.
 - **G1–G4 nicht vollständig freigegeben:** Es fehlen weiterhin erweiterte Quellkonfigurationen der bestehenden Module, reale HA-Services/Autorisierung sowie visuelle/device-spezifische Abnahmen; G5/G6 ausdrücklich offen.
+
+## Verifizierter Integrationsfortschritt (2026-10-10)
+
+- **CI:** `validate` und `browser-smoke` erfolgreich: Run `38041841417`, Commit `e065e7bae6`.
+- **G2 teilweise:** Katalog erlaubt explizite Wetter-, Kalender-, Todo-, Licht-, Ambientelicht-, Heizungs-, Geräte- und Energiebinding-Eingaben; einfache State-Backed Toggles mit Core-HA-Aktionen. Ungeeignete Entitäten und ungültige Energiegrenzen werden vor der Persistenz abgewiesen. Nicht alle erweiterten Widget-/Provider-Optionen sind bedienbar.
+- **G3/G4 teilweise:** Browser simulierter HA-Statuswechsel und `entity.toggle`-Serviceaufruf; Toggle-Farbe folgt der *wirklichen* State-Aktualisierung, nicht einem optimistischen Klick. Wetter-, Heizungs- und Steuerzustands-Provider werden nach Save live geladen. Neues First-Fit-Raster packt drei 4-Spalten-Widgets in eine Zeile; Browser prüft horizontale Kachelgrenzen.
+- **Offen G2/G4:** Konfiguration *bestehender* Instanzen und Entfernen/Rückbau, freie Mapping-/Serviceparameter, weitere Fehlerfälle und umfassende Design-/Browserabnahme.
+- **Offen G5/G6:** echte HA-Installation, KNX-Entitäten/Serviceberechtigungen, OnePlus Pad 2, Fully Kiosk und Dauerbetrieb. Kein Gerätetest und kein Cutover vor der Freigabe.
+- **Scope:** Ausschließlich bestehende Module/Core und Block 14. Blöcke 15–21 bleiben vollständig zurückgestellt.
