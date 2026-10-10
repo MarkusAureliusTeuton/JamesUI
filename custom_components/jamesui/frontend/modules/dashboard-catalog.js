@@ -201,8 +201,43 @@ export function createDashboardCatalogView({ document, catalog, onSelect, getCon
       wrapper.appendChild(select);
       form.appendChild(wrapper);
       fields.set("existingButtonId", select);
-      createField(form, fields, "buttonName", "Neuer Button-Name (nur für neuen Link)", { placeholder: "Webseite" });
-      createField(form, fields, "url", "Zieladresse (nur für neuen Link)", { placeholder: "https://example.org" });
+
+      const fresh = document.createElement("section");
+      fresh.setAttribute("data-jui-new-button-setup", "");
+      form.appendChild(fresh);
+      const kindLabel = document.createElement("label");
+      kindLabel.textContent = "Neuen Button konfigurieren";
+      kindLabel.style.display = "block";
+      const kind = document.createElement("select");
+      kind.setAttribute("data-jui-catalog-field", "buttonKind");
+      for (const [value, text] of [["link", "Weblink"], ["toggle", "Gerät ein-/ausschalten"]]) {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = text;
+        kind.appendChild(option);
+      }
+      kindLabel.appendChild(kind);
+      fresh.appendChild(kindLabel);
+      fields.set("buttonKind", kind);
+      createField(fresh, fields, "buttonName", "Button-Name", { placeholder: "Wohnzimmerlicht" });
+      const linkFields = document.createElement("section");
+      linkFields.setAttribute("data-jui-button-setup", "link");
+      createField(linkFields, fields, "url", "Zieladresse", { placeholder: "https://example.org" });
+      fresh.appendChild(linkFields);
+      const toggleFields = document.createElement("section");
+      toggleFields.setAttribute("data-jui-button-setup", "toggle");
+      createField(toggleFields, fields, "toggleEntity", "Schaltbare HA-Entität", {
+        placeholder: "light.wohnzimmer oder switch.steckdose",
+      });
+      fresh.appendChild(toggleFields);
+      const updateVisible = () => {
+        fresh.hidden = select.value !== "";
+        linkFields.hidden = kind.value !== "link";
+        toggleFields.hidden = kind.value !== "toggle";
+      };
+      select.addEventListener("change", updateVisible);
+      kind.addEventListener("change", updateVisible);
+      updateVisible();
     }
 
     const error = document.createElement("p");
