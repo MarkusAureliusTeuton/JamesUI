@@ -42,3 +42,10 @@
 5. **Rollout/Rollback:** PR #27 bleibt Draft; r11 erst nach G1–G6 und dokumentiertem Rollback kontrolliert ablösen.
 
 **Regel:** „Implementiert“, „Unit-Test grün“, „Integration grün“, „Browser grün“, „Real-HA geprüft“ und „Tablet geprüft“ sind getrennte Aussagen. Keine Produktivfreigabe allein aufgrund grüner CI.
+
+## Block-14-Konfiguration: ergänzter Nachweis (2026-10-10)
+
+- **G2 erweitert, aber nicht abgeschlossen:** Neue leere Startseite kann direkt bearbeitet werden. Im Katalog werden Eingaben vor dem Hinzufügen validiert; Agenda erhält explizite Kalender-/Todo-Quellen, House Quick einen belegten Lichtstatus, Dynamic Buttons zentral vorhandene oder ausdrücklich konfigurierte URL-Aktionen.
+- **Persistenz:** Widgetinstanz, neue Provider-Bindings und Buttondefinitionen werden zusammen gespeichert; Rückgängig entfernt den kompletten lokalen Entwurf, externe Quelländerungen werden konfliktfrei nicht überschrieben.
+- **Browser-Smoke:** Zusätzlich zu vorhandenen Vier-Widget- und Gestentests wird eine echte leere Erstkonfiguration durchgespielt und anschließend ein weiteres Agenda-Widget mit Kalender-/Todo-Bindings erzeugt.
+- **Grenzen:** Nicht alle fortgeschrittenen Quellentypen und Widgetoptionen sind in der UI konfigurierbar. Neu eingerichtete Provider werden erst bei erneutem Öffnen der Vorschau initialisiert. Echte HA-Systemtests/Tablet/Fully weiter offen.
