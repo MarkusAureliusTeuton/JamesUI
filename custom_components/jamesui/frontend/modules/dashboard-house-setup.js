@@ -146,24 +146,37 @@ export function buildHouseQuickSetup({ inputs = {}, currentConfig, priorWidgetCo
     const name = title(inputs.sourceName, "Gerätename");
     const primary = entity(inputs.primaryEntity, "Gerät");
     const active = entity(inputs.activeEntity, "Aktivstatus");
-    const existing = devices.find((row) => row.primary_entity_id === primary);
-    if (!existing) {
-      const record = {
-        id: uniqueId("dashboard-device-", devices), name, primary_entity_id: primary,
-        active: { entity_id: active },
-      };
-      for (const [field, input] of [
-        ["update_available", "updateEntity"], ["warning", "warningEntity"], ["fault", "faultEntity"],
-      ]) {
-        if (String(inputs[input] ?? "").trim()) record[field] = { entity_id: entity(inputs[input], field) };
+    const selectedId = String(inputs.deviceId ?? "").trim();
+    const index = selectedId ? devices.findIndex((row) => row.id === selectedId) : -1;
+    if (selectedId && index < 0) throw new TypeError("Gewähltes Gerät existiert nicht mehr");
+    if (devices.some((row, i) => i !== index && row.primary_entity_id === primary)) {
+      throw new TypeError("Gerät ist bereits einer anderen Geräte-ID zugeordnet");
+    }
+    const previous = index >= 0 ? devices[index] : null;
+    const binding = (field, entityId) => previous?.[field]?.entity_id === entityId
+      ? previous[field] : { entity_id: entityId };
+    const record = {
+      id: previous?.id ?? uniqueId("dashboard-device-", devices),
+      name, primary_entity_id: primary,
+      active: binding("active", active),
+    };
+    for (const [field, input] of [
+      ["update_available", "updateEntity"], ["warning", "warningEntity"], ["fault", "faultEntity"],
+    ]) {
+      const raw = String(inputs[input] ?? "").trim();
+      if (raw) record[field] = binding(field, entity(raw, field));
+    }
+    if (previous) {
+      // Device summaries deliberately aggregate all devices in the provider.
+      // An explicitly selected device ID is edited globally, never guessed
+      // from the first item in a multi-device list.
+      if (JSON.stringify(previous) !== JSON.stringify(record)) {
+        devices[index] = record;
+        dataSources[provider] = validateHouseDevicesConfig({ devices });
       }
+    } else {
       devices.push(record);
       dataSources[provider] = validateHouseDevicesConfig({ devices });
-    } else if (existing.active?.entity_id !== active || existing.name !== name ||
-      [["update_available", "updateEntity"], ["warning", "warningEntity"], ["fault", "faultEntity"]]
-        .some(([field, input]) => String(inputs[input] ?? "").trim() &&
-          existing[field]?.entity_id !== String(inputs[input]).trim())) {
-      throw new TypeError("Gerät ist bereits anders konfiguriert; bestehende Zuordnung nicht überschreiben");
     }
     button = { id: "devices", type: "devices" };
 
