@@ -85,6 +85,10 @@ test("preview renders the four Start widgets from persisted instances", async ()
     callWS: async () => ({ config }),
   };
   const target = document.createElement("div");
+  const moduleFailures = [];
+  const unsubscribeHealth = preview.core.health.subscribe(({ record }) => {
+    if (record?.status === "error") moduleFailures.push({ id: record.id, message: record.error?.message });
+  });
   try {
     try {
       assert.equal(await preview.mount(target), true);
@@ -93,7 +97,7 @@ test("preview renders the four Start widgets from persisted instances", async ()
         id: record.id, message: record.message,
         error: record.error?.message ?? null,
       }));
-      assert.fail("Four-widget startup failed: " + error.message + " / " + JSON.stringify(health));
+      assert.fail("Four-widget startup failed: " + error.message + " / " + JSON.stringify({ health, moduleFailures }));
     }
     assert.ok(target.querySelector('[data-jui-layout="home-hero-deck"]'));
     assert.ok(target.querySelector('[data-role="bottom-navigation"]'));
@@ -104,6 +108,7 @@ test("preview renders the four Start widgets from persisted instances", async ()
       assert.equal(target.querySelector('[data-jui-dashboard-item="' + element.id + '"]').getAttribute("data-jui-widget-error"), null);
     }
   } finally {
+    unsubscribeHealth();
     preview.destroy();
   }
 });
