@@ -113,3 +113,14 @@ Stand: 2026-10-09. Arbeitsstand des Draft-PR #27, keine Freigabe oder Tablet-Abn
 | CI | **`validate` und `browser-smoke` grün:** 38043543481 (`777274dc9e`) | Reale Home-Assistant- und Zieltablet-Abnahme |
 
 Blöcke 15–21 ausdrücklich nicht gestartet. Frühere Abschnitte dokumentieren historische Zwischenstände; diese Tabelle ist der aktuelle Prüfstand.
+
+## Block 14 – Ressourcenbereinigung und Mehrclient-Konflikte (2026-10-10)
+
+| Bereich | Implementiert und geprüft | Verbleibende Grenze |
+| --- | --- | --- |
+| Zentrale Dynamic Buttons | Ungenutzte Definitionen werden anhand aller Seiten und Widgetinstanzen ermittelt; explizites Löschen, Undo, atomarer Save, erneute Referenz verhindert Löschung | Nicht genutzte Providerquellen werden **nicht** automatisch entfernt; separate gesicherte Ressourcenverwaltung noch offen |
+| Server-Speichersicherheit | SHA-256-Inhaltsrevision; `config/get` liefert `revision`; strukturierte `config/replace` erfordert `expected_revision`; Schreibsperre und `config_conflict` bei stale Client | Reale HA-Konfliktsituation / Reconnect und Benutzerführung zum Laden/Abgleichen |
+| r11-Verträglichkeit | r11 nutzt seine bisherige Legacy-Update-API, deren Änderungen die kanonische Revision beeinflussen | r11-Abschaltung **nicht freigegeben** |
+| Systemtests | Python/JS/Chromium grün: `38048180467` (`a355d719d2`) | Echte HA-Entitäten/Services und Zieltablet weiterhin nicht geprüft |
+
+Die vorstehenden Nachweise betreffen **nur Basissoftware und vorhandene Module bis Block 14**.
