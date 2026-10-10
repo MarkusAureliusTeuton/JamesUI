@@ -540,6 +540,68 @@ try {
   assert.equal(editedHeating.zones[0].id, heating.zone.id);
   assert.equal(editedHeating.zones[0].target_temperature.entity_id, "sensor.living_target_new");
   assert.equal(editedHeating.button.source_id, heating.zone.id);
+
+  // Block 12 devices: add one, append a second through the same widget,
+  // then explicitly select/edit the second without altering the first.
+  await emptyPage.locator('[data-jui-dashboard-edit-entry]').click();
+  await blankToolbar.waitFor({ state: "visible" });
+  await blankToolbar.getByRole("button", { name: "+ Hinzufügen" }).click();
+  await blankCatalog.locator('[data-jui-catalog-module="widget.house-quick"]').click();
+  await blankCatalog.locator('[data-jui-catalog-field="houseType"]').selectOption("devices");
+  await blankCatalog.locator('[data-jui-catalog-field="deviceName"]').fill("Lüftung");
+  await blankCatalog.locator('[data-jui-catalog-field="primaryEntity"]').fill("switch.ventilation");
+  await blankCatalog.locator('[data-jui-catalog-field="activeEntity"]').fill("binary_sensor.ventilation_active");
+  await blankCatalog.locator('[data-jui-catalog-confirm]').click();
+  await blankCatalog.waitFor({ state: "hidden" });
+  await blankToolbar.getByRole("button", { name: "Fertig" }).click();
+  await emptyPage.waitForFunction(() => window.__juiTest.writes === 6);
+  const devicesTile = await emptyPage.evaluate(() => {
+    const config = window.__juiTest.persisted;
+    return config.pages.home.elements.find((item) =>
+      config.widget_instances[item.ref_id]?.module_id === "widget.house-quick" &&
+      config.widget_instances[item.ref_id].config.buttons.some((button) => button.type === "devices"));
+  });
+  assert.ok(devicesTile);
+  const editDevices = async () => {
+    await emptyPage.locator('[data-jui-dashboard-edit-entry]').click();
+    await blankToolbar.waitFor({ state: "visible" });
+    await emptyPage.locator('[data-jui-dashboard-item="' + devicesTile.id +
+      '"] [data-jui-editor-edit]').click();
+    await blankCatalog.waitFor({ state: "visible" });
+  };
+  await editDevices();
+  const chooseDevice = blankCatalog.locator('[data-jui-catalog-field="deviceId"]');
+  await chooseDevice.selectOption("");
+  await blankCatalog.locator('[data-jui-catalog-field="deviceName"]').fill("Pumpe");
+  await blankCatalog.locator('[data-jui-catalog-field="primaryEntity"]').fill("switch.pump");
+  await blankCatalog.locator('[data-jui-catalog-field="activeEntity"]').fill("binary_sensor.pump_active");
+  await blankCatalog.locator('[data-jui-catalog-field="warningEntity"]').fill("binary_sensor.pump_warning");
+  await blankCatalog.locator('[data-jui-catalog-confirm]').click();
+  await blankCatalog.waitFor({ state: "hidden" });
+  await blankToolbar.getByRole("button", { name: "Fertig" }).click();
+  await emptyPage.waitForFunction(() => window.__juiTest.writes === 7);
+  const beforeSecondEdit = await emptyPage.evaluate(() =>
+    window.__juiTest.persisted.data_sources["provider.house-devices"].devices);
+  assert.equal(beforeSecondEdit.length, 2);
+  const pumpId = beforeSecondEdit[1].id;
+  await editDevices();
+  assert.equal(await chooseDevice.inputValue(), "",
+    "Multiple devices must not silently preselect the first source");
+  await chooseDevice.selectOption(pumpId);
+  assert.equal(await blankCatalog.locator('[data-jui-catalog-field="deviceName"]').inputValue(), "Pumpe");
+  await blankCatalog.locator('[data-jui-catalog-field="deviceName"]').fill("Wasserpumpe");
+  await blankCatalog.locator('[data-jui-catalog-confirm]').click();
+  await blankCatalog.waitFor({ state: "hidden" });
+  await blankToolbar.getByRole("button", { name: "Fertig" }).click();
+  await emptyPage.waitForFunction(() => window.__juiTest.writes === 8);
+  const afterSecondEdit = await emptyPage.evaluate(() =>
+    window.__juiTest.persisted.data_sources["provider.house-devices"].devices);
+  assert.equal(afterSecondEdit.length, 2);
+  assert.equal(afterSecondEdit[0].name, "Lüftung");
+  assert.equal(afterSecondEdit[1].id, pumpId);
+  assert.equal(afterSecondEdit[1].name, "Wasserpumpe");
+  assert.equal(afterSecondEdit[1].warning.entity_id, "binary_sensor.pump_warning");
+
   assert.equal(await emptyPage.locator('[data-jui-widget-error]').count(), 0);
   assert.deepEqual(emptyErrors, []);
   await emptyPage.evaluate(() => window.__juiTest.app.destroy());
