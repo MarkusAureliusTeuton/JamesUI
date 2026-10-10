@@ -124,3 +124,14 @@ Blöcke 15–21 ausdrücklich nicht gestartet. Frühere Abschnitte dokumentieren
 | Systemtests | Python/JS/Chromium grün: `38048180467` (`a355d719d2`) | Echte HA-Entitäten/Services und Zieltablet weiterhin nicht geprüft |
 
 Die vorstehenden Nachweise betreffen **nur Basissoftware und vorhandene Module bis Block 14**.
+
+## Block-14-Härtung – laufende Imports und Config Service (2026-10-10)
+
+| Prüfgegenstand | Aktueller Nachweis | Verbleibend |
+| --- | --- | --- |
+| Widget schnell entfernen / Undo | Mehrgenerationen-Import abgesichert; alte Erfolgs-/Fehlerantworten dürfen nicht neue Instanz oder Health überschreiben | Echte Tablet-Touch-Geschwindigkeit und Langlauftests |
+| Grid ↔ Widget-Host ↔ Module Loader | Integrationstest bei Pending Import und Wiederherstellung mit gleicher Instance-ID; kein doppeltes Destroy | Netzunterbrechungen mit echter HA-Installation |
+| Config Service ↔ HA CAS | Pro-Client-Writes serialisiert, Reads nach vorher gestarteten Writes, neue CAS-Revision je bestätigtem Save; Queue erholt sich nach Fehler | Mehrere reale Browser/HA-Clients und Recovery im Dauerbetrieb |
+| Gesamt-CI | **`validate` / `browser-smoke` grün:** `38069408258` (`7708a784b`) | G5 Real-HA, G6 OnePlus Pad 2 / Fully Kiosk und finale 0–14-Abnahme |
+
+Folgeblöcke 15–21 werden **nicht** gestartet; bisherige r11-Produktivumgebung unverändert.
