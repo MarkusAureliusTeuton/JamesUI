@@ -49,7 +49,11 @@ export function createDashboardProviderCoordinator({ registered, moduleLoader, g
         moduleLoader.destroy(id);
         return false;
       }
-      if (!loaded || !moduleLoader.mount(id, getTarget())) {
+      if (!loaded) {
+        moduleLoader.destroy(id);
+        throw new Error(`Unable to load configured provider: ${id}`);
+      }
+      if (!moduleLoader.mount(id, getTarget())) {
         moduleLoader.destroy(id);
         throw new Error(`Unable to mount configured provider: ${id}`);
       }
