@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { createDashboardEditSession } from "../custom_components/jamesui/frontend/core/dashboard-edit-session.js";
 import { createDashboardController } from "../custom_components/jamesui/frontend/core/dashboard-controller.js";
 import { createConfigService } from "../custom_components/jamesui/frontend/core/config-service.js";
+import { removeUnusedDynamicButton } from "../custom_components/jamesui/frontend/modules/dashboard-resource-usage.js";
 
 const initial = () => ({
   schema_version: 1,
@@ -30,7 +31,10 @@ function setup() {
     },
   } });
   const controller = createDashboardController({ configService });
-  const editor = createDashboardEditSession({ controller, configService, pageId: "start", maxRows: 12 });
+  const editor = createDashboardEditSession({
+    controller, configService, pageId: "start", maxRows: 12,
+    removeUnusedButton: removeUnusedDynamicButton,
+  });
   return { configService, editor, getWrites: () => writes };
 }
 
@@ -398,7 +402,10 @@ function versionedSetup() {
     },
   });
   const controller = createDashboardController({ configService });
-  const editor = createDashboardEditSession({ controller, configService, pageId: "start", maxRows: 12 });
+  const editor = createDashboardEditSession({
+    controller, configService, pageId: "start", maxRows: 12,
+    removeUnusedButton: removeUnusedDynamicButton,
+  });
   return {
     configService, editor, getSaves: () => saves,
     externalChange(change) {
