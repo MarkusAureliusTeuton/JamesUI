@@ -348,6 +348,21 @@ try {
   assert.equal(await emptyPage.evaluate(() =>
     window.__juiTest.persisted.data_sources["provider.control-state"].sources[0].entity_id),
     "light.browser_fixture");
+  const newlyPlaced = await emptyPage.evaluate(() =>
+    window.__juiTest.persisted.pages.home.elements.map(({ column, row }) => [column, row]));
+  assert.deepEqual(newlyPlaced, [[0, 0], [4, 0], [8, 0]],
+    "Three configured widgets must use the free 12-column row without stacking");
+  const packed = await emptyPage.locator('[data-jui-dashboard-item]').evaluateAll((nodes) =>
+    nodes.map((node) => {
+      const rect = node.getBoundingClientRect();
+      return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
+    }));
+  for (let index = 1; index < packed.length; index++) {
+    assert.ok(packed[index].left >= packed[index - 1].right - 2,
+      "Configured widgets must not overlap horizontally: " + JSON.stringify(packed));
+    assert.ok(Math.abs(packed[index].top - packed[0].top) < 2,
+      "Packed dashboard widgets must share the same logical row");
+  }
   assert.deepEqual(emptyErrors, []);
   await emptyPage.evaluate(() => window.__juiTest.app.destroy());
   await emptyPage.close();
