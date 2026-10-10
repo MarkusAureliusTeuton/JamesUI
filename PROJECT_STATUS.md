@@ -378,3 +378,11 @@ Read the completed Block-13 spec/plan and the cross-block layout planning notes,
 - Ein eigenständiger Chromium-Job (`browser-smoke`) prüft Start, drei Deck-Widgets + Wetter-Hero, fehlende Ladefehler, Navigation, horizontales Overflow und vollständigen Destroy in zwei **generischen Portrait-Viewports** (800×1280, 1024×1366).
 - Beide GitHub-Actions-Jobs `validate` und `browser-smoke` erfolgreich: Run `38028254684`, Commit `0cfadf65`.
 - Offene Gates: umfassende Browserinteraktionen/Fehlerfälle, reale HA-Entitäten und Actions, OnePlus Pad 2 / Fully Kiosk. Keine produktive oder Tablet-Freigabe.
+
+### Chromium-Interaktion und HA-Störfälle (2026-10-10)
+
+- `browser-smoke` prüft jetzt in beiden Portrait-Viewports zusätzlich reale Klicks (Wetter-Forecast-Overlay öffnen/schließen; Dynamic-Button-Trigger), sichtbare fehlende Kalenderquelle und tatsächliche Wetter-/Lichtwerte aus **expliziten simulierten HA-Entitäten**.
+- Browser prüft Wetter- und Lichtänderung über HA-Adapter → Provider → Capability → Widget, fehlende konfigurierte Entitäten und Disconnect/Reconnect ohne Remount. Fehlt die Licht-Entität, erscheint eine Warnung mit `1 nicht erreichbar`, kein künstlich erfundener verfügbarer Wert.
+- Core Module Loader wertet ein explizites `mount() === false` nun als Fehler statt als Erfolg; Regressionstest ergänzt.
+- GitHub Actions **beide Jobs erfolgreich**: Run `38028627815` / Commit `88d3667f` (inkl. vorangegangener Module-Loader-Korrektur `4fc0337e` und Test `bbc2c5b9`).
+- Umfangsgrenze: simulierte HA-Daten in echtem Chromium-Browser; keine reale HA-Installation, kein tatsächliches OnePlus Pad 2, kein Fully Kiosk. Browser-Gestentests, erweiterte Widgetzustände und Integrationsabnahme stehen noch aus.
