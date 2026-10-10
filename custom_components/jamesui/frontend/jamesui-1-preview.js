@@ -1,6 +1,7 @@
 import { createJamesUICore } from "./core/index.js";
 import { createDashboardPageComposer } from "./core/dashboard-page-composer.js";
 import { createDashboardPageConfig } from "./core/dashboard-config.js";
+import { createDashboardProviderCoordinator } from "./modules/dashboard-provider-coordinator.js";
 import { MANIFEST as WEATHER } from "./modules/widget.weather-today/manifest.js";
 import { MANIFEST as AGENDA } from "./modules/widget.calendar-agenda/manifest.js";
 import { MANIFEST as HOUSE } from "./modules/widget.house-quick/manifest.js";
@@ -42,7 +43,11 @@ export function createJamesUI1Preview({ document = globalThis.document } = {}) {
     });
   }
   let mounted = false;
-  const activeProviders = [];
+  let providerUnsubscribe = null;
+  let providerTarget = null;
+  const providers = createDashboardProviderCoordinator({
+    registered, moduleLoader: core.moduleLoader, getTarget: () => providerTarget,
+  });
   return Object.freeze({
     async mount(target) {
       if (mounted) throw new Error("Preview is already mounted");
@@ -66,41 +71,41 @@ export function createJamesUI1Preview({ document = globalThis.document } = {}) {
         throw new Error("JamesUI Next home page is not a dashboard; existing configuration was preserved.");
       }
       try {
-        // Provider definitions come from the canonical persisted data_sources section.
-        // Missing entries remain unavailable; never invent Home Assistant entity bindings.
-        for (const [manifest] of registered) {
-          if (manifest.type !== "provider") continue;
-          // Legacy r11 weather settings are migrated into data_sources.weather.
-          // Prefer an explicit provider-specific binding when both are present.
-          const source = config.data_sources[manifest.id] ??
-            (manifest.id === "provider.weather" ? config.data_sources.weather : undefined);
-          if (!source) continue;
-          const instanceConfig = source.config ?? source;
-          if (!await core.moduleLoader.load(manifest.id, { config: instanceConfig })) {
-            throw new Error(`Unable to load configured provider: ${manifest.id}`);
-          }
-          if (!core.moduleLoader.mount(manifest.id, target)) {
-            throw new Error(`Unable to mount configured provider: ${manifest.id}`);
-          }
-          activeProviders.push(manifest.id);
-        }
+        // Provider instances are driven by the same canonical config as the editor.
+        // Changes activate immediately after a committed Config Store update.
+        providerTarget = target;
+        await providers.sync(config);
         core.mount(target);
         const page = target.querySelector('[data-role="page-region"]') ??
           target.querySelector("main");
         if (!page) throw new Error("Preview shell has no page host");
         await composer.mount(page, "home");
         mounted = true;
+        providerUnsubscribe = core.config.subscribe((next) => {
+          void providers.sync(next).then((success) => {
+            if (success) core.health.clear("preview:providers");
+          }).catch((error) => {
+            core.health.report("preview:providers", {
+              status: "error", message: "Configured provider activation failed", error,
+            });
+          });
+        }, { emitCurrent: false });
         return true;
       } catch (error) {
+        providerUnsubscribe?.();
+        providerUnsubscribe = null;
         composer.destroy();
-        for (const id of activeProviders.splice(0)) core.moduleLoader.destroy(id);
+        providers.destroy();
         core.moduleLoader.destroyAll();
         throw error;
       }
     },
     destroy() {
+      providerUnsubscribe?.();
+      providerUnsubscribe = null;
       composer.destroy();
-      for (const id of activeProviders.splice(0)) core.moduleLoader.destroy(id);
+      providers.destroy();
+      providerTarget = null;
       core.destroy();
       mounted = false;
     },
