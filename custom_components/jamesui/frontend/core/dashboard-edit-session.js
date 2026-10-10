@@ -1,8 +1,7 @@
 import { moveDashboardElement, validateDashboardPage } from "./dashboard-config.js";
-import { removeUnusedDynamicButton } from "../modules/dashboard-resource-usage.js";
 
 // Session state is detached from persisted config. Only commit writes.
-export function createDashboardEditSession({ controller, configService, pageId, maxRows = null } = {}) {
+export function createDashboardEditSession({ controller, configService, pageId, maxRows = null, removeUnusedButton = null } = {}) {
   if (!controller || typeof controller.previewMove !== "function" || typeof controller.move !== "function") {
     throw new TypeError("edit session requires Dashboard Controller");
   }
@@ -10,6 +9,9 @@ export function createDashboardEditSession({ controller, configService, pageId, 
     throw new TypeError("edit session requires Config Service");
   }
   if (typeof pageId !== "string" || !pageId) throw new TypeError("pageId is required");
+  if (removeUnusedButton !== null && typeof removeUnusedButton !== "function") {
+    throw new TypeError("removeUnusedButton must be a function or null");
+  }
   let working = null;
   let history = [];
   let active = false;
@@ -153,7 +155,8 @@ export function createDashboardEditSession({ controller, configService, pageId, 
     removeUnusedButtonDefinition(buttonId) {
       ensureActive();
       if (busy) throw new Error("Dashboard editor is saving");
-      const result = removeUnusedDynamicButton(working, buttonId);
+      if (!removeUnusedButton) throw new Error("Button resource cleanup is not configured");
+      const result = removeUnusedButton(working, buttonId);
       if (result === null) return null;
       history.push(working);
       working = result;
@@ -237,7 +240,8 @@ export function createDashboardEditSession({ controller, configService, pageId, 
           // different page or runtime may have started using the definition
           // while this edit session was open.
           for (const id of buttonRemovals) {
-            const cleaned = removeUnusedDynamicButton(next, id);
+            if (!removeUnusedButton) throw new Error("Button resource cleanup is not configured");
+            const cleaned = removeUnusedButton(next, id);
             if (cleaned === null) throw new Error(`Button wurde extern entfernt: ${id}`);
             next.dynamic_buttons = cleaned.dynamic_buttons;
           }
