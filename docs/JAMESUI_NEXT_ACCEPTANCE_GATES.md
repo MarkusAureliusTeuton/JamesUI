@@ -102,3 +102,10 @@
 - **G1/G3 nachgebessert:** Kalender- und Todo-Provider binden nach fehlgeschlagenem Update die letzte gültige Konfiguration wieder ein; Teil-Subscriptions werden bereinigt. Module Loader `reload()` lässt nach fehlgeschlagenem Remount keine scheinbar aktive Modulinstanz zurück und bewahrt die Fehlerdiagnose.
 - **Nachweise:** Fehler-Injection-Unit-Tests auf echten Provider-Lebenszyklen und Module Loader, plus unveränderter Chromium-Gesamtsystemtest. CI `validate` und `browser-smoke` beide erfolgreich: [Run 38065899365](https://github.com/MarkusAureliusTeuton/JamesUI/actions/runs/38065899365), Commit `7ff1996c6`.
 - **Offene Architekturprüfung:** Der generische Dashboard Page Composer importiert noch Modul-Integrationsbestandteile; außerdem ist die vollständige Fehler-Wiederherstellung des Wetterproviders separat zu prüfen. G1–G6 weiterhin nicht insgesamt abgenommen; Real-HA, KNX und Tablet weiterhin ungetestet.
+
+## Lifecycle- und Kompositionsgrenze (2026-10-10)
+
+- **G1 – Dependency Inversion:** Generischer Dashboard-Composer bekommt Layout/Widget-/Katalog-/Resource-Integrationen über explizite Funktionen; die fachlichen Imports sind zentral in `modules/dashboard-composition.js`. Architekturregression prüft die Core-Modul-Grenze.
+- **G3 – Rückfall bei Provider-Update:** Kalender und Todo (vorheriger Stand) sowie nun Wetter stellen bei fehlerhaften Subscribe-Bindings die vorherige Laufzeit wieder her. Beim Wetter sind alte Quelle/Subscriptions, eine bestehende Timer-Instanz und danach vollständige Bereinigung gezielt getestet.
+- **G4 – Browser/Unit:** Bereits vorhandene Tests wurden auf die neue Composer-Composition umgestellt; gezielte Core-Contract-Tests prüfen fehlende und unvollständige Injection.
+- **Nicht geschlossen:** Die grüne CI bestätigt eine simulierte Umgebung, keine Live-HA-End-to-End-Verifikation. G5/G6 und finale Modul-/Geräteabnahme offen, spätere Blöcke 15–21 nicht freigegeben.
