@@ -22,13 +22,14 @@ export function createDashboardPageComposer({ document, moduleLoader, getConfig,
   let hero = null;
   let pageId = null;
   let generation = 0;
-  let editor = null, toolbar = null, touch = null, unbindTouch = null, gridRoot = null, catalogView = null;
+  let editor = null, toolbar = null, touch = null, unbindTouch = null, gridRoot = null, catalogView = null, editEntry = null;
 
   function destroy() {
     generation += 1;
     unbindTouch?.(); unbindTouch = null;
     touch?.destroy(); touch = null;
     if (toolbar?.root?.parentNode) toolbar.root.parentNode.removeChild(toolbar.root);
+    editEntry?.remove(); editEntry = null;
     toolbar = null; editor = null; gridRoot = null;
     if (catalogView?.root?.parentNode) catalogView.root.parentNode.removeChild(catalogView.root);
     catalogView = null;
@@ -60,6 +61,7 @@ export function createDashboardPageComposer({ document, moduleLoader, getConfig,
       unbindTouch?.(); unbindTouch = null;
       touch?.destroy(); touch = null;
       if (toolbar?.root?.parentNode) toolbar.root.parentNode.removeChild(toolbar.root);
+      editEntry?.remove(); editEntry = null;
       toolbar = null; editor = null; gridRoot = null;
       if (catalogView?.root?.parentNode) catalogView.root.parentNode.removeChild(catalogView.root);
       catalogView = null;
@@ -110,7 +112,7 @@ export function createDashboardPageComposer({ document, moduleLoader, getConfig,
     const hosts = createDashboardWidgetHosts({
       moduleLoader,
       getConfig: (id) => (editor?.active ? editor.workingConfig() : getConfig()).widget_instances[id],
-      getButtonDefinitions: () => getConfig().dynamic_buttons,
+      getButtonDefinitions: () => (editor?.active ? editor.workingConfig() : getConfig()).dynamic_buttons,
     });
     grid = createDashboardGrid({ document, createItemHost: hosts });
     gridRoot = grid.mount(gridHost);
@@ -160,11 +162,27 @@ export function createDashboardPageComposer({ document, moduleLoader, getConfig,
       onAdd: () => catalogView?.open(),
     });
     target.appendChild(toolbar.root);
+    editEntry = document.createElement("button");
+    editEntry.setAttribute("type", "button");
+    editEntry.setAttribute("data-jui-dashboard-edit-entry", "");
+    editEntry.setAttribute("aria-label", "Startseite bearbeiten");
+    editEntry.textContent = "Bearbeiten";
+    editEntry.style.position = "absolute";
+    editEntry.style.right = "16px";
+    editEntry.style.top = "12px";
+    editEntry.style.zIndex = "12";
+    editEntry.addEventListener("click", () => { toolbar.open(); showHandles(); });
+    target.appendChild(editEntry);
     if (moduleRegistry) {
-      catalogView = createDashboardCatalogView({ document, catalog: createDashboardCatalog({ moduleRegistry }), onSelect: (moduleId) => {
-        const next = editor.addWidget(moduleId);
-        if (next) preview(next);
-      } });
+      catalogView = createDashboardCatalogView({
+        document, catalog: createDashboardCatalog({ moduleRegistry }),
+        getConfig: () => editor.workingConfig(),
+        onSelect: (moduleId, plan) => {
+          const next = editor.addWidget(moduleId, plan);
+          if (next) preview(next);
+          return next !== null;
+        },
+      });
       target.appendChild(catalogView.root);
     }
     touch = createDashboardTouchEditor({ session: editor, onPreview: preview });
