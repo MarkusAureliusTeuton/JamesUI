@@ -191,3 +191,12 @@ Nächster Gate ist Block 14: Start configuration experience. Prüfe zuerst `layo
 
 Wichtig: Deutsch, kurz und technisch sauber. Repository direkt bearbeiten, wenn GitHub-Zugriff vorhanden ist; keine manuellen Copy/Paste-Anweisungen für Änderungen, die du selbst ausführen kannst. Bereits entschiedene Fragen nicht erneut stellen. Bei offenen Designfragen immer nur eine Frage gleichzeitig. Kurze Antworten wie ok/passt/freigegeben gelten als Freigabe des unmittelbar vorherigen konkreten Vorschlags. TDD für Verhaltensänderungen; rote Tests nie nach main. Keine Monkey-Patches, Prototype-Overrides, Versions-Polish-Dateien, parallelen Implementierungen oder dauerhaften Legacy-Krücken. OnePlus Pad 2 Hochformat ist das primäre Ziel; Fully ist nur die Kiosk-Hülle. Halte Tool-/Log-Ausgaben kompakt, bündele Repo-Arbeit in sinnvolle Schritte und lies bei CI-Fehlern nur den kleinsten nötigen Fehlerausschnitt, damit der Input-Stream stabil bleibt.
 ```
+
+
+## Ergänzung für die nächste Arbeitseinheit – 2026-10-10
+
+Der aktive Branch bleibt `feat/jamesui-1-0-block-14-start-configuration` (Draft-PR #27). Letzter **erfolgreich geprüfter Code-HEAD** vor diesem Dokumentations-Commit: `8865937874752d61fa66da6104e733494acb78c4`, GitHub Actions **38085763867** (`validate` + `browser-smoke` erfolgreich).
+
+Neu nachweisbar: Wetter-Optionalsensoren entfernbar; Energie-HA-Attribut bearbeitbar inkl. Shared-Source-Copy-on-Write; Button-Größe pro Instanz; Agenda-Modus/Lookahead/Ortsanzeige und Aufgaben anzeigen/verbergen ohne Löschen der Todo-Quellen. Dazu Node-/Editor-Tests und neuer Chromium-Ablauf.
+
+**Nächste sinnvolle Implementierungsfolge:** (1) verbleibende vorhandene Provider-/Widget-Einstellmöglichkeiten und tatsächliche UI-Verdrahtung gegen Specs prüfen, besonders Heizungs- und Gerätemappings sowie Dynamic-Button-Aktionen; (2) Systemstörfälle/HA-Socket-Restore und modulübergreifende Tests ergänzen; (3) Code- und Abhängigkeitsreview und echte G5/G6-Abnahme erst bei ausreichender Browser-/Unit-Sicherheit. Nicht produktiv umschalten. **Ausschließlich 0–14**; 15–21 bleiben zurückgestellt, r11 nicht löschen.

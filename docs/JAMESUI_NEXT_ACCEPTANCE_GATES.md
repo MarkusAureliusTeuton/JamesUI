@@ -123,3 +123,14 @@
 - **G2 – Quellbearbeitung:** Heizungs- und Energiequellen werden ohne unnötige Duplikate bearbeitet. Gemeinsam referenzierte Source-IDs werden bei Änderungen als neue Quelle angelegt, statt andere Widgetinstanzen unbemerkt umzubinden; unveränderte Entity-Bindings behalten ihre erweiterten Metadaten. Die globale Geräteverwaltung verwendet ausdrücklich ausgewählte Geräte-IDs und benennt die Wirkung auf alle Geräte-Widgets.
 - **G4 – Nachweis:** Node-Tests für Provider-Mehrfachfehler, Heizungs-/Energie-Copy-on-Write und Geräteauswahl plus Chromium-Browserprüfung des Editors. **Beide Jobs grün:** [38070564157](https://github.com/MarkusAureliusTeuton/JamesUI/actions/runs/38070564157), Commit `0f5201048`.
 - **Nicht geschlossen:** Sämtliche erweiterten Zustands-/Aktoroptionen lassen sich noch nicht vollständig über Formulare bearbeiten; die echte HA/KNX-/Tablet-Abnahme und G5/G6 bleiben offen. Es wurden keine Folgeblöcke gestartet.
+
+
+## Weiterer nachgewiesener Block-14-Fortschritt – 2026-10-10
+
+- **G2 / Wetter-Editor:** Entfernen gespeicherter optionaler Wetter-Sensorentitäten ist explizit möglich; nicht übergebene Felder werden nicht still gelöscht. Unit-/UI-Regressionsnachweis.
+- **G2 / Haus-Energie:** Explizites HA-Attribut des Leistungssensors kann angezeigt, geändert oder geleert werden. Änderungen an gemeinsam verwendeten Source-IDs verwenden weiterhin Copy-on-Write. Quellbindungen benötigen weiterhin echte konfigurierte Entitäten.
+- **G2 / Buttons:** `compact | normal | wide` ist pro Button-Widgetinstanz bearbeitbar; keine Änderung der globalen Buttondefinition.
+- **G2 / Agenda:** Gruppiert/Zeitverlauf/Tag, Ausblick, Ortsanzeige und Aufgaben-Sichtbarkeit im Editor. Aufgabenlisten werden beim Ausblenden nicht gelöscht und können erneut aktiviert werden.
+- **G4 / zusätzliche Browser-Regression:** Ein reales Chromium-Szenario bearbeitet und speichert eine Agenda, setzt den Modus `day`, `lookahead_days=21` und `tasks_enabled=false`; die Todo-Quellen bleiben bestehen. Vorhandene Browser-Gesamtszenarien weiter grün.
+- **Nachweis:** [GitHub Actions 38085763867](https://github.com/MarkusAureliusTeuton/JamesUI/actions/runs/38085763867), Commit `886593787475` – `validate` und `browser-smoke` erfolgreich.
+- **Offen:** Weitere fortgeschrittene Quell- und HA-Service-/Zustandsmappings, Vollreview G1–G4, reale HA/KNX-Aktions- und Authentifizierungstests (G5), OnePlus Pad 2 / Fully Kiosk (G6) sowie finale Abnahme. Keine Tablet-Updates vor sauberem technischen Stand. Draft-PR #27 bleibt offen; 15–21 und r11 bleiben unverändert.

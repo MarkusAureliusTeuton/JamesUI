@@ -147,3 +147,16 @@ Folgeblöcke 15–21 werden **nicht** gestartet; bisherige r11-Produktivumgebung
 | Integration/CI | **`validate` + `browser-smoke` grün**, `38070564157` (`0f5201048`) | Echte Home Assistant-/KNX-/Tablet-Abnahme |
 
 Blöcke 15–21 weiterhin nicht begonnen; PR #27 bleibt Draft, keine produktive r11-Umstellung.
+
+
+## Aktualisierung Block 14 – konfigurierbare Quellen und Instanzen (2026-10-10)
+
+| Teilbereich | Tatsächlicher Code + automatisierter Nachweis | Rest |
+| --- | --- | --- |
+| Wetter | Bestehende optionale Outdoor-/Mond-/Helligkeitssensoren per UI löschen oder ersetzen; bestehende Werte bei ausgelassenem Programmierfeld erhalten | Weitere Wetterdarstellung, Real-HA |
+| Energie | Leistung aus HA-State oder explizitem Attribut; Attribut per UI bearbeiten/löschen; Copy-on-Write schützt geteilte Quellen | Weitere Energie-/Statusmappings, Real-HA |
+| Dynamic Buttons | Größe `compact/normal/wide` je Instanz editierbar, zentrale Definition unverändert | Frei konfigurierbare HA-Aktionen, State- und Statusmapping, grafische Abnahme |
+| Agenda | Modi `grouped/timeline/day`, Lookahead, Ortsanzeige und Aufgabenanzeige im Editor; Aufgabenlisten bleiben bei ausgeblendeten Aufgaben erhalten | Übrige Agenda-Einstellungen, Kalenderregeln und Real-Todo-Tests |
+| Test-Gates | Node und Chromium inkl. gespeichertem Agenda-Edit-Szenario, **Run 38085763867**: `validate` + `browser-smoke` erfolgreich, HEAD `886593787475` | G1–G4 insgesamt nur teilweise; G5 echtes HA/KNX, G6 Tablet/Fully offen |
+
+**Arbeitsfreigabe:** Nur Basis und Module 0–14. Keine Produktivumschaltung, keine Löschung/Änderung von r11, keine Vorwegnahme 15–21.

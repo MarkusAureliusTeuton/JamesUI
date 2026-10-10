@@ -490,3 +490,17 @@ Read the completed Block-13 spec/plan and the cross-block layout planning notes,
 - **Geräte:** Der Konfigurationsdialog ermöglicht die **explizite Geräteauswahl nach stabiler ID**. Kein stillschweigendes Bearbeiten des ersten Geräts bei mehreren Einträgen. Für das ausgewählte Gerät werden Name, Haupt-Entität und Statussignale aktualisiert; andere Einträge und unveränderte Statusmappings bleiben erhalten. Da der Geräte-Provider absichtlich geräteübergreifend genutzt wird, weist die UI auf die globale Wirkung einer Änderung hin.
 - **Tests:** Node-Regressionen für Shared-Source-Copy-on-Write, Mehrgeräteauswahl, Metadaten-/Binding-Erhalt und Quellkonflikte; Chromium prüft Anlegen, Nachtragen und Bearbeiten zweier Geräte sowie In-Place-Heizungsbearbeitung. **`validate` und `browser-smoke` beide grün:** [GitHub Actions 38070564157](https://github.com/MarkusAureliusTeuton/JamesUI/actions/runs/38070564157), Commit `0f5201048`.
 - **Abnahme weiterhin offen:** Fortgeschrittene Konfiguration weiterer bestehender Modulvarianten, echte Home-Assistant-/KNX-Daten, Fehler-/Langlaufbetrieb und OnePlus Pad 2/Fully Kiosk. Keine Freigabe von Blöcken 15–21 und keine r11-Umschaltung.
+
+
+## Block 14 – zusätzliche Konfigurations-/Browserhärtung (2026-10-10)
+
+**Implementiert auf Draft-PR #27; keine formale Gesamt-Abnahme:**
+
+- Wetter: Optionale Sensor-Entity-IDs können im Widget-Editor ausdrücklich geleert werden; reine Programmatic-Updates ohne dieses Feld behalten bestehende Bindings. Validierung und Edit-Regression vorhanden.
+- Haus/Energie: HA-Attribut für Leistungssensor frei angebbar, beim Bearbeiten vorausgewählt und wieder entfernbar. Referenzschutz (Copy-on-Write) trennt eine veränderte gemeinsam genutzte Quelle von nicht bearbeiteten Widgets.
+- Dynamische Buttons: `compact | normal | wide` im Editor pro Widget-Occurrence; zentrale Definition und andere Verwendungen werden nicht verändert.
+- Agenda: `grouped | timeline | day`, Lookahead 1–365 Tage, Ortsanzeige und separate Aufgaben-Anzeige konfigurierbar. Aufgaben können in einer Agenda-Instanz ausgeschaltet werden, ohne ihre Todo-Quellliste zu löschen; in anderer Instanz bleiben sie nutzbar.
+- Tests: Node-Unit-/Editor-Regressionen; zusätzlicher Chromium-E2E-Flow für persistierten Agenda-Modus, Lookahead und deaktivierte Aufgaben bei erhaltener Todo-Liste.
+- **Geprüfter Code-Stand:** `886593787475`; GitHub Actions **38085763867**, `validate` und `browser-smoke` erfolgreich. Zuvor ebenfalls grün: `38085461080` und `38085555887`.
+
+**Weiter offen:** Vollständige UI-Konfiguration für erweiterte Heizungs-/Geräte-Statusmappings, benutzerdefinierte Dynamic-Button-Aktionen/State-Mappings und die übrigen Agenda-/Wetter-Darstellungsoptionen; systematische Gesamtreview und Last-/Reconnect-Fälle. Real-HA/KNX (G5), OnePlus Pad 2 / Fully (G6) und formale 0–14-Abnahme **nicht** erfolgt. Folgeblöcke 15–21 gesperrt, r11 unverändert, PR #27 Draft.
