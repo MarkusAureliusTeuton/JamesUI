@@ -93,3 +93,71 @@ test("Block 14 catalog widgets are independent, undoable and saved atomically", 
   assert.equal(saved.widget_instances[ref].config.calendar, "family");
   assert.equal(getWrites(), 1);
 });
+
+test("configured widget plus real source bindings save together, and undo removes all changes", async () => {
+  const { configService, editor, getWrites } = setup();
+  await configService.load();
+  const unchanged = configService.snapshot();
+  editor.enter();
+  const setup = {
+    config: {
+      instance_id: "pending", calendar_enabled: true, tasks_enabled: false,
+      calendars: [{ entity_id: "calendar.family" }], task_lists: [],
+    },
+    dataSources: { "provider.calendar": { source_entity_ids: ["calendar.family"] } },
+  };
+  let next = editor.addWidget("widget.calendar-agenda", setup);
+  const id = next.elements.at(-1).ref_id;
+  assert.equal(editor.workingConfig().widget_instances[id].config.instance_id, id);
+  assert.deepEqual(editor.workingConfig().data_sources["provider.calendar"].source_entity_ids, ["calendar.family"]);
+  assert.equal(getWrites(), 0);
+  editor.undo();
+  assert.deepEqual(configService.snapshot(), unchanged);
+  assert.equal(editor.workingConfig().widget_instances[id], undefined);
+  assert.equal(editor.workingConfig().data_sources["provider.calendar"], undefined);
+  next = editor.addWidget("widget.calendar-agenda", setup);
+  assert.equal(next.elements.at(-1).ref_id, id);
+  await editor.save();
+  assert.equal(getWrites(), 1);
+  const saved = configService.snapshot();
+  assert.deepEqual(saved.data_sources["provider.calendar"].source_entity_ids, ["calendar.family"]);
+  assert.equal(saved.widget_instances[id].config.instance_id, id);
+  assert.equal(saved.pages.start.elements.at(-1).ref_id, id);
+  assert.equal(editor.canUndo, false);
+  editor.finish();
+});
+
+test("concurrent provider change rejects dashboard save without discarding local draft", async () => {
+  const { configService, editor } = setup();
+  await configService.load();
+  editor.enter();
+  editor.addWidget("widget.calendar-agenda", {
+    config: { instance_id: "pending", calendar_enabled: true, tasks_enabled: false,
+      calendars: [{ entity_id: "calendar.family" }], task_lists: [] },
+    dataSources: { "provider.calendar": { source_entity_ids: ["calendar.family"] } },
+  });
+  const external = configService.snapshot();
+  external.data_sources["provider.calendar"] = { source_entity_ids: ["calendar.other"] };
+  await configService.replace(external);
+  await assert.rejects(() => editor.save(), /Datenquelle wurde extern geändert/);
+  assert.equal(editor.active, true);
+  assert.deepEqual(configService.snapshot().data_sources["provider.calendar"].source_entity_ids, ["calendar.other"]);
+  assert.deepEqual(editor.workingConfig().data_sources["provider.calendar"].source_entity_ids, ["calendar.family"]);
+});
+
+test("new dynamic definitions are included atomically with configured button widget", async () => {
+  const { configService, editor } = setup();
+  await configService.load();
+  editor.enter();
+  editor.addWidget("widget.dynamic-buttons", {
+    config: { buttons: [{ id: "link", button_id: "dashboard-link-1", size: "normal" }] },
+    dynamicButtons: { "dashboard-link-1": {
+      name: "Website", mode: "trigger", action: { type: "url.open", url: "https://example.org" },
+    } },
+  });
+  await editor.save();
+  const saved = configService.snapshot();
+  assert.ok(saved.dynamic_buttons["dashboard-link-1"]);
+  const ref = saved.pages.start.elements.at(-1).ref_id;
+  assert.equal(saved.widget_instances[ref].config.buttons[0].button_id, "dashboard-link-1");
+});
