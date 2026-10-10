@@ -38,7 +38,7 @@ try {
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
     await page.goto(base + "/tests/browser/fixture.html", { waitUntil: "load" });
-    await page.waitForFunction(() => window.__juiTest?.status !== "loading", null, { timeout: 20000 });
+    await page.waitForFunction(() => ["ready", "error"].includes(window.__juiTest?.status), null, { timeout: 20000 });
     const outcome = await page.evaluate(() => ({
       status: window.__juiTest.status,
       error: window.__juiTest.error,
