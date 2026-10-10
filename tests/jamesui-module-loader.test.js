@@ -387,3 +387,85 @@ test("failed remount after module reload destroys new runtime and keeps health e
   assert.equal(health.get("module:widget.reload-refuses")?.status, "error");
   assert.match(health.get("module:widget.reload-refuses")?.error?.message ?? "", /returned false/);
 });
+
+test("pending widget load can be cancelled and immediately remounted under the same instance ID", async () => {
+  const resolve = [];
+  const events = [];
+  const { registry, health, loader } = setup({
+    importer: () => new Promise((done) => resolve.push(done)),
+    getContext: ({ instanceId }) => ({ instanceId }),
+  });
+  registry.register(manifest("widget.fast-undo"), {
+    entryUrl: "https://example.test/undo.js",
+  });
+  const old = loader.load("widget.fast-undo", {
+    instanceId: "dashboard:agenda", config: { revision: "old" },
+  });
+  assert.equal(resolve.length, 1);
+  assert.equal(loader.destroy("dashboard:agenda"), true);
+  const fresh = loader.load("widget.fast-undo", {
+    instanceId: "dashboard:agenda", config: { revision: "new" },
+  });
+  assert.equal(resolve.length, 2, "New mount must never reuse a cancelled import");
+  resolve[1]({
+    create(_context, config) {
+      return {
+        mount() { events.push(["mount", config.revision]); return true; },
+        update() { return true; },
+        destroy() { events.push(["destroy", config.revision]); },
+      };
+    },
+  });
+  assert.equal(await fresh, true);
+  assert.equal(loader.mount("dashboard:agenda", {}), true);
+  assert.equal(loader.isLoaded("dashboard:agenda"), true);
+  resolve[0]({
+    create() { throw new Error("cancelled loader should not instantiate stale widget"); },
+  });
+  assert.equal(await old, false);
+  assert.equal(loader.isLoaded("dashboard:agenda"), true);
+  assert.deepEqual(events, [["mount", "new"]]);
+  assert.equal(health.get("module:dashboard:agenda"), null);
+  assert.equal(loader.destroy("dashboard:agenda"), true);
+  assert.deepEqual(events.at(-1), ["destroy", "new"]);
+});
+
+test("late rejected obsolete import cannot damage a newer successful instance or its health", async () => {
+  const resolve = [];
+  const reject = [];
+  const { registry, health, loader } = setup({
+    importer: () => new Promise((done, fail) => { resolve.push(done); reject.push(fail); }),
+  });
+  registry.register(manifest("widget.reused"), { entryUrl: "https://example.test/reused.js" });
+  const old = loader.load("widget.reused", { instanceId: "dashboard:same" });
+  assert.equal(loader.destroy("dashboard:same"), true);
+  const fresh = loader.load("widget.reused", { instanceId: "dashboard:same" });
+  resolve[1]({ create: () => ({ mount() { return true; }, update() {}, destroy() {} }) });
+  assert.equal(await fresh, true);
+  reject[0](new Error("stale network request failed"));
+  assert.equal(await old, false);
+  assert.equal(loader.isLoaded("dashboard:same"), true);
+  assert.equal(health.get("module:dashboard:same"), null);
+  loader.destroyAll();
+});
+
+test("multiple superseded pending widget generations cannot delete the last live runtime", async () => {
+  const resolve = [];
+  const { registry, loader } = setup({
+    importer: () => new Promise((done) => resolve.push(done)),
+  });
+  registry.register(manifest("widget.switching"), { entryUrl: "https://example.test/switching.js" });
+  const loaded = [];
+  for (let revision = 0; revision < 3; revision++) {
+    loaded.push(loader.load("widget.switching", { instanceId: "dashboard:switching" }));
+    if (revision < 2) assert.equal(loader.destroy("dashboard:switching"), true);
+  }
+  const component = { create: () => ({ mount() { return true; }, update() {}, destroy() {} }) };
+  resolve[2](component);
+  assert.equal(await loaded[2], true);
+  resolve[0](component);
+  resolve[1](component);
+  assert.deepEqual(await Promise.all(loaded.slice(0, 2)), [false, false]);
+  assert.equal(loader.isLoaded("dashboard:switching"), true);
+  loader.destroyAll();
+});
