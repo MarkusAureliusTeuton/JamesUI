@@ -129,10 +129,13 @@ export function createDashboardPageComposer({ document, moduleLoader, getConfig,
   function showHandles() {
     if (!gridRoot) return;
     for (const element of gridRoot.querySelectorAll("[data-jui-dashboard-item]")) {
-      const existing = element.querySelector("[data-jui-editor-resize]");
+      const controls = ["data-jui-editor-resize", "data-jui-editor-edit", "data-jui-editor-remove"];
       if (!editor?.active) {
-        if (existing?.parentNode) existing.parentNode.removeChild(existing);
-      } else if (!existing) {
+        for (const selector of controls) element.querySelector("[" + selector + "]")?.remove();
+        continue;
+      }
+      element.style.position = "relative";
+      if (!element.querySelector("[data-jui-editor-resize]")) {
         const handle = document.createElement("button");
         handle.setAttribute("type", "button");
         handle.setAttribute("data-jui-editor-resize", "");
@@ -142,9 +145,43 @@ export function createDashboardPageComposer({ document, moduleLoader, getConfig,
         handle.style.right = "0";
         handle.style.bottom = "0";
         handle.style.zIndex = "3";
-        element.style.position = "relative";
         element.appendChild(handle);
       }
+      const id = element.getAttribute("data-jui-dashboard-item");
+      const item = editor.snapshot().elements.find((entry) => entry.id === id);
+      const addAction = (attr, label, right, action) => {
+        if (element.querySelector("[" + attr + "]")) return;
+        const button = document.createElement("button");
+        button.setAttribute("type", "button");
+        button.setAttribute(attr, "");
+        button.setAttribute("aria-label", label);
+        button.textContent = label;
+        button.style.position = "absolute";
+        button.style.top = "0";
+        button.style.right = right;
+        button.style.zIndex = "5";
+        button.style.fontSize = "12px";
+        button.addEventListener("pointerdown", (event) => event.stopPropagation());
+        button.addEventListener("click", (event) => {
+          event.stopPropagation();
+          try {
+            action();
+          } catch (error) {
+            element.setAttribute("data-jui-editor-action-error", error?.message ?? String(error));
+          }
+        });
+        element.appendChild(button);
+      };
+      if (item?.kind === "widget") {
+        addAction("data-jui-editor-edit", "Bearbeiten", "78px", () => {
+          const instance = editor.workingConfig().widget_instances[item.ref_id];
+          catalogView.edit(item.id, instance);
+        });
+      }
+      addAction("data-jui-editor-remove", "Entfernen", "0", () => {
+        const next = editor.removeElement(id);
+        if (next) preview(next);
+      });
     }
   }
 
@@ -152,8 +189,8 @@ export function createDashboardPageComposer({ document, moduleLoader, getConfig,
     if (editor) return;
     const controller = createDashboardController({ configService });
     editor = createDashboardEditSession({ controller, configService, pageId });
-    const preview = (next) => {
-      grid.render(next.elements, { scroll: next.layout.scroll });
+    const preview = (next, { recreateIds = [] } = {}) => {
+      grid.render(next.elements, { scroll: next.layout.scroll, recreateIds });
       showHandles();
       toolbar?.refresh();
     };
@@ -180,6 +217,16 @@ export function createDashboardPageComposer({ document, moduleLoader, getConfig,
         onSelect: (moduleId, plan) => {
           const next = editor.addWidget(moduleId, plan);
           if (next) preview(next);
+          return next !== null;
+        },
+        onEdit: (elementId, moduleId, plan) => {
+          const item = editor.snapshot().elements.find((entry) => entry.id === elementId);
+          const definition = item ? editor.workingConfig().widget_instances[item.ref_id] : null;
+          if (!definition || definition.module_id !== moduleId) {
+            throw new Error("Widgettyp wurde während der Bearbeitung geändert");
+          }
+          const next = editor.updateWidget(elementId, plan);
+          if (next) preview(next, { recreateIds: [elementId] });
           return next !== null;
         },
       });
