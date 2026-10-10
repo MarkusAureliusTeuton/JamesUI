@@ -161,3 +161,54 @@ test("Block 14 stale remote load cannot overwrite a newer replacement", async ()
   await older;
   assert.equal(service.snapshot().pages.home.label, "newer");
 });
+
+test("cross-client stale config replacement is rejected and the earlier snapshot survives", async () => {
+  let remote = config("initial");
+  let sequence = 1;
+  const revision = () => sequence.toString(16).padStart(64, "0");
+  const messages = [];
+  const ha = {
+    async callWS(message) {
+      messages.push(message);
+      if (message.type === "jamesui/config/get") {
+        return { config: structuredClone(remote), revision: revision() };
+      }
+      if (message.type !== "jamesui/config/replace") throw Error("unsupported");
+      if (message.expected_revision !== revision()) throw Error("config_conflict");
+      remote = structuredClone(message.config);
+      sequence += 1;
+      return { config: structuredClone(remote), revision: revision() };
+    },
+  };
+  const a = createConfigService({ homeAssistant: ha });
+  const b = createConfigService({ homeAssistant: ha });
+  await a.load();
+  await b.load();
+  const first = a.snapshot();
+  first.pages.home.label = "first-client";
+  await a.replace(first);
+  assert.equal(a.revision, revision());
+  assert.match(messages.find((entry) => entry.type === "jamesui/config/replace").expected_revision,
+    /^[a-f0-9]{64}$/);
+  const stale = b.snapshot();
+  stale.pages.home.label = "stale-second-client";
+  await assert.rejects(() => b.replace(stale), /config_conflict/);
+  assert.equal(remote.pages.home.label, "first-client");
+  assert.equal(b.snapshot().pages.home.label, "initial");
+  await b.load();
+  const retry = b.snapshot();
+  retry.pages.home.label = "reloaded-second-client";
+  await b.replace(retry);
+  assert.equal(remote.pages.home.label, "reloaded-second-client");
+});
+
+test("invalid backend revisions do not change the active snapshot", async () => {
+  const ha = fakeHomeAssistant();
+  const service = createConfigService({ homeAssistant: ha });
+  ha.setHandler(async () => ({ config: config("good"), revision: "a".repeat(64) }));
+  await service.load();
+  ha.setHandler(async () => ({ config: config("bad"), revision: "not-a-hash" }));
+  await assert.rejects(() => service.load(), /revision/);
+  assert.equal(service.snapshot().pages.home.label, "good");
+  assert.equal(service.revision, "a".repeat(64));
+});
