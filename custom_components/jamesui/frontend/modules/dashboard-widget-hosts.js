@@ -52,12 +52,12 @@ export function createDashboardWidgetHosts({ moduleLoader, getConfig, getButtonD
     const ready = moduleLoader.load(definition.module_id, {
       instanceId, config: definition.config ?? {},
     }).then((success) => {
+      // dispose() already cancels this host's pending import. A late result
+      // belongs to the old host and must never touch the newly mounted
+      // runtime that may now reuse exactly the same instance ID.
+      if (!alive) return false;
       if (!success) {
         showFailure();
-        return false;
-      }
-      if (!alive) {
-        moduleLoader.destroy(instanceId);
         return false;
       }
       const mounted = moduleLoader.mount(instanceId, node);
@@ -67,6 +67,7 @@ export function createDashboardWidgetHosts({ moduleLoader, getConfig, getButtonD
       }
       return mounted;
     }).catch(() => {
+      if (!alive) return false;
       moduleLoader.destroy(instanceId);
       showFailure();
       return false;
