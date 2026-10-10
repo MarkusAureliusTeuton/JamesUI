@@ -196,3 +196,61 @@ test("configured Dynamic Buttons widget rejects dangling definition reference", 
   assert.throws(() => host(createFakeDocument().createElement("div"), item("link-widget", "link-ref", 0)),
     /definition is missing/);
 });
+
+test("late success from cancelled widget host never destroys or remounts its replacement", async () => {
+  const resolvers = [];
+  const mounts = [];
+  const destroys = [];
+  const host = createDashboardWidgetHosts({
+    moduleLoader: {
+      load() { return new Promise((resolve) => resolvers.push(resolve)); },
+      mount(id, node) { mounts.push([id, node]); return true; },
+      destroy(id) { destroys.push(id); return true; },
+    },
+    getConfig: () => ({ module_id: "widget.calendar-agenda", config: {} }),
+  });
+  const document = createFakeDocument();
+  const first = host(document.createElement("div"), item("agenda", "agenda", 0));
+  first();
+  const second = host(document.createElement("div"), item("agenda", "agenda", 0));
+  assert.equal(resolvers.length, 2);
+  resolvers[1](true);
+  assert.equal(await second.ready, true);
+  assert.equal(mounts.length, 1);
+  resolvers[0](true);
+  assert.equal(await first.ready, false);
+  assert.deepEqual(destroys, ["dashboard:agenda"],
+    "Stale successful load may not destroy newly mounted occurrence");
+  second();
+  assert.deepEqual(destroys, ["dashboard:agenda", "dashboard:agenda"]);
+});
+
+test("late failure from cancelled widget host does not erase healthy replacement", async () => {
+  const rejectors = [];
+  const resolvers = [];
+  const destroys = [];
+  const host = createDashboardWidgetHosts({
+    moduleLoader: {
+      load() { return new Promise((resolve, reject) => {
+        resolvers.push(resolve); rejectors.push(reject);
+      }); },
+      mount() { return true; },
+      destroy(id) { destroys.push(id); return true; },
+    },
+    getConfig: () => ({ module_id: "widget.calendar-agenda", config: {} }),
+  });
+  const document = createFakeDocument();
+  const oldNode = document.createElement("div");
+  const first = host(oldNode, item("agenda", "agenda", 0));
+  first();
+  const nextNode = document.createElement("div");
+  const second = host(nextNode, item("agenda", "agenda", 0));
+  resolvers[1](true);
+  assert.equal(await second.ready, true);
+  rejectors[0](new Error("late network failure"));
+  assert.equal(await first.ready, false);
+  assert.deepEqual(destroys, ["dashboard:agenda"]);
+  assert.equal(oldNode.getAttribute("data-jui-widget-error"), null);
+  assert.equal(nextNode.getAttribute("data-jui-widget-error"), null);
+  second();
+});
