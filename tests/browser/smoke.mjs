@@ -68,6 +68,33 @@ try {
       "Navigation outside viewport: " + JSON.stringify(metrics));
     assert.equal(metrics.availableButtons, 1);
     assert.equal(await nav.locator("button:disabled").count(), 4);
+    // Validate actual browser geometry, not just the presence of DOM nodes.
+    const geometry = await page.evaluate(() => {
+      const navRect = document.querySelector('[data-role="bottom-navigation"]').getBoundingClientRect();
+      const rects = [...document.querySelectorAll('[data-jui-dashboard-item]')].map((element) => {
+        const r = element.getBoundingClientRect();
+        return { id: element.getAttribute("data-jui-dashboard-item"),
+          left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.width, height: r.height };
+      });
+      return { rects, navTop: navRect.top, viewportWidth: innerWidth };
+    });
+    assert.equal(geometry.rects.length, 3);
+    for (const item of geometry.rects) {
+      assert.ok(item.width > 0 && item.height > 0, "Empty dashboard tile: " + JSON.stringify(item));
+      assert.ok(item.left >= -2 && item.right <= geometry.viewportWidth + 2,
+        "Clipped dashboard tile horizontally: " + JSON.stringify(item));
+      assert.ok(item.top >= -2 && item.bottom <= geometry.navTop + 2,
+        "Dashboard tile overlaps navigation: " + JSON.stringify(item));
+    }
+    for (let first = 0; first < geometry.rects.length; first++) {
+      for (let second = first + 1; second < geometry.rects.length; second++) {
+        const a = geometry.rects[first], b = geometry.rects[second];
+        const overlapWidth = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left));
+        const overlapHeight = Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+        assert.ok(overlapWidth * overlapHeight < 2,
+          "Overlapping dashboard tiles: " + JSON.stringify([a, b]));
+      }
+    }
 
     // Real DOM, real click, and real provider-to-capability-to-widget updates.
     const weather = page.locator('[data-jui-widget="weather-today"]');
