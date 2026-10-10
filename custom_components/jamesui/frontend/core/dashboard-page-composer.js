@@ -189,8 +189,20 @@ export function createDashboardPageComposer({ document, moduleLoader, getConfig,
     if (editor) return;
     const controller = createDashboardController({ configService });
     editor = createDashboardEditSession({ controller, configService, pageId });
+    let renderedInstances = new Map(Object.entries(getConfig().widget_instances)
+      .map(([id, definition]) => [id, JSON.stringify(definition)]));
     const preview = (next, { recreateIds = [] } = {}) => {
-      grid.render(next.elements, { scroll: next.layout.scroll, recreateIds });
+      const definitions = (editor?.active ? editor.workingConfig() : getConfig()).widget_instances;
+      const current = new Map(Object.entries(definitions)
+        .map(([id, definition]) => [id, JSON.stringify(definition)]));
+      // Undo can change a widget's config without changing its ref_id. Force
+      // recreation then too, otherwise the visible runtime remains stale.
+      const changed = next.elements.filter((item) => item.kind === "widget" &&
+        renderedInstances.get(item.ref_id) !== current.get(item.ref_id)).map((item) => item.id);
+      grid.render(next.elements, {
+        scroll: next.layout.scroll, recreateIds: [...new Set([...recreateIds, ...changed])],
+      });
+      renderedInstances = current;
       showHandles();
       toolbar?.refresh();
     };
