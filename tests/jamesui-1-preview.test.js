@@ -209,3 +209,24 @@ test("preview never overwrites an existing incompatible home page", async () => 
     await assert.rejects(() => preview.mount(document.createElement("div")), /not a dashboard/);
   } finally { preview.destroy(); }
 });
+
+test("disconnect during pending config load cannot mount a detached preview", async () => {
+  const document = createFakeDocument();
+  const preview = createJamesUI1Preview({ document });
+  let resolveLoad;
+  const pendingLoad = new Promise((resolve) => { resolveLoad = resolve; });
+  const config = {
+    schema_version: 1, pages: {}, layouts: {}, widget_instances: {},
+    dynamic_buttons: {}, data_sources: {}, module_settings: {},
+  };
+  preview.core.hass = {
+    connected: true, states: {},
+    callWS: async () => pendingLoad,
+  };
+  const target = document.createElement("div");
+  const mounting = preview.mount(target);
+  preview.destroy();
+  resolveLoad({ config });
+  await assert.rejects(mounting, /destroyed/i);
+  assert.equal(target.querySelector('[data-jui-layout="home-hero-deck"]'), null);
+});
