@@ -89,3 +89,10 @@
 - **Sicherheitsentscheidung:** Bei unveränderter Zielseite bleiben unabhängige Fremdänderungen erhalten; ein Vergleich mit der ursprünglichen Edit-Baseline verhindert die Verschmelzung widersprüchlicher Änderungen an derselben Seite oder Instanz. Bei erneuter Ablehnung bleibt der Editor aktiv.
 - **Automatisiert geprüft:** Node-Unit-/Integrationsprüfung sowie vollständiger Chromium-Ablauf mit CAS-Konflikt, ausdrücklicher erneuter Speicherung, erhaltenen Fremdänderungen und nicht auflösbarem Seitenkonflikt. CI `validate` und `browser-smoke` grün: [Run 38062640323](https://github.com/MarkusAureliusTeuton/JamesUI/actions/runs/38062640323), Commit `f3c07c690`.
 - **Freigabe unverändert gesperrt:** Echte HA-/KNX-Integration, OnePlus Pad 2 und Fully Kiosk nicht getestet; weitere Architektur-/Funktionsabnahme im Umfang 0–14 ausstehend.
+
+## Core-/Modulgrenze nachgezogen (2026-10-10)
+
+- **G1 verbessert:** Fachliche Prüfung der zentralen Dynamic-Button-Referenzen verbleibt im `modules/`-Bereich. Der generische Dashboard-Edit-Session-Core bekommt nur die optional injizierte Bereinigungsfunktion; neue Architekturregression bewahrt diese Grenze.
+- **G2/G4 unverändert:** Bestehende Speichern-/Abbrechen-/Undo-/Bereinigen- und Mehrclient-Konflikttests bleiben erfolgreich.
+- **Prüfnachweis:** `validate` und Chromium `browser-smoke` erfolgreich in [Run 38062902006](https://github.com/MarkusAureliusTeuton/JamesUI/actions/runs/38062902006), Commit `4a068b957`.
+- **Keine vollständige Basisabnahme:** Weiterhin keine reale Home-Assistant-/KNX-/Fully-Kiosk-/OnePlus-Pad-2-Prüfung. Keine Umsetzung von Block 15–21.
