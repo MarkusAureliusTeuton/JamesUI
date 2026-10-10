@@ -117,6 +117,7 @@ export function buildDashboardWidgetSetup({ moduleId, inputs = {}, currentConfig
   }
   return {
     config: structuredClone(widgetConfig),
+    ...(moduleId === "widget.calendar-agenda" ? { instanceIdConfigKey: "instance_id" } : {}),
     dataSources: structuredClone(dataSources),
     dynamicButtons: structuredClone(dynamicButtons),
   };
