@@ -23,6 +23,7 @@ export function createDashboardPageComposer({ document, moduleLoader, getConfig,
   let pageId = null;
   let generation = 0;
   let editor = null, toolbar = null, touch = null, unbindTouch = null, gridRoot = null, catalogView = null, editEntry = null;
+  let applyEditorPreview = null;
 
   function destroy() {
     generation += 1;
@@ -30,7 +31,7 @@ export function createDashboardPageComposer({ document, moduleLoader, getConfig,
     touch?.destroy(); touch = null;
     if (toolbar?.root?.parentNode) toolbar.root.parentNode.removeChild(toolbar.root);
     editEntry?.remove(); editEntry = null;
-    toolbar = null; editor = null; gridRoot = null;
+    toolbar = null; editor = null; gridRoot = null; applyEditorPreview = null;
     if (catalogView?.root?.parentNode) catalogView.root.parentNode.removeChild(catalogView.root);
     catalogView = null;
     grid?.destroy();
@@ -62,7 +63,7 @@ export function createDashboardPageComposer({ document, moduleLoader, getConfig,
       touch?.destroy(); touch = null;
       if (toolbar?.root?.parentNode) toolbar.root.parentNode.removeChild(toolbar.root);
       editEntry?.remove(); editEntry = null;
-      toolbar = null; editor = null; gridRoot = null;
+      toolbar = null; editor = null; gridRoot = null; applyEditorPreview = null;
       if (catalogView?.root?.parentNode) catalogView.root.parentNode.removeChild(catalogView.root);
       catalogView = null;
       grid?.destroy();
@@ -180,7 +181,7 @@ export function createDashboardPageComposer({ document, moduleLoader, getConfig,
       }
       addAction("data-jui-editor-remove", "Entfernen", "0", () => {
         const next = editor.removeElement(id);
-        if (next) preview(next);
+        if (next) applyEditorPreview?.(next);
       });
     }
   }
@@ -206,6 +207,7 @@ export function createDashboardPageComposer({ document, moduleLoader, getConfig,
       showHandles();
       toolbar?.refresh();
     };
+    applyEditorPreview = preview;
     toolbar = createDashboardEditorToolbar({
       document, session: editor, onChange: preview,
       onAdd: () => catalogView?.open(),
