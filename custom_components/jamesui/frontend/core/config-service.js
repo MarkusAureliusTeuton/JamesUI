@@ -59,6 +59,8 @@ export function createConfigService({ homeAssistant } = {}) {
   let destroyed = false;
   let operationGeneration = 0;
   let pendingMutation = Promise.resolve();
+  let writeQueue = Promise.resolve();
+  let queuedWrites = 0;
   const listeners = new Set();
 
   const requireActive = () => {
@@ -91,6 +93,11 @@ export function createConfigService({ homeAssistant } = {}) {
   return {
     async load() {
       requireActive();
+      // A read requested after a write must observe that write's final
+      // server revision. A delayed write response must never be discarded
+      // merely because a later GET raced against it.
+      if (queuedWrites > 0) await writeQueue;
+      requireActive();
       const requestGeneration = ++operationGeneration;
       const response = await homeAssistant.callWS({ type: "jamesui/config/get" });
       requireActive();
@@ -104,19 +111,28 @@ export function createConfigService({ homeAssistant } = {}) {
 
     get revision() { return currentRevision; },
 
-    async replace(config) {
+    replace(config) {
       requireActive();
       const requestConfig = validateAndCloneConfig(config);
-      const requestGeneration = ++operationGeneration;
-      const request = {
-        type: "jamesui/config/replace",
-        config: requestConfig,
-        ...(currentRevision !== null ? { expected_revision: currentRevision } : {}),
-      };
-      const response = await homeAssistant.callWS(request);
-      requireActive();
-      if (requestGeneration !== operationGeneration) return current === null ? null : cloneValue(current);
-      return commitResponse(response);
+      queuedWrites += 1;
+      // Serialize even direct replace() calls. Each write must use the revision
+      // produced by the previous successful write; no parallel CAS requests
+      // from this client may overwrite a newer result with an older snapshot.
+      const operation = writeQueue.then(async () => {
+        requireActive();
+        const requestGeneration = ++operationGeneration;
+        const request = {
+          type: "jamesui/config/replace",
+          config: requestConfig,
+          ...(currentRevision !== null ? { expected_revision: currentRevision } : {}),
+        };
+        const response = await homeAssistant.callWS(request);
+        requireActive();
+        if (requestGeneration !== operationGeneration) return current === null ? null : cloneValue(current);
+        return commitResponse(response);
+      });
+      writeQueue = operation.then(() => undefined, () => undefined);
+      return operation.finally(() => { queuedWrites -= 1; });
     },
 
     // Serialize dashboard edits against the latest committed snapshot. Failed
@@ -125,6 +141,10 @@ export function createConfigService({ homeAssistant } = {}) {
       requireActive();
       if (typeof mutator !== "function") throw new TypeError("mutator must be a function");
       const operation = pendingMutation.then(async () => {
+        requireActive();
+        // An edit must be based on all writes already submitted by the
+        // caller, including direct replace() operations outside update().
+        await writeQueue;
         requireActive();
         if (current === null) throw new Error("JamesUI config must be loaded before update");
         const next = mutator(cloneValue(current));
