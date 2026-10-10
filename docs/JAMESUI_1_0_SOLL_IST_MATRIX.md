@@ -100,3 +100,16 @@ Stand: 2026-10-09. Arbeitsstand des Draft-PR #27, keine Freigabe oder Tablet-Abn
 | CI | **Beide Jobs grün**, `38041841417`, Commit `e065e7bae6` | Echte Home-Assistant-Instanz und Fully Kiosk / OnePlus Pad 2 |
 
 Ältere Tabellen oben dokumentieren den damaligen Zwischenstand; für die derzeitigen Abnahmekriterien gilt die vorstehende Matrix. Keine Arbeiten an Folgeblöcken 15–21.
+
+## Block 14 – bestehende Instanzen und sichere Editorabnahme (2026-10-10)
+
+| Funktion | Nachgewiesener Stand | Rest |
+| --- | --- | --- |
+| Bestehende Widgets ändern | Geführter Editor mit Vorbelegung der aktuellen Instanz, Quellvalidierung und Beibehaltung erweiterter Agendaoptionen; selektiver Remount | Alle erweiterten Einstellungen / Sonderinstanzen vollständig bedienbar machen |
+| Kachel entfernen | Layout-Element und exklusiv genutzte Instanz werden gelöscht; gemeinsam genutzte Instanzen/Quellen/Definitionen bleiben erhalten | Explizite Verwaltung globaler ungenutzter Ressourcen |
+| Undo und Abbrechen | Mehrere Entwurfsänderungen ohne HA-Write verwerfen; Browser belegt korrekte Darstellung und anschließendes Neuladen | Weitere Touch-/Dauerlaufszenarien |
+| Speicherkonflikte | Veränderte Widgetdefinitionen, fremde Page-Elemente und deren Rasterkoordinaten werden nicht überschrieben | Gleichzeitige echte HA-Clients |
+| Fehleranzeige | Fehlgeschlagener Save sichtbar mit Fehlermeldung, Draft und Retry bleiben erhalten | Endnutzertexte/weitere Providerfehler |
+| CI | **`validate` und `browser-smoke` grün:** 38043543481 (`777274dc9e`) | Reale Home-Assistant- und Zieltablet-Abnahme |
+
+Blöcke 15–21 ausdrücklich nicht gestartet. Frühere Abschnitte dokumentieren historische Zwischenstände; diese Tabelle ist der aktuelle Prüfstand.
