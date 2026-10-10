@@ -76,6 +76,7 @@
       throw new Error("Unexpected HA WS: " + type);
     };
     window.__juiTest.writes = 0;
+    window.__juiTest.serviceCalls = [];
     window.__juiTest.persisted = structuredClone(config);
     // Explicit local test entities; no customer entities or settings are saved.
     window.__juiTest.setHass = ({
@@ -91,7 +92,17 @@
         entity_id: "light.browser_fixture", state: light, attributes: {}
       };
       app.core.hass = {
-        connected, states, config: { time_zone: "Europe/Berlin" }, callWS
+        connected, states, config: { time_zone: "Europe/Berlin" }, callWS,
+        callService: async (domain, service, data, target) => {
+          window.__juiTest.serviceCalls.push({ domain, service, data, target });
+          if (domain !== "homeassistant" || service !== "toggle" ||
+              target?.entity_id !== "light.browser_fixture") {
+            throw new Error("Unsupported browser fixture service call");
+          }
+          const previous = app.core.homeAssistant.getState("light.browser_fixture")?.state;
+          window.__juiTest.setHass({ light: previous === "on" ? "off" : "on" });
+          return {};
+        },
       };
     };
     window.__juiTest.setHass();
