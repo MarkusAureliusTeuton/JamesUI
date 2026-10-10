@@ -115,6 +115,10 @@ export function createDashboardPageComposer({ document, moduleLoader, getConfig,
     grid = createDashboardGrid({ document, createItemHost: hosts });
     gridRoot = grid.mount(gridHost);
     grid.render(page.elements, { scroll: page.layout.scroll });
+    const activeGrid = grid;
+    const ready = await activeGrid.whenReady();
+    if (token !== generation) return false;
+    if (!ready) throw new Error("Failed to mount one or more dashboard widgets");
     if (configService) attachEditor();
     return true;
   }
