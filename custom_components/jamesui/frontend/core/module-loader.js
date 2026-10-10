@@ -124,7 +124,11 @@ export function createModuleLoader({
       if (!runtime) return false;
       try {
         const contextRequest = Object.freeze({ id: runtime.moduleId, instanceId: id, manifest: runtime.manifest });
-        runtime.instance.update(getContext(contextRequest), nextConfig);
+        const updated = runtime.instance.update(getContext(contextRequest), nextConfig);
+        if (updated === false) {
+          reportError(id, "update", new Error("Module lifecycle update returned false"));
+          return false;
+        }
         runtime.config = nextConfig;
         clearError(id);
         return true;
