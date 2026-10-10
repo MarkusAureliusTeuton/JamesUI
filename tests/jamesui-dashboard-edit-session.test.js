@@ -182,3 +182,98 @@ test("new widgets fill free 12-column grid horizontally before starting another 
   const saved = configService.snapshot();
   assert.deepEqual(saved.pages.start.elements.map((entry) => [entry.column, entry.row]), placements);
 });
+
+test("existing widget configuration edits are undoable, saved once and preserve unrelated settings", async () => {
+  const { configService, editor, getWrites } = setup();
+  await configService.load();
+  const original = configService.snapshot();
+  editor.enter();
+  const after = editor.updateWidget("a", { config: { lookahead_days: 14 } });
+  assert.equal(after.elements.length, 2);
+  assert.deepEqual(editor.workingConfig().widget_instances.agenda.config, { lookahead_days: 14 });
+  assert.equal(getWrites(), 0);
+  editor.undo();
+  assert.deepEqual(editor.workingConfig(), original);
+  editor.updateWidget("a", { config: { lookahead_days: 21 } });
+  await editor.save();
+  assert.equal(getWrites(), 1);
+  assert.deepEqual(configService.snapshot().widget_instances.agenda.config, { lookahead_days: 21 });
+  assert.deepEqual(configService.snapshot().dynamic_buttons, original.dynamic_buttons);
+  assert.equal(configService.snapshot().pages.start.elements.length, 2);
+  editor.finish();
+});
+
+test("removing a dashboard tile leaves shared sources and buttons intact", async () => {
+  const { configService, editor, getWrites } = setup();
+  await configService.load();
+  const original = configService.snapshot();
+  editor.enter();
+  editor.removeElement("a");
+  assert.equal(editor.snapshot().elements.length, 1);
+  assert.equal(editor.workingConfig().widget_instances.agenda, undefined);
+  assert.equal(getWrites(), 0);
+  editor.undo();
+  assert.ok(editor.workingConfig().widget_instances.agenda);
+  editor.removeElement("a");
+  await editor.save();
+  assert.equal(getWrites(), 1);
+  assert.equal(configService.snapshot().widget_instances.agenda, undefined);
+  assert.equal(configService.snapshot().pages.start.elements.length, 1);
+  assert.deepEqual(configService.snapshot().dynamic_buttons, original.dynamic_buttons);
+  editor.enter();
+  editor.removeElement("b");
+  await editor.save();
+  assert.equal(configService.snapshot().pages.start.elements.length, 0);
+  assert.ok(configService.snapshot().dynamic_buttons.scene,
+    "Central definitions are not implicitly deleted with a tile");
+});
+
+test("a shared widget instance cannot be modified globally by one page; removing local tile preserves it", async () => {
+  const { configService, editor } = setup();
+  await configService.load();
+  const shared = configService.snapshot();
+  shared.pages.other = {
+    kind: "dashboard", layout_id: "main",
+    elements: [{ ...shared.pages.start.elements[0], id: "other-agenda" }],
+  };
+  await configService.replace(shared);
+  editor.enter();
+  assert.throws(() => editor.updateWidget("a", { config: { changed: true } }), /Gemeinsam genutzte/);
+  editor.removeElement("a");
+  assert.ok(editor.workingConfig().widget_instances.agenda);
+  await editor.save();
+  assert.equal(configService.snapshot().pages.start.elements.length, 1);
+  assert.equal(configService.snapshot().pages.other.elements[0].ref_id, "agenda");
+  assert.ok(configService.snapshot().widget_instances.agenda);
+});
+
+test("concurrent widget instance update rejects save and keeps the user's unsaved changes", async () => {
+  const { configService, editor } = setup();
+  await configService.load();
+  editor.enter();
+  editor.updateWidget("a", { config: { lookahead_days: 14 } });
+  const external = configService.snapshot();
+  external.widget_instances.agenda.config = { lookahead_days: 30 };
+  await configService.replace(external);
+  await assert.rejects(() => editor.save(), /Widget-Instanz wurde extern geändert/);
+  assert.equal(editor.active, true);
+  assert.equal(configService.snapshot().widget_instances.agenda.config.lookahead_days, 30);
+  assert.equal(editor.workingConfig().widget_instances.agenda.config.lookahead_days, 14);
+});
+
+test("editing can update central sources and widget atomically without touching unrelated definitions", async () => {
+  const { configService, editor } = setup();
+  await configService.load();
+  editor.enter();
+  editor.updateWidget("a", {
+    config: { instance_id: "agenda", calendar_enabled: true, tasks_enabled: false,
+      calendars: [{ entity_id: "calendar.family" }], task_lists: [] },
+    instanceIdConfigKey: "instance_id",
+    dataSources: { "provider.calendar": { source_entity_ids: ["calendar.family"] } },
+  });
+  await editor.save();
+  const saved = configService.snapshot();
+  assert.deepEqual(saved.data_sources["provider.calendar"].source_entity_ids, ["calendar.family"]);
+  assert.equal(saved.widget_instances.agenda.config.instance_id, "agenda");
+  assert.ok(saved.dynamic_buttons.scene);
+});
