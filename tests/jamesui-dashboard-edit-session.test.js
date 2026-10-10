@@ -100,6 +100,7 @@ test("configured widget plus real source bindings save together, and undo remove
   const unchanged = configService.snapshot();
   editor.enter();
   const setup = {
+    instanceIdConfigKey: "instance_id",
     config: {
       instance_id: "pending", calendar_enabled: true, tasks_enabled: false,
       calendars: [{ entity_id: "calendar.family" }], task_lists: [],
@@ -132,6 +133,7 @@ test("concurrent provider change rejects dashboard save without discarding local
   await configService.load();
   editor.enter();
   editor.addWidget("widget.calendar-agenda", {
+    instanceIdConfigKey: "instance_id",
     config: { instance_id: "pending", calendar_enabled: true, tasks_enabled: false,
       calendars: [{ entity_id: "calendar.family" }], task_lists: [] },
     dataSources: { "provider.calendar": { source_entity_ids: ["calendar.family"] } },
