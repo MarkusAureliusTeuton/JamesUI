@@ -319,6 +319,35 @@ try {
   assert.equal(heating.zone.auto_regulation_enabled.entity_id, "binary_sensor.living_auto");
   assert.ok(heating.instance, "Configured heating widget is saved");
   assert.equal(heating.status, "available");
+
+  // Existing Block 13 toggle: configured source → live provider → feedback
+  // after Home Assistant confirms the actual entity state transition.
+  await emptyPage.locator('[data-jui-dashboard-edit-entry]').click();
+  await blankToolbar.waitFor({ state: "visible" });
+  await blankToolbar.getByRole("button", { name: "+ Hinzufügen" }).click();
+  await blankCatalog.locator('[data-jui-catalog-module="widget.dynamic-buttons"]').click();
+  await blankCatalog.locator('[data-jui-catalog-field="buttonKind"]').selectOption("toggle");
+  await blankCatalog.locator('[data-jui-catalog-field="buttonName"]').fill("Wohnzimmerlicht");
+  await blankCatalog.locator('[data-jui-catalog-field="toggleEntity"]').fill("light.browser_fixture");
+  await blankCatalog.locator('[data-jui-catalog-confirm]').click();
+  await blankCatalog.waitFor({ state: "hidden" });
+  await emptyPage.waitForFunction(() => document.querySelectorAll('[data-jui-dashboard-item]').length === 3);
+  await blankToolbar.getByRole("button", { name: "Fertig" }).click();
+  await emptyPage.waitForFunction(() => window.__juiTest.writes === 4);
+  await emptyPage.waitForFunction(() => window.__juiTest.app.core.moduleLoader.isLoaded("provider.control-state"));
+  const toggle = emptyPage.locator('[data-jui-dynamic-mode="toggle"]');
+  await emptyPage.waitForFunction(() =>
+    document.querySelector('[data-jui-dynamic-mode="toggle"]')?.getAttribute("data-jui-dynamic-real-status") === "inactive");
+  await toggle.click();
+  await emptyPage.waitForFunction(() =>
+    document.querySelector('[data-jui-dynamic-mode="toggle"]')?.getAttribute("data-jui-dynamic-real-status") === "active");
+  assert.equal(await toggle.getAttribute("aria-pressed"), "true");
+  assert.deepEqual(await emptyPage.evaluate(() => window.__juiTest.serviceCalls), [{
+    domain: "homeassistant", service: "toggle", data: {}, target: { entity_id: "light.browser_fixture" },
+  }]);
+  assert.equal(await emptyPage.evaluate(() =>
+    window.__juiTest.persisted.data_sources["provider.control-state"].sources[0].entity_id),
+    "light.browser_fixture");
   assert.deepEqual(emptyErrors, []);
   await emptyPage.evaluate(() => window.__juiTest.app.destroy());
   await emptyPage.close();
