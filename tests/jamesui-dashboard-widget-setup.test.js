@@ -206,3 +206,97 @@ test("catalog refuses control-state toggle on read-only or malformed HA entities
     }), /schaltbare/);
   }
 });
+
+function existingHeating({ shared = false } = {}) {
+  const row = {
+    id: "zone-living", name: "Wohnzimmer",
+    current_temperature: { entity_id: "sensor.living_actual", attribute: "temperature" },
+    target_temperature: { entity_id: "sensor.living_target" },
+    heating_demand: { entity_id: "binary_sensor.living_demand" },
+    auto_regulation_enabled: {
+      entity_id: "binary_sensor.living_auto",
+      true_values: ["1"], false_values: ["0"],
+    },
+  };
+  const button = {
+    id: "heating", type: "heating_zone", source_id: "zone-living",
+    icon: "house", navigation: { route: "home" },
+  };
+  return {
+    data_sources: { "provider.house-heating": { zones: [row] } },
+    widget_instances: {
+      first: { module_id: "widget.house-quick", config: { buttons: [button] } },
+      ...(shared ? { second: { module_id: "widget.house-quick",
+        config: { buttons: [{ id: "other", type: "heating_zone", source_id: "zone-living" }] } } } : {}),
+    },
+    dynamic_buttons: {},
+    priorWidgetConfig: { buttons: [button] },
+  };
+}
+
+function heatingInputs(overrides = {}) {
+  return {
+    houseType: "heating_zone", sourceName: "Wohnzimmer",
+    currentTemperature: "sensor.living_actual", targetTemperature: "sensor.living_target",
+    heatingDemand: "binary_sensor.living_demand", autoRegulation: "binary_sensor.living_auto",
+    ...overrides,
+  };
+}
+
+test("editing unchanged heating zone reuses the original source without extra provider writes", () => {
+  const current = existingHeating();
+  const setup = buildDashboardWidgetSetup({
+    moduleId: "widget.house-quick", currentConfig: current,
+    priorWidgetConfig: current.priorWidgetConfig,
+    inputs: heatingInputs(),
+  });
+  assert.deepEqual(setup.dataSources, {});
+  assert.deepEqual(setup.config.buttons, current.priorWidgetConfig.buttons);
+});
+
+test("editing uniquely used heating zone changes the existing source ID in place and preserves bindings", () => {
+  const current = existingHeating();
+  const setup = buildDashboardWidgetSetup({
+    moduleId: "widget.house-quick", currentConfig: current,
+    priorWidgetConfig: current.priorWidgetConfig,
+    inputs: heatingInputs({ targetTemperature: "sensor.living_target_new" }),
+  });
+  assert.equal(setup.dataSources["provider.house-heating"].zones.length, 1);
+  const zone = setup.dataSources["provider.house-heating"].zones[0];
+  assert.equal(zone.id, "zone-living");
+  assert.equal(zone.target_temperature.entity_id, "sensor.living_target_new");
+  assert.equal(zone.current_temperature.attribute, "temperature");
+  assert.deepEqual(zone.auto_regulation_enabled.true_values, ["1"]);
+  assert.equal(setup.config.buttons[0].source_id, "zone-living");
+  assert.equal(setup.config.buttons[0].navigation.route, "home");
+  assert.equal(current.data_sources["provider.house-heating"].zones[0].target_temperature.entity_id,
+    "sensor.living_target", "Current config cannot be mutated before Save");
+});
+
+test("editing a heating zone shared by another widget forks its source without changing the other widget", () => {
+  const current = existingHeating({ shared: true });
+  const setup = buildDashboardWidgetSetup({
+    moduleId: "widget.house-quick", currentConfig: current,
+    priorWidgetConfig: current.priorWidgetConfig,
+    inputs: heatingInputs({ targetTemperature: "sensor.living_new" }),
+  });
+  const zones = setup.dataSources["provider.house-heating"].zones;
+  assert.equal(zones.length, 2);
+  assert.equal(zones[0].id, "zone-living");
+  assert.equal(zones[0].target_temperature.entity_id, "sensor.living_target");
+  assert.equal(zones[1].id, "dashboard-zone-1");
+  assert.equal(zones[1].target_temperature.entity_id, "sensor.living_new");
+  assert.equal(setup.config.buttons[0].source_id, "dashboard-zone-1");
+  assert.equal(setup.config.buttons[0].navigation.route, "home");
+  assert.equal(current.widget_instances.second.config.buttons[0].source_id, "zone-living");
+});
+
+test("editing a missing heating source refuses to fabricate a replacement", () => {
+  const current = existingHeating();
+  current.data_sources["provider.house-heating"].zones = [];
+  assert.throws(() => buildDashboardWidgetSetup({
+    moduleId: "widget.house-quick", currentConfig: current,
+    priorWidgetConfig: current.priorWidgetConfig,
+    inputs: heatingInputs(),
+  }), /Bisherige Heizungszone/);
+});
