@@ -111,7 +111,7 @@ export function createConfigService({ homeAssistant } = {}) {
 
     get revision() { return currentRevision; },
 
-    replace(config) {
+    async replace(config) {
       requireActive();
       const requestConfig = validateAndCloneConfig(config);
       queuedWrites += 1;
