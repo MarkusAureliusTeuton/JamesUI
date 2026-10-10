@@ -52,6 +52,12 @@
       module_settings: {}
     };
 
+    if (new URLSearchParams(location.search).has("empty")) {
+      config = {
+        schema_version: 1, pages: {}, layouts: {}, widget_instances: {},
+        dynamic_buttons: {}, data_sources: {}, module_settings: {},
+      };
+    }
     window.__juiTest = { status: "loading", app: null, error: null };
     const app = createJamesUI1Preview({ document });
     window.__juiTest.app = app;
