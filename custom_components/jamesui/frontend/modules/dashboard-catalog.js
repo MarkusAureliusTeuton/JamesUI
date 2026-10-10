@@ -68,6 +68,25 @@ export function createDashboardCatalogView({ document, catalog, onSelect, onEdit
     fields.set(key, input);
   };
 
+  const createSelect = (form, fields, key, label, options, defaultValue) => {
+    const wrapper = document.createElement("label");
+    wrapper.style.display = "block";
+    wrapper.style.margin = "12px 0";
+    wrapper.textContent = label;
+    const input = document.createElement("select");
+    input.setAttribute("data-jui-catalog-field", key);
+    for (const [value, caption] of options) {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = caption;
+      input.appendChild(option);
+    }
+    input.value = defaultValue;
+    wrapper.appendChild(input);
+    form.appendChild(wrapper);
+    fields.set(key, input);
+  };
+
   const close = document.createElement("button");
   close.setAttribute("type", "button");
   close.textContent = "Schließen";
@@ -120,6 +139,19 @@ export function createDashboardCatalogView({ document, catalog, onSelect, onEdit
       createField(form, fields, "tasks", "Aufgabenlisten (optional)", {
         placeholder: "todo.haus, todo.einkauf", multiline: true,
       });
+      createSelect(form, fields, "agendaPresentation", "Ansicht", [
+        ["grouped", "Gruppiert"], ["timeline", "Zeitverlauf"], ["day", "Tag"],
+      ], "grouped");
+      createSelect(form, fields, "agendaTaskVisibility", "Aufgaben anzeigen", [
+        ["auto", "Bei konfigurierten Aufgabenlisten"], ["on", "Ein"], ["off", "Aus"],
+      ], "auto");
+      createSelect(form, fields, "agendaShowLocation", "Termine mit Ortsangabe", [
+        ["false", "Nein"], ["true", "Ja"],
+      ], "false");
+      createField(form, fields, "agendaLookaheadDays", "Kalendervorschau (Tage, 1–365)", {
+        placeholder: "30",
+      });
+      fields.get("agendaLookaheadDays").value = "30";
     } else if (item.module_id === "widget.house-quick") {
       const selectorLabel = document.createElement("label");
       selectorLabel.textContent = "Hausstatus-Typ";
@@ -317,6 +349,10 @@ export function createDashboardCatalogView({ document, catalog, onSelect, onEdit
       if (item.module_id === "widget.calendar-agenda") {
         set("calendars", (instance.calendars ?? []).map((entry) => entry.entity_id).join(", "));
         set("tasks", (instance.task_lists ?? []).map((entry) => entry.entity_id).join(", "));
+        set("agendaPresentation", instance.presentation_mode ?? "grouped");
+        set("agendaTaskVisibility", instance.tasks_enabled === false ? "off" : "auto");
+        set("agendaShowLocation", instance.show_location ? "true" : "false");
+        set("agendaLookaheadDays", instance.lookahead_days ?? 30);
       } else if (item.module_id === "widget.dynamic-buttons") {
         if (instance.buttons?.length === 1) {
           set("existingButtonId", instance.buttons[0].button_id);

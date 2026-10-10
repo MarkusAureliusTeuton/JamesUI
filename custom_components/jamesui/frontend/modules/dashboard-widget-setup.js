@@ -80,11 +80,26 @@ export function buildDashboardWidgetSetup({ moduleId, inputs = {}, currentConfig
         throw new TypeError("Mindestens eine Kalender- oder Aufgaben-Entität angeben");
       }
       const previous = priorWidgetConfig ?? {};
+      const taskVisibility = inputs.agendaTaskVisibility;
+      if (taskVisibility !== undefined && !["auto", "on", "off"].includes(taskVisibility)) {
+        throw new TypeError("Ungültige Einstellung für Aufgabenanzeige");
+      }
+      const tasksEnabled = taskVisibility === "off" ? false
+        : taskVisibility === "on" ? true
+          : taskVisibility === undefined && previous.tasks_enabled === false ? false
+            : taskLists.length > 0;
+      const lookahead = inputs.agendaLookaheadDays === undefined
+        ? previous.lookahead_days
+        : Number(String(inputs.agendaLookaheadDays).trim());
       widgetConfig = validateCalendarAgendaConfig({
         ...previous,
         instance_id: previous.instance_id ?? "dashboard-pending",
+        presentation_mode: inputs.agendaPresentation ?? previous.presentation_mode ?? "grouped",
+        lookahead_days: lookahead,
+        show_location: inputs.agendaShowLocation === undefined
+          ? previous.show_location : inputs.agendaShowLocation === "true",
         calendar_enabled: calendars.length > 0,
-        tasks_enabled: taskLists.length > 0,
+        tasks_enabled: tasksEnabled,
         calendars: calendars.map((entity_id) =>
           previous.calendars?.find((entry) => entry.entity_id === entity_id) ?? { entity_id }),
         task_lists: taskLists.map((entity_id) =>

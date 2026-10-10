@@ -553,3 +553,56 @@ test("dynamic button size is individually configurable without modifying the cen
     inputs: { existingButtonId: "existing", buttonSize: "oversized" },
   }), /size is unsupported/);
 });
+
+
+test("agenda can hide and restore tasks while retaining configured source IDs and advanced options", () => {
+  const current = config();
+  const prior = {
+    instance_id: "agenda-a", presentation_mode: "grouped",
+    calendar_enabled: true, tasks_enabled: true,
+    calendars: [{ entity_id: "calendar.work", accent: "#123456" }],
+    task_lists: [{ entity_id: "todo.private" }],
+    lookahead_days: 30,
+  };
+  const base = { calendars: "calendar.work", tasks: "todo.private" };
+  const hidden = buildDashboardWidgetSetup({
+    moduleId: "widget.calendar-agenda", currentConfig: current,
+    priorWidgetConfig: prior,
+    inputs: { ...base, agendaTaskVisibility: "off",
+      agendaPresentation: "timeline", agendaLookaheadDays: "21",
+      agendaShowLocation: "true" },
+  });
+  assert.equal(hidden.config.tasks_enabled, false);
+  assert.equal(hidden.config.presentation_mode, "timeline");
+  assert.equal(hidden.config.lookahead_days, 21);
+  assert.equal(hidden.config.show_location, true);
+  assert.equal(hidden.config.calendars[0].accent, "#123456");
+  assert.equal(hidden.config.task_lists[0].entity_id, "todo.private");
+  assert.deepEqual(hidden.dataSources["provider.tasks"].source_entity_ids, ["todo.private"]);
+  const preserved = buildDashboardWidgetSetup({
+    moduleId: "widget.calendar-agenda", currentConfig: current,
+    priorWidgetConfig: { ...hidden.config }, inputs: base,
+  });
+  assert.equal(preserved.config.tasks_enabled, false,
+    "Programmatic edits that omit the visibility setting must not re-enable tasks");
+  const restored = buildDashboardWidgetSetup({
+    moduleId: "widget.calendar-agenda", currentConfig: current,
+    priorWidgetConfig: { ...hidden.config },
+    inputs: { ...base, agendaTaskVisibility: "on" },
+  });
+  assert.equal(restored.config.tasks_enabled, true);
+});
+
+test("agenda rejects invalid advanced settings and disabled all domains", () => {
+  for (const inputs of [
+    { calendars: "calendar.work", agendaLookaheadDays: "366" },
+    { calendars: "calendar.work", agendaLookaheadDays: "abc" },
+    { calendars: "calendar.work", agendaPresentation: "invalid" },
+    { calendars: "calendar.work", agendaTaskVisibility: "maybe" },
+    { tasks: "todo.private", agendaTaskVisibility: "off" },
+  ]) {
+    assert.throws(() => buildDashboardWidgetSetup({
+      moduleId: "widget.calendar-agenda", currentConfig: config(), inputs,
+    }));
+  }
+});

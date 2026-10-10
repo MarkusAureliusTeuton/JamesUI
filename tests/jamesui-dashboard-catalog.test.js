@@ -203,3 +203,38 @@ test("catalog edits a single button occurrence size without changing its shared 
     [{ id: "use-1", button_id: "existing", size: "wide" }]);
   assert.deepEqual(plans[0].dynamicButtons, {});
 });
+
+
+test("agenda editor exposes per-instance modes and allows disabling tasks without erasing lists", () => {
+  const document = createFakeDocument();
+  const existing = {
+    instance_id: "agenda", calendar_enabled: true, tasks_enabled: true,
+    presentation_mode: "day", show_location: true, lookahead_days: 14,
+    calendars: [{ entity_id: "calendar.family" }],
+    task_lists: [{ entity_id: "todo.family" }],
+  };
+  const current = { data_sources: {
+    "provider.calendar": { source_entity_ids: ["calendar.family"] },
+    "provider.tasks": { source_entity_ids: ["todo.family"] },
+  }, dynamic_buttons: {} };
+  const plans = [];
+  const view = createDashboardCatalogView({
+    document,
+    catalog: createDashboardCatalog({ moduleRegistry: {
+      get: (id) => id === "widget.calendar-agenda" ? { manifest: { type: "widget" } } : null,
+    } }),
+    getConfig: () => current,
+    onSelect() { throw Error("Expected edit"); },
+    onEdit: (...args) => { plans.push(args[2]); return true; },
+  });
+  view.edit("agenda-tile", { module_id: "widget.calendar-agenda", config: existing });
+  assert.equal(view.root.querySelector('[data-jui-catalog-field="agendaPresentation"]').value, "day");
+  assert.equal(view.root.querySelector('[data-jui-catalog-field="agendaLookaheadDays"]').value, "14");
+  assert.equal(view.root.querySelector('[data-jui-catalog-field="agendaShowLocation"]').value, "true");
+  view.root.querySelector('[data-jui-catalog-field="agendaTaskVisibility"]').value = "off";
+  view.root.querySelector("[data-jui-catalog-confirm]").dispatchEvent("click");
+  assert.equal(plans.length, 1);
+  assert.equal(plans[0].config.tasks_enabled, false);
+  assert.equal(plans[0].config.task_lists[0].entity_id, "todo.family");
+  assert.equal(plans[0].config.presentation_mode, "day");
+});
