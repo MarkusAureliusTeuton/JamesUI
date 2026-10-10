@@ -118,6 +118,42 @@ try {
       document.querySelector('[data-jui-house-quick-id="lights"]')?.textContent?.includes("0 von 1 an"));
     assert.equal(await lights.getAttribute("data-jui-house-quick-status"), "neutral");
     assert.equal(await page.evaluate(() => window.__juiTest.app.core.homeAssistant.connectionState()), "connected");
+
+    // End-to-end touch-style dashboard editing: long press, move, undo,
+    // and a single atomic write through the canonical HA config transport.
+    const houseItem = page.locator('[data-jui-dashboard-item="house"]');
+    const houseBox = await houseItem.boundingBox();
+    assert.ok(houseBox?.width > 0 && houseBox?.height > 0, "House tile must have measurable bounds");
+    const anchor = { x: houseBox.x + houseBox.width / 2, y: houseBox.y + houseBox.height / 2 };
+    await page.mouse.move(anchor.x, anchor.y);
+    await page.mouse.down();
+    await page.waitForTimeout(650); // Above the configured 550 ms long-press threshold.
+    await page.mouse.up();
+    const toolbar = page.locator('[data-jui-editor-toolbar]');
+    await toolbar.waitFor({ state: "visible" });
+    assert.equal(await page.evaluate(() => window.__juiTest.writes), 0);
+
+    const dragHouseDown = async () => {
+      await page.mouse.move(anchor.x, anchor.y);
+      await page.mouse.down();
+      await page.mouse.move(anchor.x, anchor.y + houseBox.height + 12, { steps: 6 });
+      await page.mouse.up();
+    };
+    await dragHouseDown();
+    await page.waitForFunction(() =>
+      document.querySelector('[data-jui-dashboard-item="house"]')?.style.gridRow?.startsWith("5 /"));
+    await toolbar.getByRole("button", { name: "Rückgängig" }).click();
+    await page.waitForFunction(() =>
+      document.querySelector('[data-jui-dashboard-item="house"]')?.style.gridRow?.startsWith("1 /"));
+    assert.equal(await page.evaluate(() => window.__juiTest.writes), 0);
+    await dragHouseDown();
+    await toolbar.getByRole("button", { name: "Fertig" }).click();
+    await page.waitForFunction(() => window.__juiTest.writes === 1);
+    await toolbar.waitFor({ state: "hidden" });
+    const saved = await page.evaluate(() => window.__juiTest.persisted);
+    assert.equal(saved.pages.home.elements.find((item) => item.id === "house")?.row, 4);
+    assert.equal(saved.pages.home.elements.find((item) => item.id === "agenda")?.row, 0);
+    assert.equal(saved.data_sources["provider.weather"].entity_id, "weather.browser_fixture");
     assert.deepEqual(errors, [], "Browser JavaScript errors");
     await page.evaluate(() => window.__juiTest.app.destroy());
     assert.equal(await page.locator('[data-role="app-shell"]').count(), 0);
