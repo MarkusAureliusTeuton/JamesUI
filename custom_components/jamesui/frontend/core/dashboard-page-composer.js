@@ -1,4 +1,5 @@
 import { createDashboardCatalog, createDashboardCatalogView } from "../modules/dashboard-catalog.js";
+import { createDashboardButtonCleanupView } from "../modules/dashboard-button-cleanup.js";
 import { createDashboardController } from "./dashboard-controller.js";
 import { createDashboardEditSession } from "./dashboard-edit-session.js";
 import { createDashboardEditorToolbar } from "./dashboard-editor-toolbar.js";
@@ -24,6 +25,7 @@ export function createDashboardPageComposer({ document, moduleLoader, getConfig,
   let generation = 0;
   let editor = null, toolbar = null, touch = null, unbindTouch = null, gridRoot = null, catalogView = null, editEntry = null;
   let applyEditorPreview = null;
+  let cleanupView = null;
 
   function destroy() {
     generation += 1;
@@ -34,6 +36,7 @@ export function createDashboardPageComposer({ document, moduleLoader, getConfig,
     toolbar = null; editor = null; gridRoot = null; applyEditorPreview = null;
     if (catalogView?.root?.parentNode) catalogView.root.parentNode.removeChild(catalogView.root);
     catalogView = null;
+    cleanupView?.root?.remove(); cleanupView = null;
     grid?.destroy();
     grid = null;
     if (hero) moduleLoader.destroy(hero);
@@ -66,6 +69,7 @@ export function createDashboardPageComposer({ document, moduleLoader, getConfig,
       toolbar = null; editor = null; gridRoot = null; applyEditorPreview = null;
       if (catalogView?.root?.parentNode) catalogView.root.parentNode.removeChild(catalogView.root);
       catalogView = null;
+      cleanupView?.root?.remove(); cleanupView = null;
       grid?.destroy();
       grid = null;
       if (hero) moduleLoader.destroy(hero);
@@ -211,8 +215,19 @@ export function createDashboardPageComposer({ document, moduleLoader, getConfig,
     toolbar = createDashboardEditorToolbar({
       document, session: editor, onChange: preview,
       onAdd: () => catalogView?.open(),
+      onCleanup: () => cleanupView?.open(),
     });
     target.appendChild(toolbar.root);
+    cleanupView = createDashboardButtonCleanupView({
+      document,
+      getConfig: () => editor.workingConfig(),
+      onRemove: (id) => {
+        const next = editor.removeUnusedButtonDefinition(id);
+        if (next) preview(next);
+        return next !== null;
+      },
+    });
+    target.appendChild(cleanupView.root);
     editEntry = document.createElement("button");
     editEntry.setAttribute("type", "button");
     editEntry.setAttribute("data-jui-dashboard-edit-entry", "");
