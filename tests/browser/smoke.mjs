@@ -358,6 +358,27 @@ try {
     await page.waitForFunction(() => window.__juiTest.writes === 7);
     assert.equal(await page.evaluate(() =>
       window.__juiTest.persisted.dynamic_buttons.unused_definition), undefined);
+
+    // Another client changed the server while our editor was open.
+    // The HA CAS protocol must refuse the stale write; the local editor can
+    // discard it without losing either the server change or the dashboard.
+    await page.locator('[data-jui-dashboard-edit-entry]').click();
+    await toolbar.waitFor({ state: "visible" });
+    await houseItem.locator('[data-jui-editor-remove]').click();
+    assert.equal(await page.locator('[data-jui-dashboard-item]').count(), 2);
+    await page.evaluate(() => window.__juiTest.externalConfigChange((config) => {
+      config.module_settings.foreign_client = { setting: "preserve" };
+    }));
+    await toolbar.getByRole("button", { name: "Fertig" }).click();
+    await page.locator('[data-jui-editor-save-error]').waitFor({ state: "visible" });
+    assert.match(await page.locator('[data-jui-editor-save-error-message]').innerText(), /config_conflict/);
+    assert.equal(await page.evaluate(() => window.__juiTest.writes), 7);
+    assert.equal(await page.evaluate(() =>
+      window.__juiTest.persisted.module_settings.foreign_client.setting), "preserve");
+    assert.ok(await page.evaluate(() =>
+      window.__juiTest.persisted.pages.home.elements.some((entry) => entry.id === "house")));
+    await toolbar.getByRole("button", { name: "Abbrechen" }).click();
+    await page.locator('[data-jui-dashboard-item="house"]').waitFor({ state: "visible" });
     assert.deepEqual(errors, [], "Browser JavaScript errors");
     await page.evaluate(() => window.__juiTest.app.destroy());
     assert.equal(await page.locator('[data-role="app-shell"]').count(), 0);
