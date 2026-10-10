@@ -402,5 +402,14 @@ Read the completed Block-13 spec/plan and the cross-block layout planning notes,
 - Dashboard edit session atomically persists new widget instances, provider `data_sources` and central dynamic button definitions; Undo drops all associated local changes. Concurrent remote source modifications reject save instead of overwriting them.
 - The dynamic-buttons host resolves new instance references against central definitions. The configurator remains in the `modules/` domain; Core is generic, preserving Block-11 architecture guards.
 - Chromium covers an empty initial configuration, direct editing without long-press, guided Agenda validation, insertion and atomic saving. Unit tests cover valid/invalid source bindings, buttons, undo and concurrent changes.
-- **Activation caveat:** a newly configured provider starts on the next opening of JamesUI Next; no live provider re-registration after editor save is claimed or tested.
+- **Aktualisiert 2026-10-10:** Neu gespeicherte Datenquellen werden ohne erneutes Öffnen über den Block-14-Provider-Coordinator aktiviert. Unit-/Integrationstests und Chromium prüfen den Weg; echte HA-Entitäten/Services sind noch nicht abgenommen.
 - This is **an initial, guided subset**, not a full settings implementation for every heating/device/energy/control-state source or every advanced widget option. Real HA and Fully Kiosk remain untested. PR #27 remains draft.
+
+### Scope-Freeze: Basissoftware und Blöcke 0–14 (2026-10-10)
+
+- **Arbeitsfreigabe:** Ausschließlich Core/Basissoftware, bestehende Module 0–13 und deren Block-14-Integration, Konfiguration, Qualitätssicherung. Blöcke 15–21 werden **nicht** begonnen. Vorbereitete spätere Reihenfolge ist keine Ausführungsfreigabe.
+- Core Module Loader behandelt `update() === false` wie `mount() === false` als echten Fehler; Regressionstest.
+- Neue modulare Provider-Koordination gleicht die kanonisch gespeicherten `data_sources` mit den laufenden Provider-Instanzen ab (Laden, Update, Entfernen, Destroy und Abbruch). Keine fachlichen Provider-IDs im Core.
+- Automatisiert geprüft: Hinzufügen/Ändern/Entfernen konfigurierter Kalender-/Todo-Provider nach gespeichertem Config-Store-Update **ohne Panel-Neustart**, einschließlich sichtbarem Capability-Status. Chromium prüft ebenfalls die Live-Aktivierung der gespeicherten Agenda-Quellen.
+- **Bestätigter Stand:** CI-Lauf `38033578889`, beide Jobs `validate` und `browser-smoke` erfolgreich (Commit `304ac446`).
+- **Offen in den Blöcken 0–14:** vollständige Einrichtung/Änderung der bestehenden Heizungs-, Geräte-, Energie- und Control-State-Provider, erweiterte Kalender-/Widget-Einstellungen, allgemeine HA-Steueraktionen und echte HA-/Tablet-Abnahme. Es erfolgt keine Aussage „fertig“ allein aus der grünen CI.
