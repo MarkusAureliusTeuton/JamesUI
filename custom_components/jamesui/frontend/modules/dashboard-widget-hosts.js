@@ -20,6 +20,16 @@ export function createDashboardWidgetHosts({ moduleLoader, getConfig, getButtonD
       if (!definition || typeof definition.module_id !== "string" || !definition.module_id) {
         throw new TypeError(`Missing widget instance definition: ${element.ref_id}`);
       }
+      if (definition.module_id === "widget.dynamic-buttons" &&
+          definition.config?.buttons?.some((item) => !item.definition)) {
+        if (!getButtonDefinitions) throw new TypeError("Dynamic Buttons require central definitions");
+        definition = {
+          ...definition,
+          config: resolveDynamicButtonInstance({
+            definitions: getButtonDefinitions(), instance: definition.config,
+          }),
+        };
+      }
     } else if (element.kind === "button") {
       if (!getButtonDefinitions) throw new TypeError("Dashboard buttons require central definitions");
       definition = {
