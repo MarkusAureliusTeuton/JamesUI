@@ -159,3 +159,40 @@ test("failed widget mount and rejected load are visible and cleaned up", async (
     dispose();
   }
 });
+
+test("configured Dynamic Buttons widget resolves central definitions at mount", async () => {
+  const captured = [];
+  const host = createDashboardWidgetHosts({
+    moduleLoader: {
+      async load(_moduleId, { config }) { captured.push(config); return true; },
+      mount: () => true,
+      destroy: () => true,
+    },
+    getConfig: () => ({
+      module_id: "widget.dynamic-buttons",
+      config: { buttons: [{ id: "link", button_id: "dashboard-link-1", size: "normal" }] },
+    }),
+    getButtonDefinitions: () => ({
+      "dashboard-link-1": {
+        name: "Portal", mode: "trigger", action: { type: "url.open", url: "https://example.org" },
+      },
+    }),
+  });
+  const dispose = host(createFakeDocument().createElement("div"), item("link-widget", "link-ref", 0));
+  assert.equal(await dispose.ready, true);
+  assert.equal(captured[0].buttons[0].definition.action.url, "https://example.org");
+  dispose();
+});
+
+test("configured Dynamic Buttons widget rejects dangling definition reference", () => {
+  const host = createDashboardWidgetHosts({
+    moduleLoader: { load() { throw Error("must not load"); }, mount() {}, destroy() {} },
+    getConfig: () => ({
+      module_id: "widget.dynamic-buttons",
+      config: { buttons: [{ id: "link", button_id: "missing", size: "normal" }] },
+    }),
+    getButtonDefinitions: () => ({}),
+  });
+  assert.throws(() => host(createFakeDocument().createElement("div"), item("link-widget", "link-ref", 0)),
+    /definition is missing/);
+});
