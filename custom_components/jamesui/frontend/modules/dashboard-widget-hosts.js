@@ -34,18 +34,33 @@ export function createDashboardWidgetHosts({ moduleLoader, getConfig, getButtonD
     }
     const instanceId = `dashboard:${element.id}`;
     let alive = true;
+    const showFailure = () => {
+      if (!alive) return;
+      node.setAttribute("data-jui-widget-error", "");
+      node.textContent = "Widget konnte nicht geladen werden";
+    };
     const ready = moduleLoader.load(definition.module_id, {
       instanceId, config: definition.config ?? {},
     }).then((success) => {
-      if (!success) return false;
+      if (!success) {
+        showFailure();
+        return false;
+      }
       if (!alive) {
         moduleLoader.destroy(instanceId);
         return false;
       }
       const mounted = moduleLoader.mount(instanceId, node);
-      if (!mounted) moduleLoader.destroy(instanceId);
+      if (!mounted) {
+        moduleLoader.destroy(instanceId);
+        showFailure();
+      }
       return mounted;
-    }).catch(() => false);
+    }).catch(() => {
+      moduleLoader.destroy(instanceId);
+      showFailure();
+      return false;
+    });
     node.setAttribute("data-jui-widget-instance", element.ref_id);
     // Keep async failures from turning unhandled; UI remains the owning grid host.
     void ready;
