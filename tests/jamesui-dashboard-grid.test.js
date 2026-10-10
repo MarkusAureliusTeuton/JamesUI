@@ -68,3 +68,29 @@ test("Block 14 grid replaces a changed module reference and supports vertical la
   assert.equal(target.querySelector("[data-jui-dashboard-grid]").getAttribute("data-jui-scroll"), "vertical");
   grid.destroy();
 });
+
+test("editing one widget remounts only that runtime, not every configured dashboard item", () => {
+  const document = createFakeDocument();
+  const target = document.createElement("div");
+  const events = [];
+  const grid = createDashboardGrid({
+    document,
+    createItemHost(_node, element) {
+      events.push("mount:" + element.id);
+      return () => events.push("destroy:" + element.id);
+    },
+  });
+  grid.mount(target);
+  const elements = [item("agenda", 0, 0), item("heating", 4, 0)];
+  grid.render(elements);
+  const oldAgenda = target.querySelector('[data-jui-dashboard-item="agenda"]');
+  const oldHeating = target.querySelector('[data-jui-dashboard-item="heating"]');
+  grid.render(elements, { recreateIds: ["agenda"] });
+  assert.notEqual(target.querySelector('[data-jui-dashboard-item="agenda"]'), oldAgenda);
+  assert.equal(target.querySelector('[data-jui-dashboard-item="heating"]'), oldHeating);
+  assert.deepEqual(events, [
+    "mount:agenda", "mount:heating", "destroy:agenda", "mount:agenda",
+  ]);
+  grid.destroy();
+  assert.equal(events.filter((event) => event === "destroy:heating").length, 1);
+});
