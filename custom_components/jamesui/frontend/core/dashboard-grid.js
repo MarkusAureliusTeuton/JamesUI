@@ -48,12 +48,13 @@ export function createDashboardGrid({ document, createItemHost = () => {} } = {}
     host = null;
   };
 
-  const render = (elements, { scroll = "fixed", maxRows = null } = {}) => {
+  const render = (elements, { scroll = "fixed", maxRows = null, recreateIds = [] } = {}) => {
     if (!root) throw new Error("Dashboard grid must be mounted");
     if (!["fixed", "vertical"].includes(scroll)) throw new TypeError("invalid grid scroll policy");
     if (!Array.isArray(elements)) throw new TypeError("dashboard elements must be an array");
     const geometry = validateGrid(elements, { columns: GRID_COLUMNS, maxRows });
     const nextIds = new Set(geometry.map((item) => item.id));
+    const recreate = new Set(recreateIds);
     for (const [id, entry] of activeItems) {
       if (!nextIds.has(id)) {
         entry.dispose?.();
@@ -64,7 +65,7 @@ export function createDashboardGrid({ document, createItemHost = () => {} } = {}
     for (const item of elements) {
       const bounds = geometry.find((element) => element.id === item.id);
       let entry = activeItems.get(item.id);
-      if (entry && (entry.kind !== item.kind || entry.refId !== item.ref_id)) {
+      if (entry && (recreate.has(item.id) || entry.kind !== item.kind || entry.refId !== item.ref_id)) {
         entry.dispose?.();
         if (entry.node.parentNode) entry.node.parentNode.removeChild(entry.node);
         activeItems.delete(item.id);
