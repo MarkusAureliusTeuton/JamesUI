@@ -55,7 +55,7 @@ function mappedBinding(inputs, prefix, entityId, previous, boolean = false) {
     for (const [suffix, field] of [["TrueValues", "true_values"], ["FalseValues", "false_values"]]) {
       const key = prefix + suffix;
       if (!Object.hasOwn(inputs, key)) continue;
-      const values = String(inputs[key] ?? "").trim().split(/[\\s,;]+/).filter(Boolean);
+      const values = String(inputs[key] ?? "").trim().split(/[\s,;]+/).filter(Boolean);
       if (values.length) result[field] = values;
       else delete result[field];
     }
