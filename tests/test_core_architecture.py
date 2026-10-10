@@ -130,6 +130,16 @@ class CoreArchitectureTest(unittest.TestCase):
         for token in forbidden:
             self.assertNotIn(token, source, f"Core must not contain forbidden coupling: {token}")
 
+    def test_dashboard_composer_receives_module_integrations_through_composition(self):
+        source = (CORE_ROOT / "dashboard-page-composer.js").read_text(encoding="utf-8")
+        composition = (Path("custom_components/jamesui/frontend/modules") / "dashboard-composition.js").read_text(encoding="utf-8")
+        preview = Path("custom_components/jamesui/frontend/jamesui-1-preview.js").read_text(encoding="utf-8")
+        self.assertNotIn("../modules/", source, "Core composer must not import module implementations")
+        self.assertIn("integrations", source)
+        self.assertIn("createDashboardHeroLayout", composition)
+        self.assertIn("createDashboardWidgetHosts", composition)
+        self.assertIn("createConfiguredDashboardPageComposer", preview)
+
     def test_ha_backed_actions_live_only_in_ha_boundary(self):
         core_source = "\n".join(path.read_text(encoding="utf-8") for path in CORE_ROOT.glob("*.js"))
         ha_source = "\n".join(path.read_text(encoding="utf-8") for path in HA_ROOT.glob("*.js"))
