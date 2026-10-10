@@ -41,19 +41,42 @@
           } }]
         } }
       },
-      dynamic_buttons: {}, data_sources: {}, module_settings: {}
+      dynamic_buttons: {},
+      data_sources: {
+        "provider.weather": { entity_id: "weather.browser_fixture" },
+        "provider.house-lighting": {
+          lights: [{ id: "living", name: "Wohnzimmer", state: { entity_id: "light.browser_fixture" } }],
+          ambient_lights: []
+        }
+      },
+      module_settings: {}
     };
 
     window.__juiTest = { status: "loading", app: null, error: null };
     const app = createJamesUI1Preview({ document });
     window.__juiTest.app = app;
-    app.core.hass = {
-      connected: true, states: {},
-      callWS: async ({ type }) => {
-        if (type !== "jamesui/config/get") throw new Error("Unexpected HA WS: " + type);
-        return { config };
-      }
+    const callWS = async ({ type }) => {
+      if (type !== "jamesui/config/get") throw new Error("Unexpected HA WS: " + type);
+      return { config };
     };
+    // Explicit local test entities; no customer entities or settings are saved.
+    window.__juiTest.setHass = ({
+      connected = true, light = "off", temperature = 21,
+      weather = "sunny", missingLight = false, missingWeather = false
+    } = {}) => {
+      const states = {};
+      if (!missingWeather) states["weather.browser_fixture"] = {
+        entity_id: "weather.browser_fixture", state: weather,
+        attributes: { temperature, temperature_unit: "°C", supported_features: 0 }
+      };
+      if (!missingLight) states["light.browser_fixture"] = {
+        entity_id: "light.browser_fixture", state: light, attributes: {}
+      };
+      app.core.hass = {
+        connected, states, config: { time_zone: "Europe/Berlin" }, callWS
+      };
+    };
+    window.__juiTest.setHass();
     try {
       await app.mount(document.getElementById("app"));
       window.__juiTest.status = "ready";
