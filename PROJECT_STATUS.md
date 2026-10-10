@@ -456,3 +456,11 @@ Read the completed Block-13 spec/plan and the cross-block layout planning notes,
 - Ein Architektur-Regressionstest verhindert einen erneuten direkten Import `../modules/` aus der Core-Edit-Session. Bisherige Unit-/Browserfälle für Bereinigen, Undo, Speichern, parallele Bearbeitung und Konfliktwiederholung bleiben unverändert abgedeckt.
 - **Nachweis:** [GitHub Actions 38062902006](https://github.com/MarkusAureliusTeuton/JamesUI/actions/runs/38062902006), Commit `4a068b957`: `validate` und `browser-smoke` beide erfolgreich.
 - **Rest bis Block 14:** weitere Modulgrenzen/Abhängigkeiten, vollständige fortgeschrittene Konfigurationsmöglichkeiten und echte HA-/Tablet-Funktionstests. Blöcke 15–21 weiter nicht freigegeben.
+
+### Block 14 – Lifecycle-/Abhängigkeitshärtung der bestehenden Module (2026-10-10)
+
+- **Provider-Audit:** Die vorhandenen Kalender- und Aufgabenprovider unterschieden sich beim fehlgeschlagenen Konfigurationswechsel von den Hausprovidern: Ein Fehler während der neuen HA-Subscription konnte die bisherige funktionierende Laufzeit verlieren lassen. Beide Provider sichern nun vor dem Rebind ihre vorherige Konfiguration, reinigen einen nur teilweise gebundenen Versuch und stellen die ursprünglichen Subscriptions/Capabilities wieder her.
+- **Regression:** Spezifische Tests erzwingen einen einmaligen `subscribeEntity`-Fehler bei Kalender- bzw. Aufgabenquellen und prüfen die alten funktionsfähigen Quellen, aktive Subscriptions, Rücklieferung der Aufgaben und Destroy-Cleanup.
+- **Module Loader:** `reload()` entfernt eine neu geladene Modulinstanz bei fehlgeschlagenem Remount, behält die Fehlermeldung im zentralen Health-Service und meldet keinen falschen Erfolg. Regression simuliert explizites `mount() === false`.
+- **CI-Nachweis:** GitHub Actions [38065899365](https://github.com/MarkusAureliusTeuton/JamesUI/actions/runs/38065899365), Commit `7ff1996c6`: **`validate` und `browser-smoke` erfolgreich**.
+- **Nächste Prüfstellen innerhalb 0–14:** Noch gezielt zu prüfen: der eigene Weather-Provider-Rebind und die Abhängigkeit der generischen `core/dashboard-page-composer.js` von mehreren `modules/`-Integrationsdateien. Das ist noch **kein abgeschlossener Architektur-/Hardware-Abnahmestand**. Blöcke 15–21 bleiben unberührt.
