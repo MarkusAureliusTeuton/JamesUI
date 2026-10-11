@@ -3,15 +3,13 @@
 DOMAIN = "jamesui"
 NAME = "JamesUI"
 VERSION = "0.5.1"
-FRONTEND_REVISION = "0.5.1-r11"
+FRONTEND_REVISION = "0.5.1-next-20261011"
 
 PANEL_URL = "jamesui"
 PANEL_TITLE = "JamesUI"
 PANEL_ICON = "mdi:home-assistant"
-PANEL_ELEMENT = "jamesui-panel"
+PANEL_ELEMENT = "jamesui-next-panel"
 
 STATIC_URL = "/jamesui_static"
-FRONTEND_FILE = "jamesui-entry.js"
+FRONTEND_FILE = "jamesui-1-preview-entry.js"
 
-PREVIEW_PANEL_URL = "jamesui-1-preview"
-PREVIEW_PANEL_ELEMENT = "jamesui-1-preview-panel"
