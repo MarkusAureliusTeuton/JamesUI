@@ -17,8 +17,8 @@ import { MANIFEST as ENERGY_PROVIDER } from "./modules/provider.house-energy/man
 import { MANIFEST as CONTROL_PROVIDER } from "./modules/provider.control-state/manifest.js";
 import { MANIFEST as TASK_UPDATE } from "./modules/action.task-update/manifest.js";
 
-// Explicit opt-in preview. Neither the r11 panel nor its bootstrap imports this.
-export function createJamesUI1Preview({ document = globalThis.document } = {}) {
+// Explicit JamesUI Next app. Neither the r11 panel nor its bootstrap imports this.
+export function createJamesUIApp({ document = globalThis.document } = {}) {
   const core = createJamesUICore({ document, availableRoutes: ["home"] });
   const composer = createConfiguredDashboardPageComposer({
     document, moduleLoader: core.moduleLoader, moduleRegistry: core.moduleRegistry,
@@ -52,7 +52,7 @@ export function createJamesUI1Preview({ document = globalThis.document } = {}) {
   });
   return Object.freeze({
     async mount(target) {
-      if (mounted) throw new Error("Preview is already mounted");
+      if (mounted) throw new Error("JamesUI is already mounted");
       await core.config.load();
       let config = core.config.snapshot();
       if (!config.pages.home) {
@@ -92,9 +92,9 @@ export function createJamesUI1Preview({ document = globalThis.document } = {}) {
         mounted = true;
         providerUnsubscribe = core.config.subscribe((next) => {
           void providers.sync(next).then((success) => {
-            if (success) core.health.clear("preview:providers");
+            if (success) core.health.clear("jamesui:providers");
           }).catch((error) => {
-            core.health.report("preview:providers", {
+            core.health.report("jamesui:providers", {
               status: "error", message: "Configured provider activation failed", error,
             });
           });

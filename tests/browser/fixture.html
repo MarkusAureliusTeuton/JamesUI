@@ -12,7 +12,7 @@
 <body>
   <div id="app"></div>
   <script type="module">
-    import { createJamesUI1Preview } from "/custom_components/jamesui/frontend/jamesui-1-preview.js";
+    import { createJamesUIApp } from "/custom_components/jamesui/frontend/jamesui-app.js";
 
     // Test-only source ID. No fabricated Home Assistant entities are saved.
     let config = {
@@ -67,7 +67,7 @@
       };
     }
     window.__juiTest = { status: "loading", app: null, error: null };
-    const app = createJamesUI1Preview({ document });
+    const app = createJamesUIApp({ document });
     window.__juiTest.app = app;
     let revisionCounter = 1;
     const revision = () => revisionCounter.toString(16).padStart(64, "0");
