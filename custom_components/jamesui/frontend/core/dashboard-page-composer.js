@@ -1,5 +1,5 @@
 import { createDashboardController } from "./dashboard-controller.js";
-import { createDashboardEditSession } from "./dashboard-edit-session.js";
+import { createDashboardEditSession, DASHBOARD_HERO_ID } from "./dashboard-edit-session.js";
 import { createDashboardEditorToolbar } from "./dashboard-editor-toolbar.js";
 import { createDashboardTouchEditor } from "./dashboard-touch-editor.js";
 import { bindDashboardTouchEvents } from "./dashboard-touch-events.js";
@@ -36,6 +36,8 @@ export function createDashboardPageComposer({
   let layout = null;
   let grid = null;
   let hero = null;
+  let heroFingerprint = null;
+  let heroGeneration = 0;
   let pageId = null;
   let generation = 0;
   let editor = null, toolbar = null, touch = null, unbindTouch = null, gridRoot = null, catalogView = null, editEntry = null;
@@ -44,6 +46,7 @@ export function createDashboardPageComposer({
 
   function destroy() {
     generation += 1;
+    heroGeneration += 1;
     unbindTouch?.(); unbindTouch = null;
     touch?.destroy(); touch = null;
     if (toolbar?.root?.parentNode) toolbar.root.parentNode.removeChild(toolbar.root);
@@ -56,6 +59,7 @@ export function createDashboardPageComposer({
     grid = null;
     if (hero) moduleLoader.destroy(hero);
     hero = null;
+    heroFingerprint = null;
     layout?.destroy();
     layout = null;
     target = null;
@@ -89,6 +93,8 @@ export function createDashboardPageComposer({
       grid = null;
       if (hero) moduleLoader.destroy(hero);
       hero = null;
+      heroFingerprint = null;
+      heroGeneration += 1;
       layout.destroy();
       layout = null;
     }
@@ -100,6 +106,7 @@ export function createDashboardPageComposer({
       const heroRef = config.pages[pageId].hero_widget_id;
       const definition = heroRef ? config.widget_instances[heroRef] : null;
       if (heroRef && !definition) throw new TypeError(`Missing hero widget instance: ${heroRef}`);
+      heroFingerprint = definition ? JSON.stringify([heroRef, definition]) : null;
       if (definition) {
         hero = `dashboard:${pageId}:hero`;
         const heroId = hero;
@@ -148,6 +155,34 @@ export function createDashboardPageComposer({
 
   function showHandles() {
     if (!gridRoot) return;
+    const slot = layout?.getSlot("hero");
+    const ref = (editor?.active ? editor.workingConfig() : getConfig()).pages[pageId]?.hero_widget_id;
+    if (slot) {
+      for (const attr of ["data-jui-editor-edit", "data-jui-editor-remove"]) {
+        slot.querySelector("[" + attr + "]")?.remove();
+      }
+      if (editor?.active && ref) {
+        slot.style.position = "relative";
+        for (const [attr, title, right, handler] of [
+          ["data-jui-editor-edit", "Bearbeiten", "78px",
+            () => catalogView.edit(DASHBOARD_HERO_ID, editor.workingConfig().widget_instances[ref])],
+          ["data-jui-editor-remove", "Entfernen", "0", () => {
+            const next = editor.removeElement(DASHBOARD_HERO_ID);
+            if (next) applyEditorPreview?.(next);
+          }],
+        ]) {
+          const button = document.createElement("button");
+          button.setAttribute("type", "button");
+          button.setAttribute(attr, "");
+          button.setAttribute("aria-label", "Wetterkopf " + title);
+          button.textContent = title;
+          Object.assign(button.style, { position: "absolute", right, top: "0", zIndex: "5" });
+          button.addEventListener("pointerdown", (event) => event.stopPropagation());
+          button.addEventListener("click", (event) => { event.stopPropagation(); handler(); });
+          slot.appendChild(button);
+        }
+      }
+    }
     for (const element of gridRoot.querySelectorAll("[data-jui-dashboard-item]")) {
       const controls = ["data-jui-editor-resize", "data-jui-editor-edit", "data-jui-editor-remove"];
       if (!editor?.active) {
@@ -214,7 +249,45 @@ export function createDashboardPageComposer({
     });
     let renderedInstances = new Map(Object.entries(getConfig().widget_instances)
       .map(([id, definition]) => [id, JSON.stringify(definition)]));
+    const syncHero = () => {
+      const source = editor?.active ? editor.workingConfig() : getConfig();
+      const ref = source.pages[pageId]?.hero_widget_id;
+      const definition = ref ? source.widget_instances[ref] : null;
+      const fingerprint = definition ? JSON.stringify([ref, definition]) : null;
+      if (fingerprint === heroFingerprint) return;
+      heroFingerprint = fingerprint;
+      const token = ++heroGeneration;
+      if (hero) moduleLoader.destroy(hero);
+      hero = null;
+      const slot = layout?.getSlot("hero");
+      if (!slot) return;
+      slot.replaceChildren();
+      slot.removeAttribute("data-jui-widget-error");
+      if (!definition) return;
+      const id = `dashboard:${pageId}:hero`;
+      hero = id;
+      void moduleLoader.load(definition.module_id, {
+        instanceId: id, config: definition.config ?? {},
+      }).then((loaded) => {
+        if (token !== heroGeneration) return;
+        if (!loaded || !moduleLoader.mount(id, slot)) {
+          moduleLoader.destroy(id);
+          hero = null;
+          slot.setAttribute("data-jui-widget-error", "");
+          slot.textContent = "Wetterkopf konnte nicht geladen werden";
+        }
+        showHandles();
+      }).catch(() => {
+        if (token !== heroGeneration) return;
+        moduleLoader.destroy(id);
+        hero = null;
+        slot.setAttribute("data-jui-widget-error", "");
+        slot.textContent = "Wetterkopf konnte nicht geladen werden";
+        showHandles();
+      });
+    };
     const preview = (next, { recreateIds = [] } = {}) => {
+      syncHero();
       const definitions = (editor?.active ? editor.workingConfig() : getConfig()).widget_instances;
       const current = new Map(Object.entries(definitions)
         .map(([id, definition]) => [id, JSON.stringify(definition)]));
@@ -267,7 +340,9 @@ export function createDashboardPageComposer({
           return next !== null;
         },
         onEdit: (elementId, moduleId, plan) => {
-          const item = editor.snapshot().elements.find((entry) => entry.id === elementId);
+          const item = elementId === DASHBOARD_HERO_ID
+            ? { ref_id: editor.workingConfig().pages[pageId].hero_widget_id }
+            : editor.snapshot().elements.find((entry) => entry.id === elementId);
           const definition = item ? editor.workingConfig().widget_instances[item.ref_id] : null;
           if (!definition || definition.module_id !== moduleId) {
             throw new Error("Widgettyp wurde während der Bearbeitung geändert");

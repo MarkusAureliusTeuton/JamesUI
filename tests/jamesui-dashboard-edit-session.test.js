@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createDashboardEditSession } from "../custom_components/jamesui/frontend/core/dashboard-edit-session.js";
+import { createDashboardEditSession, DASHBOARD_HERO_ID } from "../custom_components/jamesui/frontend/core/dashboard-edit-session.js";
 import { createDashboardController } from "../custom_components/jamesui/frontend/core/dashboard-controller.js";
 import { createConfigService } from "../custom_components/jamesui/frontend/core/config-service.js";
 import { removeUnusedDynamicButton } from "../custom_components/jamesui/frontend/modules/dashboard-resource-usage.js";
@@ -177,7 +177,7 @@ test("new widgets fill free 12-column grid horizontally before starting another 
   editor.enter();
   const placements = [];
   for (let index = 0; index < 4; index++) {
-    const next = editor.addWidget("widget.weather-today", { config: {}, columnSpan: 4, rowSpan: 3 });
+    const next = editor.addWidget("widget.house-quick", { config: {}, columnSpan: 4, rowSpan: 3 });
     placements.push([next.elements.at(-1).column, next.elements.at(-1).row]);
   }
   assert.deepEqual(placements, [[0, 0], [4, 0], [8, 0], [0, 3]]);
@@ -377,6 +377,46 @@ test("externally added button reference blocks cleanup even after a previously s
   assert.equal(editor.active, true);
   assert.ok(configService.snapshot().dynamic_buttons.scene);
   assert.equal(editor.workingConfig().dynamic_buttons.scene, undefined);
+});
+
+
+test("weather hero is created, editable, undoable, removable and persisted separately from grid", async () => {
+  const { configService, editor, getWrites } = setup();
+  await configService.load();
+  editor.enter();
+  const plan = { config: {}, dataSources: { "provider.weather": { entity_id: "weather.test" } } };
+  editor.addWidget("widget.weather-today", plan);
+  const id = editor.workingConfig().pages.start.hero_widget_id;
+  assert.ok(id);
+  assert.equal(editor.snapshot().elements.length, 2);
+  editor.undo();
+  assert.equal(editor.workingConfig().pages.start.hero_widget_id, undefined);
+  assert.equal(editor.workingConfig().widget_instances[id], undefined);
+  editor.addWidget("widget.weather-today", plan);
+  editor.updateWidget(DASHBOARD_HERO_ID, { config: { example: 42 } });
+  assert.equal(editor.workingConfig().widget_instances[id].config.example, 42);
+  editor.undo();
+  editor.removeElement(DASHBOARD_HERO_ID);
+  assert.equal(editor.workingConfig().pages.start.hero_widget_id, undefined);
+  assert.equal(editor.workingConfig().widget_instances[id], undefined);
+  editor.undo();
+  await editor.save();
+  assert.equal(configService.snapshot().pages.start.hero_widget_id, id);
+  assert.equal(configService.snapshot().pages.start.elements.length, 2);
+  assert.equal(getWrites(), 1);
+});
+
+test("external changes to weather hero reject stale editor saves", async () => {
+  const { configService, editor } = setup();
+  await configService.load();
+  editor.enter();
+  editor.addWidget("widget.weather-today", { config: {} });
+  const external = configService.snapshot();
+  external.widget_instances.external = { module_id: "widget.weather-today", config: {} };
+  external.pages.start.hero_widget_id = "external";
+  await configService.replace(external);
+  await assert.rejects(() => editor.save(), /Dashboard changed externally/);
+  assert.equal(configService.snapshot().pages.start.hero_widget_id, "external");
 });
 
 function versionedSetup() {

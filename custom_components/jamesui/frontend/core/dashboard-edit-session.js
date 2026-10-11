@@ -1,6 +1,7 @@
 import { moveDashboardElement, validateDashboardPage } from "./dashboard-config.js";
 
 // Session state is detached from persisted config. Only commit writes.
+export const DASHBOARD_HERO_ID = "__jui_dashboard_hero__";
 export function createDashboardEditSession({ controller, configService, pageId, maxRows = null, removeUnusedButton = null } = {}) {
   if (!controller || typeof controller.previewMove !== "function" || typeof controller.move !== "function") {
     throw new TypeError("edit session requires Dashboard Controller");
@@ -57,7 +58,9 @@ export function createDashboardEditSession({ controller, configService, pageId, 
              working.pages[pageId].elements.some((item) => item.id === base + "-" + i)) i += 1;
       const id = base + "-" + i;
       const elements = page().elements;
-      let row = 0, column = 0, found = false;
+      const useHero = moduleId === "widget.weather-today" &&
+        page().layout.kind === "hero-deck" && !working.pages[pageId].hero_widget_id;
+      let row = 0, column = 0, found = useHero;
       // First-fit across all 12 columns before moving downward. Using only
       // column 0 stacked widgets vertically despite free grid space.
       while (maxRows === null || row + rowSpan <= maxRows) {
@@ -89,18 +92,23 @@ export function createDashboardEditSession({ controller, configService, pageId, 
         widget_instances: { ...working.widget_instances,
           [id]: { module_id: moduleId, config: instanceConfig } },
         pages: { ...working.pages,
-          [pageId]: { ...working.pages[pageId], elements: [
-            ...working.pages[pageId].elements,
-            { id, kind: "widget", ref_id: id, column, row,
-              column_span: columnSpan, row_span: rowSpan },
-          ] } },
+          [pageId]: useHero
+            ? { ...working.pages[pageId], hero_widget_id: id }
+            : { ...working.pages[pageId], elements: [
+              ...working.pages[pageId].elements,
+              { id, kind: "widget", ref_id: id, column, row,
+                column_span: columnSpan, row_span: rowSpan },
+            ] } },
       };
       return page();
     },
     updateWidget(elementId, { config, dataSources = {}, dynamicButtons = {}, instanceIdConfigKey = null } = {}) {
       ensureActive();
       if (busy) throw new Error("Dashboard editor is saving");
-      const element = page().elements.find((item) => item.id === elementId);
+      const heroRef = working.pages[pageId].hero_widget_id;
+      const element = elementId === DASHBOARD_HERO_ID && heroRef
+        ? { kind: "widget", ref_id: heroRef }
+        : page().elements.find((item) => item.id === elementId);
       if (!element || element.kind !== "widget") throw new TypeError("Widget zum Bearbeiten nicht gefunden");
       if (!config || typeof config !== "object" || Array.isArray(config)) throw new TypeError("Widget-Konfiguration fehlt");
       const refs = Object.values(working.pages).reduce((count, candidate) =>
@@ -130,23 +138,29 @@ export function createDashboardEditSession({ controller, configService, pageId, 
     removeElement(elementId) {
       ensureActive();
       if (busy) throw new Error("Dashboard editor is saving");
-      const element = page().elements.find((item) => item.id === elementId);
+      const heroRef = working.pages[pageId].hero_widget_id;
+      const removingHero = elementId === DASHBOARD_HERO_ID && Boolean(heroRef);
+      const element = removingHero
+        ? { kind: "widget", ref_id: heroRef }
+        : page().elements.find((item) => item.id === elementId);
       if (!element) return null;
       const elements = working.pages[pageId].elements.filter((item) => item.id !== elementId);
       const widgetInstances = { ...working.widget_instances };
       if (element.kind === "widget") {
         const stillReferenced = Object.entries(working.pages).some(([id, candidate]) =>
-          candidate.hero_widget_id === element.ref_id ||
+          (id === pageId ? !removingHero && candidate.hero_widget_id === element.ref_id
+            : candidate.hero_widget_id === element.ref_id) ||
           (id === pageId ? elements : candidate.elements ?? []).some((item) =>
             item.kind === "widget" && item.ref_id === element.ref_id));
         if (!stillReferenced) delete widgetInstances[element.ref_id];
       }
+      const nextPage = { ...working.pages[pageId], elements };
+      if (removingHero) delete nextPage.hero_widget_id;
       history.push(working);
       working = {
         ...working,
         widget_instances: widgetInstances,
-        pages: { ...working.pages,
-          [pageId]: { ...working.pages[pageId], elements } },
+        pages: { ...working.pages, [pageId]: nextPage },
       };
       // Shared provider sources and centrally registered button definitions are
       // never implicitly deleted when a tile is removed.
@@ -180,7 +194,8 @@ export function createDashboardEditSession({ controller, configService, pageId, 
         const result = await configService.update((latest) => {
           const previous = validateDashboardPage(latest, pageId);
           const original = validateDashboardPage(baseline, pageId);
-          if (previous.elements.length !== original.elements.length ||
+          if (previous.hero_widget_id !== original.hero_widget_id ||
+              previous.elements.length !== original.elements.length ||
               previous.elements.some((item, index) =>
                 item.id !== original.elements[index].id ||
                 item.ref_id !== original.elements[index].ref_id ||
@@ -227,14 +242,19 @@ export function createDashboardEditSession({ controller, configService, pageId, 
               throw new Error(`Button wurde extern geändert: ${id}`);
             }
           }
+          const nextPage = { ...latest.pages[pageId],
+            elements: structuredClone(working.pages[pageId].elements) };
+          if (working.pages[pageId].hero_widget_id) {
+            nextPage.hero_widget_id = working.pages[pageId].hero_widget_id;
+          } else {
+            delete nextPage.hero_widget_id;
+          }
           const next = {
             ...latest,
             data_sources: { ...latest.data_sources, ...sourceChanges },
             dynamic_buttons: { ...latest.dynamic_buttons, ...buttonChanges },
             widget_instances: instances,
-            pages: { ...latest.pages,
-              [pageId]: { ...latest.pages[pageId],
-                elements: structuredClone(working.pages[pageId].elements) } },
+            pages: { ...latest.pages, [pageId]: nextPage },
           };
           // Check the final merged document, not only the local draft. A
           // different page or runtime may have started using the definition

@@ -445,12 +445,18 @@ try {
   assert.match(await blankCatalog.locator('[data-jui-catalog-error]').innerText(), /Wetter-Entität/);
   await blankCatalog.locator('[data-jui-catalog-field="weatherEntityId"]').fill("weather.browser_fixture");
   await blankCatalog.locator('[data-jui-catalog-confirm]').click();
-  await emptyPage.waitForFunction(() => document.querySelectorAll('[data-jui-dashboard-item]').length === 1);
+  await emptyPage.waitForFunction(() =>
+    document.querySelector('[data-jui-layout-slot="hero"] [data-jui-widget="weather-today"]'));
+  assert.equal(await emptyPage.locator('[data-jui-dashboard-item]').count(), 0);
   assert.equal(await emptyPage.locator('[data-jui-widget-error]').count(), 0);
   await blankToolbar.getByRole("button", { name: "Fertig" }).click();
   await emptyPage.waitForFunction(() => window.__juiTest.writes === 2);
   assert.equal(await emptyPage.evaluate(() =>
-    window.__juiTest.persisted.pages.home.elements.length), 1);
+    window.__juiTest.persisted.pages.home.elements.length), 0);
+  const weatherHeroRef = await emptyPage.evaluate(() => window.__juiTest.persisted.pages.home.hero_widget_id);
+  assert.equal(await emptyPage.evaluate((id) =>
+    window.__juiTest.persisted.widget_instances[id]?.module_id, weatherHeroRef),
+    "widget.weather-today");
   assert.deepEqual(await emptyPage.evaluate(() => window.__juiTest.persisted.data_sources),
     { "provider.weather": { entity_id: "weather.browser_fixture" } });
   await emptyPage.waitForFunction(() => window.__juiTest.app.core.moduleLoader.isLoaded("provider.weather"));
@@ -470,7 +476,7 @@ try {
   await blankCatalog.locator('[data-jui-catalog-field="autoRegulation"]').fill("binary_sensor.living_auto");
   await blankCatalog.locator('[data-jui-catalog-confirm]').click();
   await blankCatalog.waitFor({ state: "hidden" });
-  await emptyPage.waitForFunction(() => document.querySelectorAll('[data-jui-dashboard-item]').length === 2);
+  await emptyPage.waitForFunction(() => document.querySelectorAll('[data-jui-dashboard-item]').length === 1);
   assert.equal(await emptyPage.locator('[data-jui-widget-error]').count(), 0);
   await blankToolbar.getByRole("button", { name: "Fertig" }).click();
   await emptyPage.waitForFunction(() => window.__juiTest.writes === 3);
@@ -497,7 +503,7 @@ try {
   await blankCatalog.locator('[data-jui-catalog-field="toggleEntity"]').fill("light.browser_fixture");
   await blankCatalog.locator('[data-jui-catalog-confirm]').click();
   await blankCatalog.waitFor({ state: "hidden" });
-  await emptyPage.waitForFunction(() => document.querySelectorAll('[data-jui-dashboard-item]').length === 3);
+  await emptyPage.waitForFunction(() => document.querySelectorAll('[data-jui-dashboard-item]').length === 2);
   await blankToolbar.getByRole("button", { name: "Fertig" }).click();
   await emptyPage.waitForFunction(() => window.__juiTest.writes === 4);
   await emptyPage.waitForFunction(() => window.__juiTest.app.core.moduleLoader.isLoaded("provider.control-state"));
@@ -626,6 +632,23 @@ try {
   assert.equal(afterSecondEdit[1].name, "Wasserpumpe");
   assert.equal(afterSecondEdit[1].warning.entity_id, "binary_sensor.pump_warning");
 
+  await emptyPage.locator('[data-jui-dashboard-edit-entry]').click();
+  await blankToolbar.waitFor({ state: "visible" });
+  const weatherHero = emptyPage.locator('[data-jui-layout-slot="hero"]');
+  await weatherHero.locator('[data-jui-editor-edit]').click();
+  await blankCatalog.waitFor({ state: "visible" });
+  assert.equal(await blankCatalog.locator('[data-jui-catalog-field="weatherEntityId"]').inputValue(),
+    "weather.browser_fixture");
+  await blankCatalog.locator('[data-jui-catalog-field="outdoorTemperatureEntityId"]').fill("sensor.outside");
+  await blankCatalog.locator('[data-jui-catalog-confirm]').click();
+  await blankCatalog.waitFor({ state: "hidden" });
+  await blankToolbar.getByRole("button", { name: "Rückgängig" }).click();
+  await weatherHero.locator('[data-jui-editor-remove]').click();
+  await blankToolbar.getByRole("button", { name: "Abbrechen" }).click();
+  await emptyPage.waitForFunction(() =>
+    document.querySelector('[data-jui-layout-slot="hero"] [data-jui-widget="weather-today"]'));
+  assert.equal(await emptyPage.evaluate(() => window.__juiTest.persisted.pages.home.hero_widget_id),
+    weatherHeroRef);
   assert.equal(await emptyPage.locator('[data-jui-widget-error]').count(), 0);
   assert.deepEqual(emptyErrors, []);
   await emptyPage.evaluate(() => window.__juiTest.app.destroy());
