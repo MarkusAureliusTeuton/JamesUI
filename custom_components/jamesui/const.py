@@ -2,8 +2,8 @@
 
 DOMAIN = "jamesui"
 NAME = "JamesUI"
-VERSION = "0.5.1"
-FRONTEND_REVISION = "0.5.1-next-20261011"
+VERSION = "1.0.0b1"
+FRONTEND_REVISION = "1.0.0b1-next"
 
 PANEL_URL = "jamesui"
 PANEL_TITLE = "JamesUI"

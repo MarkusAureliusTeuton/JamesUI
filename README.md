@@ -14,13 +14,17 @@ Eigenständige Home-Assistant-Oberfläche für ein KNX-/Home-Assistant-Haus, ent
 
 Die Anwendung wird **nicht aus dem alten r11-Projektzustand aufgebaut**. Nicht mehr verwendete r11-Programmdateien, deren Assets und Tests wurden aus dem Entwicklungsbranch entfernt. Historische Dokumente und Git-Verlauf dienen ausschließlich als Archiv, nicht als Laufzeitquelle.
 
-## Home Assistant Installation
+## Home Assistant Installation über HACS
 
-Die bereinigte Version liegt zunächst im Entwicklungsbranch `feat/jamesui-1-0-block-14-start-configuration` und in Draft-PR #27. **Ein normales HACS-Update von `main` installiert nicht automatisch den Entwicklungsbranch.**
+Die Testversion **JamesUI Next v1.0.0b1** wird als GitHub-*Prerelease* von diesem Entwicklungsbranch veröffentlicht, **ohne Merge nach `main`**. Das Bereitstellen erfolgt über `.github/workflows/publish-next-beta.yml`; die Freigabe wird erst nach erfolgreichem vollständigem `Validate JamesUI` einschließlich Chromium-Browsertest ausgeführt.
 
-Für eine separate Testinstallation `custom_components/jamesui` aus dem geprüften Branch nach `/config/custom_components/jamesui` übernehmen, vorher die Home-Assistant-Konfiguration sichern, Home Assistant neu starten und die bestehende JamesUI-Integration laden beziehungsweise einmalig unter Einstellungen → Geräte & Dienste hinzufügen. Danach `/jamesui` als Administrator öffnen und die vier Startmodule mit echten HA-Quellen konfigurieren.
+1. In Home Assistant eine Sicherung anlegen.
+2. In **HACS → JamesUI → ⋮ → Erneut herunterladen** öffnen.
+3. **Beta-Versionen anzeigen** aktivieren und **v1.0.0b1** auswählen. Falls JamesUI noch nicht als HACS-Custom-Repository hinzugefügt wurde: `https://github.com/MarkusAureliusTeuton/JamesUI` vom Typ **Integration** hinzufügen.
+4. Herunterladen und **Home Assistant neu starten**.
+5. Über `/jamesui` die eigenständige Next-Anwendung öffnen und ihre vier Startmodule mit echten Home-Assistant-Daten verbinden.
 
-Diese Version verwendet **nicht** das alte `jamesui.config`, sondern den eigenen Speicher `jamesui.next.config`. Die bisherige Konfiguration wird nicht importiert.
+**Wichtig:** Nicht versehentlich den Standardbranch `main` installieren: Er enthält noch nicht den isolierten Next-Betastand. Die Next-Konfiguration wird unabhängig in `jamesui.next.config` erzeugt; bestehende r11-Daten bleiben unangetastet. Die Beta ist technisch automatisiert getestet, jedoch noch **nicht** an realem HA/KNX oder dem OnePlus Pad 2/Fully Kiosk abgenommen.
 
 ## Entwicklung und Freigabe
 

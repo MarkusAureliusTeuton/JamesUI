@@ -1,6 +1,7 @@
 name: Validate JamesUI
 
 on:
+  workflow_call:
   push:
     branches: [main]
     paths-ignore:
