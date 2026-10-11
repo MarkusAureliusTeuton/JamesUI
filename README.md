@@ -1,64 +1,35 @@
-# JamesUI
+# JamesUI Next
 
-JamesUI is a tablet-first Home Assistant control interface for a KNX/Home Assistant home. It is designed as a calm, bespoke wall-tablet HMI rather than a collection of standard Lovelace cards.
+Eigenständige Home-Assistant-Oberfläche für ein KNX-/Home-Assistant-Haus, entwickelt für das OnePlus Pad 2 im Hochformat.
 
-Current integration version: **0.5.0**
+## Architektur und aktueller Stand
 
-Primary reference device: **OnePlus Pad 2**, landscape. Fully Kiosk can be used as an optional kiosk shell, but JamesUI does not depend on Fully.
+- **Nur JamesUI Next.** Der Menüeintrag `JamesUI` unter `/jamesui` lädt ausschließlich `jamesui-entry.js` und `jamesui-app.js`; kein r11-Loader, keine alte Oberfläche und keine Legacy-Fallbacks.
+- **Daten:** Home Assistant stellt Zustände, Kalender, Aufgaben, Wetter und Aktionen bereit. Die Entitätsbindungen werden im neuen Dashboard konfiguriert, niemals aus r11 übernommen.
+- **Konfiguration:** Versionierter, atomarer Home-Assistant-Speicher `jamesui.next.config`; ausschließlich die strukturierten WebSocket-Befehle `jamesui/config/get` und `jamesui/config/replace`.
+- **Startseite:** Wetter-Hero, Kalender-/Aufgaben-Widget, Hausstatus und dynamische Buttons. Freies 12-Spalten-Raster, Editor mit Speichern, Rückgängig und mehreren Widget-Instanzen.
+- **Navigation:** Die fünf Zielbereiche Start, Haus, Klima, Medien und Tür bleiben sichtbar. Derzeit ist **nur Start** in JamesUI Next funktionsfähig. Die anderen Seiten werden nicht als funktionsfähig vorgetäuscht.
+- **Grafiken:** Lokale Alpine-WebP-Hintergründe; keine alten r11-Wetter-SVGs.
+- **Qualität:** Unit-/Integrationsprüfungen sowie Chromium-Browsertests mit simulierten HA-Quellen. **Noch keine Abnahme mit realem HA/KNX oder auf dem OnePlus Pad 2/Fully Kiosk.**
 
-## Current capabilities
+Die Anwendung wird **nicht aus dem alten r11-Projektzustand aufgebaut**. Nicht mehr verwendete r11-Programmdateien, deren Assets und Tests wurden aus dem Entwicklungsbranch entfernt. Historische Dokumente und Git-Verlauf dienen ausschließlich als Archiv, nicht als Laufzeitquelle.
 
-- native Home Assistant sidebar panel
-- fixed primary navigation: `Start | Haus | Klima | Medien | Tür`
-- responsive dark interface and per-device display calibration
-- Home Assistant weather, forecast, sun, moon and illuminance integration
-- Alpine Interface Start page with local weather/day-night atmosphere assets
-- automatic HA area/device/entity registry loading for the House module
-- house summaries, device health and light/switch/fan toggles
-- Spotify / Music Assistant / receiver media workflow with live playback controls
-- Tür/doorbell UI groundwork and demo overlay
-- central JamesUI configuration stored in the Home Assistant config entry
-- local assets and no runtime cloud-image dependency for the Start page
+## Home Assistant Installation über HACS
 
-Klima and Tür still contain placeholder/demo portions and are not complete functional modules yet. See `PROJECT_STATUS.md` for the exact implementation, temporary-code and removal map.
+Die Testversion **JamesUI Next v1.0.0b1** wird als GitHub-*Prerelease* von diesem Entwicklungsbranch veröffentlicht, **ohne Merge nach `main`**. Das Bereitstellen erfolgt über `.github/workflows/publish-next-beta.yml`; die Freigabe wird erst nach erfolgreichem vollständigem `Validate JamesUI` einschließlich Chromium-Browsertest ausgeführt.
 
-## Architecture
+1. In Home Assistant eine Sicherung anlegen.
+2. In **HACS → JamesUI → ⋮ → Erneut herunterladen** öffnen.
+3. **Beta-Versionen anzeigen** aktivieren und **v1.0.0b1** auswählen. Falls JamesUI noch nicht als HACS-Custom-Repository hinzugefügt wurde: `https://github.com/MarkusAureliusTeuton/JamesUI` vom Typ **Integration** hinzufügen.
+4. Herunterladen und **Home Assistant neu starten**.
+5. Über `/jamesui` die eigenständige Next-Anwendung öffnen und ihre vier Startmodule mit echten Home-Assistant-Daten verbinden.
 
-Responsibilities are intentionally separated:
+**Wichtig:** Nicht versehentlich den Standardbranch `main` installieren: Er enthält noch nicht den isolierten Next-Betastand. Die Next-Konfiguration wird unabhängig in `jamesui.next.config` erzeugt; bestehende r11-Daten bleiben unangetastet. Die Beta ist technisch automatisiert getestet, jedoch noch **nicht** an realem HA/KNX oder dem OnePlus Pad 2/Fully Kiosk abgenommen.
 
-- **KNX:** primary building automation and control logic
-- **Home Assistant:** entities, states, automations, scripts, scenes, schedules, history and integration layer
-- **JamesUI:** presentation, navigation and interaction
-- **Fully Kiosk:** optional tablet/kiosk shell
+## Entwicklung und Freigabe
 
-The active frontend loader uses a guarded classic-script entry (`jamesui-entry.js`) before loading the Start-page ES-module enhancement. This structure is regression-tested because a direct ES-module panel entry previously caused a blank panel.
+- Der Feature-Branch und Draft-PR #27 sind die aktive Entwicklungsbasis.
+- GitHub Actions: Python, Frontend, Architektur-/Modultests und Chromium-Browser-Szenarien.
+- Erst reale HA-/KNX-Daten prüfen, dann visuelle und Touch-Abnahme auf dem OnePlus Pad 2/Fully; erst danach eine reguläre Freigabe.
+- Maßgebliche Nachweise und Grenzen: `PROJECT_STATUS.md` und `docs/JAMESUI_NEXT_ACCEPTANCE_GATES.md`.
 
-For development context, file ownership, compatibility/fallback code, cleanup rules and current priorities, read **`PROJECT_STATUS.md` first**.
-
-## Installation with HACS
-
-1. In HACS, add this repository as a custom repository with category **Integration**.
-2. Download **JamesUI**.
-3. Restart Home Assistant.
-4. Open **Settings → Devices & services → Add integration**.
-5. Search for **JamesUI** and add it.
-6. Open **JamesUI** in the Home Assistant sidebar.
-
-## Manual installation
-
-Copy `custom_components/jamesui` to `/config/custom_components/jamesui`, restart Home Assistant, then add JamesUI from **Settings → Devices & services**.
-
-## Development workflow
-
-- `main` should contain cohesive states expected to pass validation.
-- Intentionally failing TDD intermediates stay local or on a feature branch.
-- Markdown-only documentation changes do not run the full validation workflow.
-- Existing implementation and assets should be inspected before adding replacements.
-- When a compatibility path is retired, remove its code references and assets together rather than leaving orphaned files.
-
-## Roadmap
-
-- **v0.5.x** — current: Media + Alpine Start stabilization
-- next — room-first House refinement and real Climate integration
-- later — Tür/Siedle/camera integration, settings/mapping refinement, Fully-specific comfort functions
-- **v1.0.0** — first complete home release

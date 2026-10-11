@@ -14,7 +14,7 @@ function requireDependency(value, name) {
   if (!value) throw new TypeError(`createAppShell requires ${name}`);
 }
 
-export function createAppShell({ document, router, overlays, health, getContext, designSystem, renderPage = null } = {}) {
+export function createAppShell({ document, router, overlays, health, getContext, designSystem, renderPage = null, availableRoutes = null } = {}) {
   requireDependency(document, "document");
   requireDependency(router, "router");
   requireDependency(overlays, "overlays");
@@ -128,13 +128,17 @@ export function createAppShell({ document, router, overlays, health, getContext,
 
     root = document.createElement("div");
     root.dataset.role = "app-shell";
-    root.style.minHeight = "100vh";
+    root.style.height = "100%";
+    root.style.minHeight = "0";
     root.style.display = "grid";
-    root.style.gridTemplateRows = "1fr auto";
+    root.style.gridTemplateRows = "minmax(0, 1fr) auto";
     designSystem.mount(root);
 
     pageRegion = document.createElement("main");
     pageRegion.dataset.role = "page-region";
+    pageRegion.style.minHeight = "0";
+    pageRegion.style.minWidth = "0";
+    pageRegion.style.overflow = "hidden";
 
     overlayRoot = document.createElement("div");
     overlayRoot.dataset.role = "overlay-root";
@@ -155,7 +159,13 @@ export function createAppShell({ document, router, overlays, health, getContext,
       if (!iconId) throw new Error(`Missing navigation icon for route: ${route.id}`);
       button.prepend(createIcon(document, iconId, { size: "md" }));
       button.dataset.routeId = route.id;
-      const listener = () => router.navigate(route.id);
+      const available = availableRoutes === null || availableRoutes.includes(route.id);
+      button.disabled = !available;
+      if (!available) {
+        button.setAttribute("aria-label", `${route.label} – noch nicht verfügbar`);
+        button.title = `${route.label} – noch nicht verfügbar`;
+      }
+      const listener = () => { if (available) router.navigate(route.id); };
       button.addEventListener("click", listener);
       navBindings.push({ button, listener });
       navigation.appendChild(button);

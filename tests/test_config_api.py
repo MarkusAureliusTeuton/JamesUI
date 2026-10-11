@@ -1,5 +1,7 @@
 import asyncio
+import hashlib
 import importlib.util
+import json
 from pathlib import Path
 import sys
 import types
@@ -82,7 +84,15 @@ class FakeService:
     def snapshot(self):
         return self._validate(self._config)
 
-    async def async_replace(self, config):
+    @property
+    def revision(self):
+        serialized = json.dumps(self.snapshot(), sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+        return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+
+    async def async_replace(self, config, *, expected_revision=None):
+        if expected_revision != self.revision:
+            error_type = sys.modules["custom_components.jamesui.config_service"].ConfigConflictError
+            raise error_type("JamesUI configuration has changed; reload before saving")
         validated = self._validate(config)
         self.replace_calls.append(validated)
         self._config = validated
@@ -129,20 +139,20 @@ class ConfigApiTest(unittest.IsolatedAsyncioTestCase):
     def setUpClass(cls):
         install_stubs()
         cls.schema = load_module("config_schema", "config_schema.py")
-        cls.migrations = load_module("config_migrations", "config_migrations.py")
         cls.const = load_module("const", "const.py")
         cls.api = load_module("api", "api.py")
 
-    def make_service(self, legacy=None):
-        config = self.migrations.migrate_legacy_options(legacy or {})
-        return FakeService(config, self.schema.validate_config)
+    def make_service(self, unused=None):
+        return FakeService(self.schema.empty_config(), self.schema.validate_config)
 
     async def test_structured_get_returns_canonical_snapshot(self):
         service = self.make_service({"weather_entity": "weather.home"})
         hass = FakeHass(self.const.DOMAIN, service)
         connection = FakeConnection()
         self.api.websocket_get_structured_config(hass, connection, {"id": 1})
-        self.assertEqual(connection.results, [(1, {"config": service.snapshot()})])
+        self.assertEqual(connection.results, [(1, {
+            "config": service.snapshot(), "revision": service.revision,
+        })])
         self.assertEqual(connection.errors, [])
 
     async def test_structured_replace_is_admin_and_invalid_config_leaves_service_unchanged(self):
@@ -155,7 +165,7 @@ class ConfigApiTest(unittest.IsolatedAsyncioTestCase):
         invalid["pages"] = []
 
         await self.api.websocket_replace_structured_config(
-            hass, connection, {"id": 2, "config": invalid}
+            hass, connection, {"id": 2, "config": invalid, "expected_revision": service.revision}
         )
         self.assertEqual(service.snapshot(), before)
         self.assertEqual(connection.results, [])
@@ -165,58 +175,32 @@ class ConfigApiTest(unittest.IsolatedAsyncioTestCase):
         valid["pages"]["home"] = {"layout": "hero"}
         connection = FakeConnection()
         await self.api.websocket_replace_structured_config(
-            hass, connection, {"id": 3, "config": valid}
+            hass, connection, {"id": 3, "config": valid, "expected_revision": service.revision}
         )
-        self.assertEqual(connection.results, [(3, {"config": valid})])
+        self.assertEqual(connection.results, [(3, {"config": valid, "revision": service.revision})])
 
-    async def test_legacy_get_projects_store_after_options_cleanup(self):
-        service = self.make_service({
-            "weather_entity": "weather.home",
-            "background_mode": "manual",
-        })
+    async def test_structured_replace_rejects_stale_client_revision(self):
+        service = self.make_service()
         hass = FakeHass(self.const.DOMAIN, service)
+        stale = service.revision
+        changed = service.snapshot()
+        changed["module_settings"]["foreign"] = {"saved": True}
+        await service.async_replace(changed, expected_revision=stale)
+
+        client_attempt = self.schema.empty_config()
+        client_attempt["pages"]["stale"] = {"kind": "dashboard"}
         connection = FakeConnection()
-        self.api.websocket_get_config(hass, connection, {"id": 4})
-        self.assertEqual(connection.results, [(4, {"options": {
-            "weather_entity": "weather.home",
-            "background_mode": "manual",
-        }})])
-
-    async def test_legacy_update_changes_canonical_store_and_preserves_validation(self):
-        service = self.make_service({"weather_entity": "weather.old"})
-        hass = FakeHass(
-            self.const.DOMAIN,
-            service,
-            states={"weather.new": object(), "scene.a": object(), "scene.b": object()},
+        await self.api.websocket_replace_structured_config(
+            hass, connection,
+            {"id": 15, "config": client_attempt, "expected_revision": stale},
         )
-        connection = FakeConnection()
-        await self.api.websocket_update_config(hass, connection, {
-            "id": 5,
-            "weather_entity": " weather.new ",
-            "home_scene_entities": [" scene.a ", "scene.a", "scene.b"],
-        })
-        self.assertEqual(connection.errors, [])
-        projected = self.migrations.project_legacy_options(service.snapshot())
-        self.assertEqual(projected["weather_entity"], "weather.new")
-        self.assertEqual(projected["home_scene_entities"], ["scene.a", "scene.b"])
-        self.assertEqual(connection.results, [(5, {"options": projected})])
-
-        missing = FakeConnection()
-        await self.api.websocket_update_config(
-            hass, missing, {"id": 6, "weather_entity": "weather.missing"}
-        )
-        self.assertEqual(missing.errors[0][1], "entity_not_found")
-
-        invalid_scene = FakeConnection()
-        await self.api.websocket_update_config(
-            hass, invalid_scene, {"id": 7, "home_scene_entities": ["light.not_scene"]}
-        )
-        self.assertEqual(invalid_scene.errors[0][1], "invalid_scene")
+        self.assertEqual(connection.results, [])
+        self.assertEqual(connection.errors[0][1], "config_conflict")
+        self.assertEqual(service.snapshot()["module_settings"]["foreign"], {"saved": True})
 
     async def test_all_endpoints_report_not_configured_without_service(self):
         hass = FakeHass(self.const.DOMAIN)
         for handler, msg in [
-            (self.api.websocket_get_config, {"id": 8}),
             (self.api.websocket_get_structured_config, {"id": 9}),
         ]:
             connection = FakeConnection()
@@ -224,27 +208,25 @@ class ConfigApiTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(connection.errors[0][1], "not_configured")
 
         for handler, msg in [
-            (self.api.websocket_update_config, {"id": 10}),
             (self.api.websocket_replace_structured_config, {"id": 11, "config": self.schema.empty_config()}),
         ]:
             connection = FakeConnection()
             await handler(hass, connection, msg)
             self.assertEqual(connection.errors[0][1], "not_configured")
 
-    def test_registers_all_four_commands_and_has_no_options_persistence(self):
+    def test_registers_only_next_commands(self):
         service = self.make_service()
         hass = FakeHass(self.const.DOMAIN, service)
         self.api.async_register_websocket_commands(hass)
         self.assertEqual(hass.registered, [
-            self.api.websocket_get_config,
-            self.api.websocket_update_config,
             self.api.websocket_get_structured_config,
             self.api.websocket_replace_structured_config,
         ])
         source = Path("custom_components/jamesui/api.py").read_text(encoding="utf-8")
         self.assertNotIn("entry.options", source)
         self.assertNotIn("async_update_entry", source)
-        self.assertIn("Block 20/21", source)
+        self.assertNotIn("websocket_get_config", source)
+        self.assertNotIn("websocket_update_config", source)
 
 
 if __name__ == "__main__":

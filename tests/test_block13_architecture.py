@@ -43,17 +43,15 @@ class Block13ArchitectureTest(unittest.TestCase):
         for token in ("provider.control-state", "widget.dynamic-buttons", "control.states", "data-jui-dynamic-button"):
             self.assertNotIn(token, source, f"Core must not own Block 13 behavior: {token}")
 
-    def test_block13_is_not_wired_into_legacy_or_production_bootstrap(self):
-        production_files = (
-            FRONTEND / "jamesui-entry.js",
-            FRONTEND / "jamesui-home-entry.js",
-            FRONTEND / "jamesui-home.js",
-            FRONTEND / "jamesui-panel.js",
-        )
-        for path in production_files:
-            source = path.read_text(encoding="utf-8")
-            for token in ("provider.control-state", "widget.dynamic-buttons", "control.states"):
-                self.assertNotIn(token, source, f"Block 13 must not cut over production yet: {path} contains {token}")
+    def test_block13_is_mounted_only_through_next_app(self):
+        entry = (FRONTEND / "jamesui-entry.js").read_text(encoding="utf-8")
+        app = (FRONTEND / "jamesui-app.js").read_text(encoding="utf-8")
+        self.assertIn('import("./jamesui-app.js")', entry)
+        for module_id in ("provider.control-state", "widget.dynamic-buttons"):
+            self.assertIn(module_id, app)
+        self.assertNotIn("jamesui-home-entry.js", entry)
+        self.assertNotIn("jamesui-panel.js", entry)
+
 
     def test_widget_does_not_pull_block14_editor_forward(self):
         source = "\n".join(path.read_text(encoding="utf-8") for path in WIDGET.glob("*.js"))

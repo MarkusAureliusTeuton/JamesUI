@@ -1,0 +1,319 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { createDashboardWidgetHosts } from "../custom_components/jamesui/frontend/modules/dashboard-widget-hosts.js";
+import { createDashboardGrid } from "../custom_components/jamesui/frontend/core/dashboard-grid.js";
+import { createHealthService } from "../custom_components/jamesui/frontend/core/health-service.js";
+import { createModuleRegistry } from "../custom_components/jamesui/frontend/core/module-registry.js";
+import { createModuleLoader } from "../custom_components/jamesui/frontend/core/module-loader.js";
+import { createFakeDocument } from "./helpers/fake-dom.js";
+
+const item = (id, ref_id, column) => ({
+  id, kind: "widget", ref_id, column, row: 0, column_span: 5, row_span: 3,
+});
+
+test("Block 14 mounts multiple widget instances through the same canonical loader", async () => {
+  const calls = [];
+  const loader = {
+    async load(moduleId, options) {
+      calls.push(["load", moduleId, options.instanceId, options.config.calendar]);
+      return true;
+    },
+    mount(id, node) { calls.push(["mount", id, node.getAttribute("data-jui-widget-instance")]); return true; },
+    destroy(id) { calls.push(["destroy", id]); return true; },
+  };
+  const document = createFakeDocument();
+  const grid = createDashboardGrid({
+    document,
+    createItemHost: createDashboardWidgetHosts({
+      moduleLoader: loader,
+      getConfig: (id) => ({
+        module_id: "widget.calendar-agenda",
+        config: { calendar: id },
+      }),
+    }),
+  });
+  grid.mount(document.createElement("div"));
+  grid.render([item("one", "calendar-family", 0), item("two", "calendar-work", 6)]);
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.deepEqual(calls.filter((call) => call[0] === "load"), [
+    ["load", "widget.calendar-agenda", "dashboard:one", "calendar-family"],
+    ["load", "widget.calendar-agenda", "dashboard:two", "calendar-work"],
+  ]);
+  assert.deepEqual(calls.filter((call) => call[0] === "mount").map((call) => call[1]),
+    ["dashboard:one", "dashboard:two"]);
+  grid.render([item("two", "calendar-work", 6)]);
+  assert.ok(calls.some((call) => call[0] === "destroy" && call[1] === "dashboard:one"));
+  grid.destroy();
+  assert.ok(calls.some((call) => call[0] === "destroy" && call[1] === "dashboard:two"));
+});
+
+test("Block 14 disposed hosts do not mount when slow module load resolves", async () => {
+  let resume;
+  const calls = [];
+  const loader = {
+    load() { return new Promise((resolve) => { resume = resolve; }); },
+    mount() { calls.push("mount"); return true; },
+    destroy(id) { calls.push(["destroy", id]); return true; },
+  };
+  const document = createFakeDocument();
+  const grid = createDashboardGrid({
+    document,
+    createItemHost: createDashboardWidgetHosts({
+      moduleLoader: loader,
+      getConfig: () => ({ module_id: "widget.calendar-agenda" }),
+    }),
+  });
+  grid.mount(document.createElement("div"));
+  grid.render([item("slow", "agenda", 0)]);
+  grid.destroy();
+  resume(true);
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.ok(!calls.includes("mount"));
+});
+
+test("Block 14 widget host rejects missing definitions instead of showing fake content", () => {
+  const host = createDashboardWidgetHosts({
+    moduleLoader: { load() {}, mount() {}, destroy() {} },
+    getConfig: () => null,
+  });
+  const document = createFakeDocument();
+  assert.throws(() => host(document.createElement("div"), item("unknown", "missing", 0)), /Missing widget/);
+});
+
+
+test("Block 14 single button uses the existing Dynamic Buttons module and central definitions", async () => {
+  const calls = [];
+  const loader = {
+    async load(moduleId, options) { calls.push(["load", moduleId, options]); return true; },
+    mount(id) { calls.push(["mount", id]); return true; },
+    destroy(id) { calls.push(["destroy", id]); return true; },
+  };
+  const document = createFakeDocument();
+  const host = createDashboardWidgetHosts({
+    moduleLoader: loader,
+    getConfig: () => null,
+    getButtonDefinitions: () => ({
+      welcome: { name: "Willkommen", mode: "trigger", action: { type: "navigate", route_id: "home" } },
+    }),
+  });
+  const node = document.createElement("div");
+  const dispose = host(node, {
+    id: "welcome-start", kind: "button", ref_id: "welcome", size: "wide",
+  });
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(calls[0][1], "widget.dynamic-buttons");
+  assert.equal(calls[0][2].instanceId, "dashboard:welcome-start");
+  assert.deepEqual(calls[0][2].config.buttons.map(({ id, button_id, size, definition }) =>
+    [id, button_id, size, definition.mode]), [
+    ["welcome-start", "welcome", "wide", "trigger"],
+  ]);
+  assert.deepEqual(calls[1], ["mount", "dashboard:welcome-start"]);
+  dispose();
+  assert.deepEqual(calls.at(-1), ["destroy", "dashboard:welcome-start"]);
+});
+
+test("Block 14 rejects missing button definitions without mounting a fake control", () => {
+  const host = createDashboardWidgetHosts({
+    moduleLoader: { load() {}, mount() {}, destroy() {} },
+    getConfig: () => null,
+    getButtonDefinitions: () => ({}),
+  });
+  assert.throws(() => host(createFakeDocument().createElement("div"), {
+    id: "missing", kind: "button", ref_id: "not-found",
+  }), /definition is missing/);
+});
+
+test("failed widget load shows an error in its tile instead of staying blank", async () => {
+  const document = createFakeDocument();
+  const node = document.createElement("div");
+  const host = createDashboardWidgetHosts({
+    moduleLoader: { load: async () => false, mount() { throw Error("must not mount"); }, destroy() {} },
+    getConfig: () => ({ module_id: "widget.calendar-agenda" }),
+  });
+  const dispose = host(node, item("failed", "agenda", 0));
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(node.getAttribute("data-jui-widget-error"), "");
+  assert.match(node.textContent, /nicht geladen/);
+  dispose();
+});
+
+test("failed widget mount and rejected load are visible and cleaned up", async () => {
+  for (const mode of ["mount", "reject"]) {
+    const document = createFakeDocument();
+    const node = document.createElement("div");
+    const destroyed = [];
+    const host = createDashboardWidgetHosts({
+      moduleLoader: {
+        load: mode === "reject" ? async () => { throw Error("network"); } : async () => true,
+        mount: () => false,
+        destroy: (id) => destroyed.push(id),
+      },
+      getConfig: () => ({ module_id: "widget.calendar-agenda" }),
+    });
+    const dispose = host(node, item(mode, "agenda", 0));
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.equal(node.getAttribute("data-jui-widget-error"), "");
+    assert.ok(destroyed.includes("dashboard:" + mode));
+    dispose();
+  }
+});
+
+test("configured Dynamic Buttons widget resolves central definitions at mount", async () => {
+  const captured = [];
+  const host = createDashboardWidgetHosts({
+    moduleLoader: {
+      async load(_moduleId, { config }) { captured.push(config); return true; },
+      mount: () => true,
+      destroy: () => true,
+    },
+    getConfig: () => ({
+      module_id: "widget.dynamic-buttons",
+      config: { buttons: [{ id: "link", button_id: "dashboard-link-1", size: "normal" }] },
+    }),
+    getButtonDefinitions: () => ({
+      "dashboard-link-1": {
+        name: "Portal", mode: "trigger", action: { type: "url.open", url: "https://example.org" },
+      },
+    }),
+  });
+  const dispose = host(createFakeDocument().createElement("div"), item("link-widget", "link-ref", 0));
+  assert.equal(await dispose.ready, true);
+  assert.equal(captured[0].buttons[0].definition.action.url, "https://example.org");
+  dispose();
+});
+
+test("configured Dynamic Buttons widget rejects dangling definition reference", () => {
+  const host = createDashboardWidgetHosts({
+    moduleLoader: { load() { throw Error("must not load"); }, mount() {}, destroy() {} },
+    getConfig: () => ({
+      module_id: "widget.dynamic-buttons",
+      config: { buttons: [{ id: "link", button_id: "missing", size: "normal" }] },
+    }),
+    getButtonDefinitions: () => ({}),
+  });
+  assert.throws(() => host(createFakeDocument().createElement("div"), item("link-widget", "link-ref", 0)),
+    /definition is missing/);
+});
+
+test("late success from cancelled widget host never destroys or remounts its replacement", async () => {
+  const resolvers = [];
+  const mounts = [];
+  const destroys = [];
+  const host = createDashboardWidgetHosts({
+    moduleLoader: {
+      load() { return new Promise((resolve) => resolvers.push(resolve)); },
+      mount(id, node) { mounts.push([id, node]); return true; },
+      destroy(id) { destroys.push(id); return true; },
+    },
+    getConfig: () => ({ module_id: "widget.calendar-agenda", config: {} }),
+  });
+  const document = createFakeDocument();
+  const first = host(document.createElement("div"), item("agenda", "agenda", 0));
+  first();
+  const second = host(document.createElement("div"), item("agenda", "agenda", 0));
+  assert.equal(resolvers.length, 2);
+  resolvers[1](true);
+  assert.equal(await second.ready, true);
+  assert.equal(mounts.length, 1);
+  resolvers[0](true);
+  assert.equal(await first.ready, false);
+  assert.deepEqual(destroys, ["dashboard:agenda"],
+    "Stale successful load may not destroy newly mounted occurrence");
+  second();
+  assert.deepEqual(destroys, ["dashboard:agenda", "dashboard:agenda"]);
+});
+
+test("late failure from cancelled widget host does not erase healthy replacement", async () => {
+  const rejectors = [];
+  const resolvers = [];
+  const destroys = [];
+  const host = createDashboardWidgetHosts({
+    moduleLoader: {
+      load() { return new Promise((resolve, reject) => {
+        resolvers.push(resolve); rejectors.push(reject);
+      }); },
+      mount() { return true; },
+      destroy(id) { destroys.push(id); return true; },
+    },
+    getConfig: () => ({ module_id: "widget.calendar-agenda", config: {} }),
+  });
+  const document = createFakeDocument();
+  const oldNode = document.createElement("div");
+  const first = host(oldNode, item("agenda", "agenda", 0));
+  first();
+  const nextNode = document.createElement("div");
+  const second = host(nextNode, item("agenda", "agenda", 0));
+  resolvers[1](true);
+  assert.equal(await second.ready, true);
+  rejectors[0](new Error("late network failure"));
+  assert.equal(await first.ready, false);
+  assert.deepEqual(destroys, ["dashboard:agenda"]);
+  assert.equal(oldNode.getAttribute("data-jui-widget-error"), null);
+  assert.equal(nextNode.getAttribute("data-jui-widget-error"), null);
+  second();
+});
+
+test("real loader plus dashboard grid survives remove/Undo while first import is pending", async () => {
+  const document = createFakeDocument();
+  const registry = createModuleRegistry();
+  const health = createHealthService();
+  const imports = [];
+  const lifecycle = [];
+  registry.register({
+    id: "widget.pending",
+    type: "widget", version: "1.0.0", core_api: "1.x",
+    depends_on: [], requires_capabilities: [], provides_capabilities: [],
+    config_schema: "widget.pending.schema.json",
+  }, { entryUrl: "https://example.test/pending.js" });
+  const loader = createModuleLoader({
+    registry, health,
+    importer: () => new Promise((resolve) => imports.push(resolve)),
+    getContext: () => ({}),
+  });
+  const grid = createDashboardGrid({
+    document,
+    createItemHost: createDashboardWidgetHosts({
+      moduleLoader: loader,
+      getConfig: () => ({ module_id: "widget.pending", config: {} }),
+    }),
+  });
+  const target = document.createElement("main");
+  grid.mount(target);
+  const agenda = item("agenda", "agenda", 0);
+  grid.render([agenda]);
+  assert.equal(imports.length, 1);
+  grid.render([]);
+  grid.render([agenda]);
+  assert.equal(imports.length, 2, "Undo must start a new import immediately");
+  imports[1]({
+    create() {
+      return {
+        mount(node) {
+          lifecycle.push("mount-new");
+          const element = document.createElement("p");
+          element.setAttribute("data-jui-fast-undo-content", "");
+          node.appendChild(element);
+          return true;
+        },
+        update() { return true; },
+        destroy() { lifecycle.push("destroy-new"); },
+      };
+    },
+  });
+  assert.equal(await grid.whenReady(), true);
+  assert.ok(target.querySelector("[data-jui-fast-undo-content]"));
+  imports[0]({ create() { throw Error("stale import must not instantiate"); } });
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(loader.isLoaded("dashboard:agenda"), true);
+  assert.equal(health.get("module:dashboard:agenda"), null);
+  assert.ok(target.querySelector("[data-jui-fast-undo-content]"));
+  assert.deepEqual(lifecycle, ["mount-new"]);
+  grid.destroy();
+  assert.deepEqual(lifecycle, ["mount-new", "destroy-new"]);
+});

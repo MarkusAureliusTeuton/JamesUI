@@ -1,0 +1,510 @@
+import { buildDashboardWidgetSetup } from "./dashboard-widget-setup.js";
+
+// Registered, implemented widgets only. Setup never invents HA entities.
+export function createDashboardCatalog({ moduleRegistry } = {}) {
+  if (!moduleRegistry || typeof moduleRegistry.get !== "function") {
+    throw new TypeError("Dashboard catalog requires Module Registry");
+  }
+  const known = [
+    ["widget.weather-today", "Wetter"],
+    ["widget.calendar-agenda", "Kalender und Aufgaben"],
+    ["widget.house-quick", "Hausstatus"],
+    ["widget.dynamic-buttons", "Dynamische Buttons"],
+  ];
+  return Object.freeze({
+    entries() {
+      return known.filter(([id]) => moduleRegistry.get(id)?.manifest?.type === "widget")
+        .map(([id, title]) => Object.freeze({ module_id: id, title }));
+    },
+  });
+}
+
+export function createDashboardCatalogView({ document, catalog, onSelect, onEdit = null, getConfig = null } = {}) {
+  if (!document?.createElement || !catalog?.entries || typeof onSelect !== "function") {
+    throw new TypeError("Dashboard catalog view requires document, catalog and onSelect");
+  }
+  if (onEdit !== null && typeof onEdit !== "function") throw new TypeError("onEdit must be a function or null");
+  if (getConfig !== null && typeof getConfig !== "function") {
+    throw new TypeError("getConfig must be a function or null");
+  }
+  const root = document.createElement("section");
+  root.setAttribute("data-jui-dashboard-catalog", "");
+  root.setAttribute("role", "dialog");
+  root.setAttribute("aria-label", "Widget hinzufügen");
+  root.hidden = true;
+  root.style.position = "absolute";
+  root.style.inset = "0";
+  root.style.zIndex = "30";
+  root.style.padding = "24px";
+  root.style.overflow = "auto";
+  root.style.background = "var(--jui-color-surface, #11151e)";
+  root.style.color = "var(--jui-color-text, #ffffff)";
+
+  const createButton = (parent, text, onClick, attribute = null) => {
+    const node = document.createElement("button");
+    node.setAttribute("type", "button");
+    if (attribute) node.setAttribute(attribute[0], attribute[1]);
+    node.textContent = text;
+    node.addEventListener("click", onClick);
+    parent.appendChild(node);
+    return node;
+  };
+  const createField = (form, fields, key, label, { placeholder = "", multiline = false } = {}) => {
+    const wrapper = document.createElement("label");
+    wrapper.style.display = "block";
+    wrapper.style.margin = "12px 0";
+    wrapper.textContent = label;
+    const input = document.createElement(multiline ? "textarea" : "input");
+    if (!multiline) input.setAttribute("type", "text");
+    input.setAttribute("data-jui-catalog-field", key);
+    input.setAttribute("placeholder", placeholder);
+    input.style.display = "block";
+    input.style.width = "min(100%, 520px)";
+    input.style.minHeight = multiline ? "64px" : "42px";
+    input.style.fontSize = "16px";
+    input.style.boxSizing = "border-box";
+    wrapper.appendChild(input);
+    form.appendChild(wrapper);
+    fields.set(key, input);
+  };
+
+  const createSelect = (form, fields, key, label, options, defaultValue) => {
+    const wrapper = document.createElement("label");
+    wrapper.style.display = "block";
+    wrapper.style.margin = "12px 0";
+    wrapper.textContent = label;
+    const input = document.createElement("select");
+    input.setAttribute("data-jui-catalog-field", key);
+    for (const [value, caption] of options) {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = caption;
+      input.appendChild(option);
+    }
+    input.value = defaultValue;
+    wrapper.appendChild(input);
+    form.appendChild(wrapper);
+    fields.set(key, input);
+  };
+
+  const addSourceMapping = (section, fields, prefix, name, boolean = false) => {
+    createField(section, fields, prefix + "Attribute", name + ": HA-Attribut (optional)");
+    if (boolean) {
+      createField(section, fields, prefix + "TrueValues", name + ": EIN/Wahr-Werte", {
+        placeholder: "on, true, 1 (leer = Standard)",
+      });
+      createField(section, fields, prefix + "FalseValues", name + ": AUS/Falsch-Werte", {
+        placeholder: "off, false, 0 (leer = Standard)",
+      });
+    }
+  };
+
+  const advancedMapping = (parent, kind) => {
+    const details = document.createElement("details");
+    details.setAttribute("data-jui-advanced-mapping", kind);
+    const summary = document.createElement("summary");
+    summary.textContent = "Erweiterte Signalzuordnung (optional)";
+    details.appendChild(summary);
+    parent.appendChild(details);
+    return details;
+  };
+
+  const close = document.createElement("button");
+  close.setAttribute("type", "button");
+  close.textContent = "Schließen";
+  close.addEventListener("click", () => { root.hidden = true; });
+
+  const showModules = () => {
+    root.replaceChildren(close);
+    const title = document.createElement("h2");
+    title.textContent = "Widget auswählen";
+    root.appendChild(title);
+    for (const item of catalog.entries()) {
+      createButton(root, item.title, () => {
+        if (!getConfig) {
+          onSelect(item.module_id);
+          root.hidden = true;
+          return;
+        }
+        showSetup(item);
+      }, ["data-jui-catalog-module", item.module_id]);
+    }
+  };
+
+  const showSetup = (item, editing = null) => {
+    root.replaceChildren(close);
+    createButton(root, "Zurück", showModules);
+    const title = document.createElement("h2");
+    title.textContent = editing ? item.title + " bearbeiten" : item.title;
+    root.appendChild(title);
+    const form = document.createElement("form");
+    form.setAttribute("data-jui-catalog-setup", item.module_id);
+    const fields = new Map();
+
+    if (item.module_id === "widget.weather-today") {
+      createField(form, fields, "weatherEntityId", "Wetterentität", { placeholder: "weather.zuhause" });
+      createField(form, fields, "outdoorTemperatureEntityId", "Außentemperatur (optional)", { placeholder: "sensor.aussentemperatur" });
+      createField(form, fields, "moonEntityId", "Mondphase (optional)", { placeholder: "sensor.mondphase" });
+      createField(form, fields, "illuminanceEntityId", "Helligkeit (optional)", { placeholder: "sensor.helligkeit" });
+      const prior = getConfig().data_sources?.["provider.weather"] ?? getConfig().data_sources?.weather;
+      if (prior) {
+        const source = prior.config ?? prior;
+        for (const [field, property] of [
+          ["weatherEntityId", "entity_id"], ["outdoorTemperatureEntityId", "outdoor_temperature_entity_id"],
+          ["moonEntityId", "moon_entity_id"], ["illuminanceEntityId", "illuminance_entity_id"],
+        ]) fields.get(field).value = source[property] ?? "";
+      }
+    } else if (item.module_id === "widget.calendar-agenda") {
+      createField(form, fields, "calendars", "Kalender-Entitäten (durch Komma getrennt)", {
+        placeholder: "calendar.familie, calendar.privat", multiline: true,
+      });
+      createField(form, fields, "tasks", "Aufgabenlisten (optional)", {
+        placeholder: "todo.haus, todo.einkauf", multiline: true,
+      });
+      createSelect(form, fields, "agendaPresentation", "Ansicht", [
+        ["grouped", "Gruppiert"], ["timeline", "Zeitverlauf"], ["day", "Tag"],
+      ], "grouped");
+      createSelect(form, fields, "agendaTaskVisibility", "Aufgaben anzeigen", [
+        ["auto", "Bei konfigurierten Aufgabenlisten"], ["on", "Ein"], ["off", "Aus"],
+      ], "auto");
+      createSelect(form, fields, "agendaShowLocation", "Termine mit Ortsangabe", [
+        ["false", "Nein"], ["true", "Ja"],
+      ], "false");
+      createField(form, fields, "agendaLookaheadDays", "Kalendervorschau (Tage, 1–365)", {
+        placeholder: "30",
+      });
+      fields.get("agendaLookaheadDays").value = "30";
+    } else if (item.module_id === "widget.house-quick") {
+      const selectorLabel = document.createElement("label");
+      selectorLabel.textContent = "Hausstatus-Typ";
+      selectorLabel.style.display = "block";
+      const select = document.createElement("select");
+      select.setAttribute("data-jui-catalog-field", "houseType");
+      for (const [id, label] of [
+        ["lights", "Licht"], ["ambient_lights", "Ambientelicht"],
+        ["heating_zone", "Heizungszone"], ["devices", "Geräte"], ["energy", "Energie"],
+      ]) {
+        const option = document.createElement("option");
+        option.value = id;
+        option.textContent = label;
+        select.appendChild(option);
+      }
+      selectorLabel.appendChild(select);
+      form.appendChild(selectorLabel);
+      fields.set("houseType", select);
+      const sections = new Map();
+      const group = (kind) => {
+        const section = document.createElement("section");
+        section.setAttribute("data-jui-house-setup", kind);
+        form.appendChild(section);
+        sections.set(kind, section);
+        return section;
+      };
+      const lights = group("lights");
+      createField(lights, fields, "lightEntityId", "Lichtentität (optional bei vorhandener Gruppe)", {
+        placeholder: "light.wohnzimmer",
+      });
+      const ambient = group("ambient_lights");
+      // Both light groups intentionally share the same optional entity input.
+      // Keep one field binding per type by copying the visible value at submit.
+      createField(ambient, fields, "ambientEntityId", "Ambientelicht-Entität", {
+        placeholder: "light.ambient",
+      });
+      const heating = group("heating_zone");
+      createField(heating, fields, "heatingName", "Heizungszone", { placeholder: "Wohnzimmer" });
+      createField(heating, fields, "currentTemperature", "Isttemperatur", { placeholder: "sensor.wohnzimmer_ist" });
+      createField(heating, fields, "targetTemperature", "Solltemperatur", { placeholder: "sensor.wohnzimmer_soll" });
+      createField(heating, fields, "heatingDemand", "Heizanforderung", { placeholder: "binary_sensor.heizung_anforderung" });
+      createField(heating, fields, "autoRegulation", "Automatikregelung aktiv", { placeholder: "binary_sensor.heizung_auto" });
+      const heatingAdvanced = advancedMapping(heating, "heating");
+      for (const [prefix, name, bool] of [
+        ["currentTemperature", "Isttemperatur", false],
+        ["targetTemperature", "Solltemperatur", false],
+        ["heatingDemand", "Heizanforderung", true],
+        ["autoRegulation", "Automatikregelung", true],
+      ]) addSourceMapping(heatingAdvanced, fields, prefix, name, bool);
+      const devices = group("devices");
+      const deviceSelectorLabel = document.createElement("label");
+      deviceSelectorLabel.textContent = "Gerät auswählen";
+      deviceSelectorLabel.style.display = "block";
+      const deviceSelector = document.createElement("select");
+      deviceSelector.setAttribute("data-jui-catalog-field", "deviceId");
+      deviceSelector.value = ""; // Also deterministic in non-browser DOM fixtures.
+      const newDevice = document.createElement("option");
+      newDevice.value = "";
+      newDevice.textContent = "Neues Gerät hinzufügen";
+      deviceSelector.appendChild(newDevice);
+      const configuredDevices = (() => {
+        const entry = getConfig().data_sources?.["provider.house-devices"];
+        return (entry?.config ?? entry ?? {}).devices ?? [];
+      })();
+      for (const item of configuredDevices) {
+        const option = document.createElement("option");
+        option.value = item.id;
+        option.textContent = item.name;
+        deviceSelector.appendChild(option);
+      }
+      deviceSelectorLabel.appendChild(deviceSelector);
+      devices.appendChild(deviceSelectorLabel);
+      fields.set("deviceId", deviceSelector);
+      createField(devices, fields, "deviceName", "Gerätename", { placeholder: "Lüftungsanlage" });
+      createField(devices, fields, "primaryEntity", "Haupt-Entität", { placeholder: "switch.lueftung" });
+      createField(devices, fields, "activeEntity", "Aktivstatus", { placeholder: "binary_sensor.lueftung_aktiv" });
+      createField(devices, fields, "updateEntity", "Update vorhanden (optional)", { placeholder: "binary_sensor.lueftung_update" });
+      createField(devices, fields, "warningEntity", "Warnung (optional)", { placeholder: "binary_sensor.lueftung_warnung" });
+      createField(devices, fields, "faultEntity", "Störung (optional)", { placeholder: "binary_sensor.lueftung_stoerung" });
+      const deviceAdvanced = advancedMapping(devices, "devices");
+      for (const [prefix, name] of [
+        ["active", "Aktivstatus"], ["update", "Update"], ["warning", "Warnung"], ["fault", "Störung"],
+      ]) addSourceMapping(deviceAdvanced, fields, prefix, name, true);
+      const populateDevice = () => {
+        const selected = configuredDevices.find((item) => item.id === deviceSelector.value);
+        for (const [field, property] of [
+          ["deviceName", "name"], ["primaryEntity", "primary_entity_id"],
+          ["activeEntity", "active"], ["updateEntity", "update_available"],
+          ["warningEntity", "warning"], ["faultEntity", "fault"],
+        ]) {
+          const value = selected?.[property];
+          fields.get(field).value = typeof value === "object"
+            ? value?.entity_id ?? "" : value ?? "";
+        }
+      };
+      deviceSelector.addEventListener("change", () => {
+        populateDevice();
+        const selected = configuredDevices.find((item) => item.id === deviceSelector.value);
+        for (const [prefix, field] of [
+          ["active", "active"], ["update", "update_available"],
+          ["warning", "warning"], ["fault", "fault"],
+        ]) {
+          const binding = selected?.[field];
+          fields.get(prefix + "Attribute").value = binding?.attribute ?? "";
+          fields.get(prefix + "TrueValues").value = binding?.true_values?.join(", ") ?? "";
+          fields.get(prefix + "FalseValues").value = binding?.false_values?.join(", ") ?? "";
+        }
+      });
+      const deviceNotice = document.createElement("p");
+      deviceNotice.textContent = "Änderungen an einem ausgewählten Gerät gelten für alle Widgets, die den Geräte-Provider verwenden.";
+      devices.appendChild(deviceNotice);
+      const energy = group("energy");
+      createField(energy, fields, "energyName", "Energiequelle", { placeholder: "Hausverbrauch" });
+      createField(energy, fields, "powerEntity", "Leistungssensor", { placeholder: "sensor.hausleistung" });
+      createField(energy, fields, "powerAttribute", "HA-Attribut des Leistungssensors (optional)", {
+        placeholder: "power",
+      });
+      createField(energy, fields, "averageWindow", "Mittelungszeit (Minuten)", { placeholder: "15" });
+      fields.get("averageWindow").value = "15";
+      createField(energy, fields, "warningThreshold", "Warnschwelle (W)", { placeholder: "3000" });
+      createField(energy, fields, "criticalThreshold", "Kritische Schwelle (W)", { placeholder: "5000" });
+      const updateVisible = () => {
+        for (const [kind, section] of sections) section.hidden = kind !== select.value;
+      };
+      select.addEventListener("change", updateVisible);
+      updateVisible();
+    } else if (item.module_id === "widget.dynamic-buttons") {
+      const current = getConfig();
+      const definitions = current.dynamic_buttons ?? {};
+      const wrapper = document.createElement("label");
+      wrapper.style.display = "block";
+      wrapper.textContent = "Vorhandenen Button verwenden (optional)";
+      const select = document.createElement("select");
+      select.setAttribute("data-jui-catalog-field", "existingButtonId");
+      const empty = document.createElement("option");
+      empty.value = "";
+      empty.textContent = "Neuen Link-Button erstellen";
+      select.appendChild(empty);
+      for (const [id, definition] of Object.entries(definitions)) {
+        const option = document.createElement("option");
+        option.value = id;
+        option.textContent = definition.name ?? id;
+        select.appendChild(option);
+      }
+      wrapper.appendChild(select);
+      form.appendChild(wrapper);
+      fields.set("existingButtonId", select);
+
+      const sizeLabel = document.createElement("label");
+      sizeLabel.style.display = "block";
+      sizeLabel.textContent = "Button-Größe";
+      const size = document.createElement("select");
+      size.setAttribute("data-jui-catalog-field", "buttonSize");
+      for (const [value, label] of [
+        ["compact", "Kompakt"], ["normal", "Normal"], ["wide", "Breit"],
+      ]) {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = label;
+        size.appendChild(option);
+      }
+      size.value = "normal";
+      sizeLabel.appendChild(size);
+      form.appendChild(sizeLabel);
+      fields.set("buttonSize", size);
+
+      const fresh = document.createElement("section");
+      fresh.setAttribute("data-jui-new-button-setup", "");
+      form.appendChild(fresh);
+      const kindLabel = document.createElement("label");
+      kindLabel.textContent = "Neuen Button konfigurieren";
+      kindLabel.style.display = "block";
+      const kind = document.createElement("select");
+      kind.setAttribute("data-jui-catalog-field", "buttonKind");
+      for (const [value, text] of [["link", "Weblink"], ["toggle", "Gerät ein-/ausschalten"]]) {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = text;
+        kind.appendChild(option);
+      }
+      kindLabel.appendChild(kind);
+      fresh.appendChild(kindLabel);
+      fields.set("buttonKind", kind);
+      createField(fresh, fields, "buttonName", "Button-Name", { placeholder: "Wohnzimmerlicht" });
+      const linkFields = document.createElement("section");
+      linkFields.setAttribute("data-jui-button-setup", "link");
+      createField(linkFields, fields, "url", "Zieladresse", { placeholder: "https://example.org" });
+      fresh.appendChild(linkFields);
+      const toggleFields = document.createElement("section");
+      toggleFields.setAttribute("data-jui-button-setup", "toggle");
+      createField(toggleFields, fields, "toggleEntity", "Schaltbare HA-Entität", {
+        placeholder: "light.wohnzimmer oder switch.steckdose",
+      });
+      fresh.appendChild(toggleFields);
+      const updateVisible = () => {
+        fresh.hidden = select.value !== "";
+        linkFields.hidden = kind.value !== "link";
+        toggleFields.hidden = kind.value !== "toggle";
+      };
+      select.addEventListener("change", updateVisible);
+      kind.addEventListener("change", updateVisible);
+      updateVisible();
+    }
+
+    // Prefill only controls representing an existing widget. Preserve advanced
+    // options in the typed setup builder instead of silently replacing them.
+    if (editing) {
+      const instance = editing.definition.config ?? {};
+      const cfg = getConfig();
+      const source = (name, field) => {
+        const raw = cfg.data_sources?.[name];
+        const value = raw?.config ?? raw ?? {};
+        return Array.isArray(value[field]) ? value[field] : [];
+      };
+      const set = (field, value) => {
+        if (fields.has(field)) fields.get(field).value = value === undefined || value === null ? "" : String(value);
+      };
+      if (item.module_id === "widget.calendar-agenda") {
+        set("calendars", (instance.calendars ?? []).map((entry) => entry.entity_id).join(", "));
+        set("tasks", (instance.task_lists ?? []).map((entry) => entry.entity_id).join(", "));
+        set("agendaPresentation", instance.presentation_mode ?? "grouped");
+        set("agendaTaskVisibility", instance.tasks_enabled === false ? "off" : "auto");
+        set("agendaShowLocation", instance.show_location ? "true" : "false");
+        set("agendaLookaheadDays", instance.lookahead_days ?? 30);
+      } else if (item.module_id === "widget.dynamic-buttons") {
+        if (instance.buttons?.length === 1) {
+          set("existingButtonId", instance.buttons[0].button_id);
+          set("buttonSize", instance.buttons[0].size);
+        }
+        if (fields.get("existingButtonId")) {
+          fields.get("existingButtonId").dispatchEvent(new Event("change"));
+        }
+      } else if (item.module_id === "widget.house-quick") {
+        const button = instance.buttons?.[0];
+        if (instance.buttons?.length !== 1) throw new TypeError("Hausstatus mit mehreren Buttons zuerst auf einzelne Widgets aufteilen");
+        set("houseType", button.type);
+        const lights = source("provider.house-lighting", "lights");
+        const ambient = source("provider.house-lighting", "ambient_lights");
+        if (button.type === "lights" && lights.length === 1) set("lightEntityId", lights[0].state?.entity_id);
+        if (button.type === "ambient_lights" && ambient.length === 1) set("ambientEntityId", ambient[0].state?.entity_id);
+        if (button.type === "heating_zone") {
+          const zone = source("provider.house-heating", "zones").find((value) => value.id === button.source_id);
+          if (!zone) throw new TypeError("Konfigurierte Heizungszone wurde nicht gefunden");
+          set("heatingName", zone.name);
+          set("currentTemperature", zone.current_temperature?.entity_id);
+          set("targetTemperature", zone.target_temperature?.entity_id);
+          set("heatingDemand", zone.heating_demand?.entity_id);
+          set("autoRegulation", zone.auto_regulation_enabled?.entity_id);
+          for (const [prefix, field, bool] of [
+            ["currentTemperature", "current_temperature", false],
+            ["targetTemperature", "target_temperature", false],
+            ["heatingDemand", "heating_demand", true],
+            ["autoRegulation", "auto_regulation_enabled", true],
+          ]) {
+            set(prefix + "Attribute", zone[field]?.attribute);
+            if (bool) {
+              set(prefix + "TrueValues", zone[field]?.true_values?.join(", "));
+              set(prefix + "FalseValues", zone[field]?.false_values?.join(", "));
+            }
+          }
+        }
+        if (button.type === "devices") {
+          const configured = source("provider.house-devices", "devices");
+          // Never guess which device the user intended to edit. Preselect
+          // only when there is exactly one configured device.
+          if (configured.length === 1) {
+            set("deviceId", configured[0].id);
+            fields.get("deviceId").dispatchEvent(new Event("change"));
+          }
+        }
+        if (button.type === "energy") {
+          const energy = source("provider.house-energy", "sources").find((value) => value.id === button.source_id);
+          if (!energy) throw new TypeError("Konfigurierte Energiequelle wurde nicht gefunden");
+          set("energyName", energy.name);
+          set("powerEntity", energy.power?.entity_id);
+          set("powerAttribute", energy.power?.attribute);
+          set("averageWindow", button.average_window_minutes);
+          set("warningThreshold", button.warning_threshold_w);
+          set("criticalThreshold", button.critical_threshold_w);
+        }
+        fields.get("houseType")?.dispatchEvent(new Event("change"));
+      }
+    }
+
+    const error = document.createElement("p");
+    error.setAttribute("data-jui-catalog-error", "");
+    error.setAttribute("role", "alert");
+    error.hidden = true;
+    const note = document.createElement("p");
+    note.textContent = "Datenquellen werden beim Speichern übernommen und aktiviert. Fehlende Home-Assistant-Entitäten bleiben als nicht verfügbar erkennbar.";
+    form.appendChild(note);
+    form.appendChild(error);
+    const add = createButton(form, editing ? "Änderungen übernehmen" : "Widget hinzufügen", () => {
+      try {
+        const values = Object.fromEntries([...fields.entries()].map(([key, field]) => [key, field.value]));
+        if (item.module_id === "widget.house-quick") {
+          if (values.houseType === "ambient_lights") values.lightEntityId = values.ambientEntityId;
+          if (values.houseType === "heating_zone") values.sourceName = values.heatingName;
+          if (values.houseType === "devices") values.sourceName = values.deviceName;
+          if (values.houseType === "energy") values.sourceName = values.energyName;
+        }
+        const plan = buildDashboardWidgetSetup({
+          moduleId: item.module_id,
+          inputs: values, currentConfig: getConfig(),
+          priorWidgetConfig: editing?.definition.config ?? null,
+        });
+        const accepted = editing
+          ? onEdit(editing.elementId, item.module_id, plan)
+          : onSelect(item.module_id, plan);
+        if (accepted === false) throw new Error("Widget-Änderung konnte nicht übernommen werden");
+        root.hidden = true;
+      } catch (failure) {
+        error.textContent = failure?.message ?? "Widget kann nicht hinzugefügt werden";
+        error.hidden = false;
+      }
+    });
+    add.setAttribute("data-jui-catalog-confirm", "");
+    root.appendChild(form);
+  };
+
+  return Object.freeze({
+    root,
+    open() { showModules(); root.hidden = false; },
+    edit(elementId, definition) {
+      if (!onEdit) throw new Error("Widget editing is not enabled");
+      if (!definition?.module_id) throw new TypeError("Widget-Definition fehlt");
+      const item = catalog.entries().find((entry) => entry.module_id === definition.module_id);
+      if (!item) throw new TypeError("Widgetmodul ist nicht im Katalog registriert");
+      showSetup(item, { elementId, definition });
+      root.hidden = false;
+    },
+    close() { root.hidden = true; },
+  });
+}

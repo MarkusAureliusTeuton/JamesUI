@@ -55,7 +55,12 @@ export function createConfigService({ homeAssistant } = {}) {
   requireHomeAssistant(homeAssistant);
 
   let current = null;
+  let currentRevision = null;
   let destroyed = false;
+  let operationGeneration = 0;
+  let pendingMutation = Promise.resolve();
+  let writeQueue = Promise.resolve();
+  let queuedWrites = 0;
   const listeners = new Set();
 
   const requireActive = () => {
@@ -75,6 +80,11 @@ export function createConfigService({ homeAssistant } = {}) {
 
   const commitResponse = (response) => {
     const next = extractConfigResponse(response);
+    if (response.revision !== undefined &&
+        (typeof response.revision !== "string" || !/^[a-f0-9]{64}$/.test(response.revision))) {
+      throw new TypeError("Invalid JamesUI configuration revision");
+    }
+    currentRevision = response.revision ?? null;
     current = next;
     notify();
     return cloneValue(next);
@@ -83,8 +93,15 @@ export function createConfigService({ homeAssistant } = {}) {
   return {
     async load() {
       requireActive();
+      // A read requested after a write must observe that write's final
+      // server revision. A delayed write response must never be discarded
+      // merely because a later GET raced against it.
+      if (queuedWrites > 0) await writeQueue;
+      requireActive();
+      const requestGeneration = ++operationGeneration;
       const response = await homeAssistant.callWS({ type: "jamesui/config/get" });
       requireActive();
+      if (requestGeneration !== operationGeneration) return current === null ? null : cloneValue(current);
       return commitResponse(response);
     },
 
@@ -92,15 +109,50 @@ export function createConfigService({ homeAssistant } = {}) {
       return current === null ? null : cloneValue(current);
     },
 
+    get revision() { return currentRevision; },
+
     async replace(config) {
       requireActive();
       const requestConfig = validateAndCloneConfig(config);
-      const response = await homeAssistant.callWS({
-        type: "jamesui/config/replace",
-        config: requestConfig,
+      queuedWrites += 1;
+      // Serialize even direct replace() calls. Each write must use the revision
+      // produced by the previous successful write; no parallel CAS requests
+      // from this client may overwrite a newer result with an older snapshot.
+      const operation = writeQueue.then(async () => {
+        requireActive();
+        const requestGeneration = ++operationGeneration;
+        const request = {
+          type: "jamesui/config/replace",
+          config: requestConfig,
+          ...(currentRevision !== null ? { expected_revision: currentRevision } : {}),
+        };
+        const response = await homeAssistant.callWS(request);
+        requireActive();
+        if (requestGeneration !== operationGeneration) return current === null ? null : cloneValue(current);
+        return commitResponse(response);
       });
+      writeQueue = operation.then(() => undefined, () => undefined);
+      return operation.finally(() => { queuedWrites -= 1; });
+    },
+
+    // Serialize dashboard edits against the latest committed snapshot. Failed
+    // changes leave the local snapshot unchanged; unrelated sections persist.
+    update(mutator) {
       requireActive();
-      return commitResponse(response);
+      if (typeof mutator !== "function") throw new TypeError("mutator must be a function");
+      const operation = pendingMutation.then(async () => {
+        requireActive();
+        // An edit must be based on all writes already submitted by the
+        // caller, including direct replace() operations outside update().
+        await writeQueue;
+        requireActive();
+        if (current === null) throw new Error("JamesUI config must be loaded before update");
+        const next = mutator(cloneValue(current));
+        if (next === null) return null;
+        return this.replace(next);
+      });
+      pendingMutation = operation.then(() => undefined, () => undefined);
+      return operation;
     },
 
     subscribe(listener, { emitCurrent = true } = {}) {
@@ -126,6 +178,7 @@ export function createConfigService({ homeAssistant } = {}) {
     destroy() {
       if (destroyed) return false;
       destroyed = true;
+      operationGeneration += 1;
       listeners.clear();
       return true;
     },

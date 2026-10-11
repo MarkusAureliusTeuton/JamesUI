@@ -130,6 +130,16 @@ class CoreArchitectureTest(unittest.TestCase):
         for token in forbidden:
             self.assertNotIn(token, source, f"Core must not contain forbidden coupling: {token}")
 
+    def test_dashboard_composer_receives_module_integrations_through_composition(self):
+        source = (CORE_ROOT / "dashboard-page-composer.js").read_text(encoding="utf-8")
+        composition = (Path("custom_components/jamesui/frontend/modules") / "dashboard-composition.js").read_text(encoding="utf-8")
+        preview = Path("custom_components/jamesui/frontend/jamesui-app.js").read_text(encoding="utf-8")
+        self.assertNotIn("../modules/", source, "Core composer must not import module implementations")
+        self.assertIn("integrations", source)
+        self.assertIn("createDashboardHeroLayout", composition)
+        self.assertIn("createDashboardWidgetHosts", composition)
+        self.assertIn("createConfiguredDashboardPageComposer", preview)
+
     def test_ha_backed_actions_live_only_in_ha_boundary(self):
         core_source = "\n".join(path.read_text(encoding="utf-8") for path in CORE_ROOT.glob("*.js"))
         ha_source = "\n".join(path.read_text(encoding="utf-8") for path in HA_ROOT.glob("*.js"))
@@ -138,7 +148,7 @@ class CoreArchitectureTest(unittest.TestCase):
             self.assertIn(action_type, ha_source, f"HA boundary must implement action: {action_type}")
 
     def test_new_runtime_direct_ha_access_is_confined_to_ha_boundary(self):
-        # r11 remains production until cutover and intentionally still contains direct HA access.
+        # JamesUI Next exclusively owns the production runtime.
         new_runtime_non_ha_roots = (
             CORE_ROOT,
             DESIGN_ROOT,
@@ -429,28 +439,16 @@ class CoreArchitectureTest(unittest.TestCase):
         self.assertIn("z-index: 100", design_styles)
         self.assertNotIn("z-index: 100", styles)
 
-    def test_production_entry_remains_on_legacy_runtime_during_block_10(self):
-        source = Path("custom_components/jamesui/frontend/jamesui-entry.js").read_text(encoding="utf-8")
-        self.assertIn("jamesui-panel.js", source)
-        self.assertIn("jamesui-home-entry.js", source)
-        self.assertNotIn("frontend/core", source)
-        self.assertNotIn("frontend/ha", source)
-        self.assertNotIn("frontend/design", source)
-        self.assertNotIn("frontend/icons", source)
-        self.assertNotIn("frontend/modules", source)
-        self.assertNotIn("layout.home-hero-deck", source)
-        self.assertNotIn("provider.weather", source)
-        self.assertNotIn("widget.weather-today", source)
-        self.assertNotRegex(source, r"(?:^|[\"'/])core/index\.js")
-        self.assertNotIn("module-loader", source)
-        self.assertNotIn("module-registry", source)
-        self.assertNotIn("capability-registry", source)
-        self.assertNotIn("action-registry", source)
-        self.assertNotIn("home-assistant-adapter", source)
-        self.assertNotIn("config-service", source)
-        self.assertNotIn("design-system", source)
-        self.assertNotIn("icon-registry", source)
-        self.assertNotRegex(source, r"(?:^|[\"'/])icon\.js")
+    def test_primary_panel_is_next_only(self):
+        consts = Path("custom_components/jamesui/const.py").read_text(encoding="utf-8")
+        setup = Path("custom_components/jamesui/__init__.py").read_text(encoding="utf-8")
+        entry = Path("custom_components/jamesui/frontend/jamesui-entry.js").read_text(encoding="utf-8")
+        self.assertIn('FRONTEND_FILE = "jamesui-entry.js"', consts)
+        self.assertIn('PANEL_ELEMENT = "jamesui-next-panel"', consts)
+        self.assertIn('const TAG = "jamesui-next-panel"', entry)
+        self.assertNotIn("jamesui-panel.js", entry)
+        self.assertNotIn("jamesui-home-entry.js", entry)
+        self.assertEqual(setup.count("async_register_built_in_panel("), 1)
 
 
 if __name__ == "__main__":

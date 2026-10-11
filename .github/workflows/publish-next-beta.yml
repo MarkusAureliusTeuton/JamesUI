@@ -1,0 +1,83 @@
+name: Publish JamesUI Next Beta
+
+# A deliberate version update on the Next feature branch is the only
+# automatic release trigger. A plain source/doc change never publishes.
+on:
+  push:
+    branches:
+      - feat/jamesui-1-0-block-14-start-configuration
+    paths:
+      - custom_components/jamesui/manifest.json
+      - .github/workflows/publish-next-beta.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jamesui-next-beta-release
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    uses: ./.github/workflows/validate.yml
+
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify prerelease version matches integration
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION=$(python - <<'PY'
+          import json
+          from pathlib import Path
+          import re
+          manifest = json.loads(Path("custom_components/jamesui/manifest.json").read_text())
+          version = manifest["version"]
+          const = Path("custom_components/jamesui/const.py").read_text()
+          if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+b[0-9]+", version):
+              raise SystemExit("Refusing non-beta integration version")
+          if not re.search(r'^VERSION = "' + re.escape(version) + r'"$', const, re.MULTILINE):
+              raise SystemExit("Manifest and Python VERSION disagree")
+          print(version)
+          PY
+          )
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub prerelease for HACS
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          TAG="v${VERSION}"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $TAG already exists, preserving the immutable beta."
+            exit 0
+          fi
+          cat > "$RUNNER_TEMP/notes.md" <<'NOTES'
+          ## JamesUI Next — Betaversion zum Testen über HACS
+          
+          Erste eigenständige JamesUI-Next-Beta ohne r11-Laufzeit oder r11-Konfigurationsübernahme.
+          
+          - Start: Wetter, Kalender/Aufgaben, Hausstatus und dynamische Buttons
+          - Eigener Next-Speicher: `jamesui.next.config`
+          - Nur Start ist derzeit implementiert; Haus/Klima/Medien/Tür folgen später
+          - Vor dem Test Home-Assistant-Backup erstellen
+          - Noch nicht gegen reale HA/KNX-Systeme oder das OnePlus Pad 2/Fully abgenommen
+          
+          **HACS:** JamesUI → Erneut herunterladen → Beta-Versionen anzeigen → diese Beta wählen → Home Assistant neu starten.
+          NOTES
+          gh release create "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --prerelease \
+            --title "JamesUI Next ${VERSION} (Beta)" \
+            --notes-file "$RUNNER_TEMP/notes.md"

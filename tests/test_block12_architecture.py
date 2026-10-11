@@ -78,17 +78,15 @@ class Block12ArchitectureTest(unittest.TestCase):
         for token in (*MODULE_IDS, *CAPABILITIES, "data-jui-house-quick"):
             self.assertNotIn(token, source, f"Core must not own Block 12 behavior: {token}")
 
-    def test_block12_is_not_wired_into_legacy_or_production_bootstrap(self):
-        production_files = (
-            FRONTEND / "jamesui-entry.js",
-            FRONTEND / "jamesui-home-entry.js",
-            FRONTEND / "jamesui-home.js",
-            FRONTEND / "jamesui-panel.js",
-        )
-        for path in production_files:
-            source = path.read_text(encoding="utf-8")
-            for module_id in MODULE_IDS:
-                self.assertNotIn(module_id, source, f"Block 12 must not cut over production yet: {path} contains {module_id}")
+    def test_block12_is_mounted_only_through_next_app(self):
+        entry = (FRONTEND / "jamesui-entry.js").read_text(encoding="utf-8")
+        app = (FRONTEND / "jamesui-app.js").read_text(encoding="utf-8")
+        self.assertIn('import("./jamesui-app.js")', entry)
+        for module_id in MODULE_IDS:
+            self.assertIn(module_id, app, f"Missing Block 12 module: {module_id}")
+        self.assertNotIn("jamesui-home-entry.js", entry)
+        self.assertNotIn("jamesui-panel.js", entry)
+
 
     def test_house_quick_uses_existing_semantic_icon_ids_only(self):
         definitions = (ICONS / "icon-definitions.js").read_text(encoding="utf-8")

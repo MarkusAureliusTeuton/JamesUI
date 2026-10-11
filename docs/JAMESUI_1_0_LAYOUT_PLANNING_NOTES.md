@@ -78,7 +78,7 @@ This rule is already compatible with the foundation configuration model's top-le
 
 ## Start layout – `layout.home-hero-deck`
 
-The existing `layout.home-hero-deck` remains the Start layout family. The current stable slot contract from Block 8 remains valid unless a future approved spec deliberately migrates it.
+The existing `layout.home-hero-deck` remains the Start layout family. **The approved Block-14 design deliberately migrates the Block-8 fixed four-slot contract to `hero` + `content`.** `content` hosts the freely configured page grid; the left/right split is removed.
 
 The Start composition follows the approved mockup:
 
@@ -105,7 +105,7 @@ Below the hero/weather region sits the lower Start widget deck containing, initi
 
 This lower region should use a shared raster/grid system for widget allocation and sizing.
 
-The grid is local to the lower widget region rather than stretching through the hero. Named Start slots may map onto grid areas/spans; using a grid internally does not require discarding the stable slot/lifecycle contract.
+The grid is local to the lower widget region rather than stretching through the hero. The approved Block-14 free-grid design explicitly replaces the previous left/right named slots with one `content` slot. Layout owns its hero/deck split; the inner grid owns independently placeable widgets and individual buttons.
 
 ## Grid sizing contract
 
@@ -120,7 +120,7 @@ Requirements:
 - layouts may define their own column/row structure appropriate to their design
 - a later shared grid primitive may standardize placement mechanics, but each layout remains responsible for which regions are gridded and what its structural rules are
 
-The exact Start grid dimensions / row-unit count are still open and must be chosen from the composed OnePlus Pad 2 portrait layout, not from an arbitrary round number.
+The Block-14 Start grid uses **12 columns** and a fixed logical row height per layout instance. Its actual row-height/gap CSS-pixel measurement is intentionally open until the real OnePlus Pad 2 portrait/Fully viewport and practical touch targets are checked. Empty grid cells remain intentionally empty; local collision push must not globally compact the page.
 
 ## Interaction with Block 11 Agenda
 

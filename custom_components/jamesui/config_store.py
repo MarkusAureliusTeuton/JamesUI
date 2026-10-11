@@ -11,7 +11,7 @@ from .config_migrations import migrate_stored_config
 from .config_schema import CONFIG_SCHEMA_VERSION
 
 
-CONFIG_STORE_KEY = "jamesui.config"
+CONFIG_STORE_KEY = "jamesui.next.config"
 
 
 class JamesUIConfigStore(Store[dict[str, Any]]):

@@ -360,17 +360,36 @@ export function createWeatherProvider(initialContext, initialConfig, runtime) {
         config = validatedConfig;
         return true;
       }
+      const previousContext = context;
+      const previousConfig = config;
+      const resetSelection = () => {
+        selectedWeatherEntity = null;
+        selectedWeatherId = null;
+        currentBase = null;
+        cachedTimeZone = null;
+        moonState = null;
+      };
       teardownLocalSubscriptions();
       clearRemoteForecasts();
       context = validatedContext;
       config = validatedConfig;
-      selectedWeatherEntity = null;
-      selectedWeatherId = null;
-      currentBase = null;
-      cachedTimeZone = null;
-      setupLocalSubscriptions();
-      reconcile();
-      return true;
+      resetSelection();
+      try {
+        setupLocalSubscriptions();
+        reconcile();
+        return true;
+      } catch (error) {
+        // A source reconfiguration must never strand the previously working
+        // weather provider or leak a partially installed subscription set.
+        teardownLocalSubscriptions();
+        clearRemoteForecasts();
+        context = previousContext;
+        config = previousConfig;
+        resetSelection();
+        setupLocalSubscriptions();
+        reconcile();
+        throw error;
+      }
     },
 
     destroy() {

@@ -301,3 +301,36 @@ test("destroy is idempotent and drains local and remote subscriptions without po
   assert.equal(ha.subscriptionCalls[0].unsubscribeCalls, 1);
   assert.equal(capabilities.unregistered, 1);
 });
+
+test("failed source subscription during update restores the previous calendar runtime", () => {
+  const caps = fakeCapabilities();
+  const ha = createFakeHomeAssistantAdapter({
+    states: {
+      "calendar.old": calendar("calendar.old"),
+      "calendar.new": calendar("calendar.new"),
+    },
+  });
+  const ctx = context(caps, ha);
+  const provider = createCalendarProvider(ctx, { source_entity_ids: ["calendar.old"] });
+  assert.equal(provider.mount(null), true);
+  const originalSubscribe = ha.subscribeEntity.bind(ha);
+  let refuseOnce = true;
+  ha.subscribeEntity = (id, ...args) => {
+    if (id === "calendar.new" && refuseOnce) {
+      refuseOnce = false;
+      throw new Error("new calendar subscription unavailable");
+    }
+    return originalSubscribe(id, ...args);
+  };
+  assert.throws(() => provider.update(ctx, { source_entity_ids: ["calendar.new"] }),
+    /new calendar subscription unavailable/);
+  assert.equal(caps.current.status, "available");
+  assert.deepEqual(caps.current.value.configured_sources.map((entry) => entry.entity_id),
+    ["calendar.old"]);
+  assert.equal(ha.activeEntitySubscriptions("calendar.old"), 1);
+  assert.equal(ha.activeEntitySubscriptions("calendar.new"), 0);
+  assert.equal(ha.activeConnectionSubscriptions(), 1);
+  assert.equal(provider.destroy(), true);
+  assert.equal(ha.activeEntitySubscriptions(), 0);
+  assert.equal(ha.activeConnectionSubscriptions(), 0);
+});

@@ -331,11 +331,23 @@ export function createTasksProvider(initialContext, initialConfig) {
         config = validatedConfig;
         return true;
       }
+      const previousContext = context;
+      const previousConfig = config;
       unbindRuntime();
       context = validatedContext;
       config = validatedConfig;
-      bindRuntime();
-      return true;
+      try {
+        bindRuntime();
+        return true;
+      } catch (error) {
+        // A partially bound replacement must not leave stale subscriptions or
+        // disable a previously healthy provider. Restore the last valid config.
+        try { unbindRuntime(); } catch { /* Best-effort cleanup of the attempted binding. */ }
+        context = previousContext;
+        config = previousConfig;
+        bindRuntime();
+        throw error;
+      }
     },
     destroy() {
       if (destroyed) return false;

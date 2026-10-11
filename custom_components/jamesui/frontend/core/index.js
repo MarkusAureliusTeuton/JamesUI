@@ -2,6 +2,7 @@ import { createDesignSystem } from "../design/design-system.js";
 import { createHomeAssistantAdapter } from "../ha/home-assistant-adapter.js";
 import { registerHomeAssistantActionProviders } from "../ha/ha-action-providers.js";
 import { createRouter } from "./router.js";
+import { CORE_ROUTES } from "./routes.js";
 import { createEventBus } from "./event-bus.js";
 import { createOverlayService } from "./overlay-service.js";
 import { createHealthService } from "./health-service.js";
@@ -19,7 +20,7 @@ function defaultOpenUrl(url) {
   return globalThis.open(url, "_blank", "noopener,noreferrer") !== null;
 }
 
-export function createJamesUICore({ document = globalThis.document, renderPage, openUrl = defaultOpenUrl } = {}) {
+export function createJamesUICore({ document = globalThis.document, renderPage, availableRoutes = null, openUrl = defaultOpenUrl } = {}) {
   const health = createHealthService();
   const events = createEventBus({
     onError: ({ type, error }) => {
@@ -30,7 +31,8 @@ export function createJamesUICore({ document = globalThis.document, renderPage, 
       });
     },
   });
-  const router = createRouter();
+  const routes = availableRoutes === null ? CORE_ROUTES : CORE_ROUTES.filter((route) => availableRoutes.includes(route.id));
+  const router = createRouter({ routes });
   const overlays = createOverlayService();
   const moduleRegistry = createModuleRegistry();
   const capabilities = createCapabilityRegistry({ moduleRegistry });
@@ -74,6 +76,7 @@ export function createJamesUICore({ document = globalThis.document, renderPage, 
     designSystem,
     getContext: () => hostContext.snapshot(),
     renderPage,
+    availableRoutes,
   });
 
   const core = {

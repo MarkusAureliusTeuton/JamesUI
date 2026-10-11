@@ -1,11 +1,6 @@
 import { HOME_HERO_DECK_STYLES } from "./styles.js";
 
-export const SLOT_NAMES = Object.freeze([
-  "hero",
-  "widget-left",
-  "widget-right-main",
-  "widget-right-footer",
-]);
+export const SLOT_NAMES = Object.freeze(["hero", "content"]);
 
 const DEFAULT_HERO_RATIO = 0.42;
 const MIN_HERO_RATIO = 0.35;
@@ -79,8 +74,6 @@ export function create(_context, config = {}) {
 
     const heroRegion = createNode(document, "data-jui-layout-region", "hero");
     const deck = createNode(document, "data-jui-layout-region", "deck");
-    const left = createNode(document, "data-jui-layout-region", "left");
-    const right = createNode(document, "data-jui-layout-region", "right");
 
     const nextSlots = new Map();
     for (const name of SLOT_NAMES) {
@@ -89,11 +82,7 @@ export function create(_context, config = {}) {
     }
 
     heroRegion.appendChild(nextSlots.get("hero"));
-    left.appendChild(nextSlots.get("widget-left"));
-    right.appendChild(nextSlots.get("widget-right-main"));
-    right.appendChild(nextSlots.get("widget-right-footer"));
-    deck.appendChild(left);
-    deck.appendChild(right);
+    deck.appendChild(nextSlots.get("content"));
     root.appendChild(heroRegion);
     root.appendChild(deck);
 

@@ -120,6 +120,50 @@ class ConfigServiceTest(unittest.IsolatedAsyncioTestCase):
             await service.async_replace(replacement)
         self.assertEqual(service.snapshot(), initial)
 
+    async def test_revision_is_stable_and_stale_client_replacement_is_rejected(self):
+        storage = FakeStorage()
+        service = self.service_module.JamesUIConfigService(storage)
+        await service.async_initialize(schema.empty_config())
+        initial_revision = service.revision
+        self.assertEqual(len(initial_revision), 64)
+        self.assertEqual(initial_revision, service.revision)
+
+        first = schema.empty_config()
+        first["pages"]["home"] = {"kind": "dashboard"}
+        await service.async_replace(first, expected_revision=initial_revision)
+        self.assertNotEqual(service.revision, initial_revision)
+        revision_after_first = service.revision
+        count = len(storage.saves)
+
+        stale = schema.empty_config()
+        stale["pages"]["other"] = {"kind": "dashboard"}
+        with self.assertRaises(self.service_module.ConfigConflictError):
+            await service.async_replace(stale, expected_revision=initial_revision)
+        self.assertEqual(service.revision, revision_after_first)
+        self.assertEqual(len(storage.saves), count)
+        self.assertEqual(service.snapshot(), first)
+
+        # Revisions are content hashes, not transient process counters.
+        restarted = self.service_module.JamesUIConfigService(FakeStorage(stored=first))
+        await restarted.async_initialize(schema.empty_config())
+        self.assertEqual(restarted.revision, revision_after_first)
+        await restarted.async_replace(stale, expected_revision=revision_after_first)
+        self.assertNotEqual(restarted.revision, revision_after_first)
+
+    async def test_legacy_update_changes_revision_and_invalidates_stale_structured_save(self):
+        service = self.service_module.JamesUIConfigService(FakeStorage())
+        await service.async_initialize(schema.empty_config())
+        old_revision = service.revision
+
+        def modify(current):
+            current["data_sources"]["weather"] = {"entity_id": "weather.local"}
+            return current
+
+        await service.async_update(modify)
+        with self.assertRaises(self.service_module.ConfigConflictError):
+            await service.async_replace(schema.empty_config(), expected_revision=old_revision)
+        self.assertEqual(service.snapshot()["data_sources"]["weather"]["entity_id"], "weather.local")
+
     async def test_concurrent_updates_are_serialized_against_latest_snapshot(self):
         storage = FakeStorage()
         service = self.service_module.JamesUIConfigService(storage)

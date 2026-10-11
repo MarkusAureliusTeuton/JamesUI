@@ -47,6 +47,9 @@ function fakeHomeAssistant(initialStates = {}, { timeZone = "Europe/Berlin", con
 
   const api = {
     calls,
+    activeConnectionSubscriptions: () => connectionListeners.size,
+    activeDomainSubscriptions: (domain) => domainListeners.get(domain)?.size ?? 0,
+    activeEntitySubscriptions: (id) => entityListeners.get(id)?.size ?? 0,
     subscriptionMessages,
     forecastHistory,
     remoteUnsubscribes,
@@ -288,4 +291,53 @@ test("five-minute timer recalculates cached time-derived values without HA polli
   retainedTimer();
   assert.equal(capabilities.snapshots.get("weather.current"), undefined);
   assert.notEqual(snapshotBeforeDestroy, undefined);
+});
+
+test("failed configured weather sensor rebind restores old capabilities without duplicate HA listeners", async () => {
+  const caps = fakeCapabilities();
+  const ha = fakeHomeAssistant({
+    "weather.home": weather("weather.home", 0),
+    "sensor.outdoor_old": entity("sensor.outdoor_old", "10"),
+    "sensor.outdoor_new": entity("sensor.outdoor_new", "11"),
+  });
+  const ctx = context(caps, ha);
+  const runtime = fakeRuntime();
+  const provider = createWeatherProvider(ctx, {
+    entity_id: "weather.home",
+    outdoor_temperature_entity_id: "sensor.outdoor_old",
+  }, runtime);
+  assert.equal(provider.mount(null), true);
+  assert.equal(caps.snapshots.get("weather.current").status, "available");
+  assert.equal(ha.activeConnectionSubscriptions(), 1);
+  assert.equal(ha.activeDomainSubscriptions("weather"), 1);
+  assert.equal(ha.activeEntitySubscriptions("sensor.outdoor_old"), 1);
+  const subscribe = ha.subscribeEntity.bind(ha);
+  let refuseOnce = true;
+  ha.subscribeEntity = (id, ...args) => {
+    if (id === "sensor.outdoor_new" && refuseOnce) {
+      refuseOnce = false;
+      throw new Error("weather sensor subscribe failed");
+    }
+    return subscribe(id, ...args);
+  };
+  assert.throws(() => provider.update(ctx, {
+    entity_id: "weather.home",
+    outdoor_temperature_entity_id: "sensor.outdoor_new",
+  }), /weather sensor subscribe failed/);
+  assert.equal(caps.snapshots.get("weather.current").status, "available");
+  assert.equal(caps.snapshots.get("weather.current").value.source_entity_id, "weather.home");
+  assert.equal(ha.activeConnectionSubscriptions(), 1);
+  assert.equal(ha.activeDomainSubscriptions("weather"), 1);
+  assert.equal(ha.activeDomainSubscriptions("sensor"), 1);
+  assert.equal(ha.activeEntitySubscriptions("sensor.outdoor_old"), 1);
+  assert.equal(ha.activeEntitySubscriptions("sensor.outdoor_new"), 0);
+  assert.equal(runtime.intervals.length, 1, "Source update must preserve one timer");
+  ha.setEntity(entity("sensor.outdoor_old", "13"));
+  assert.equal(caps.snapshots.get("weather.current").status, "available");
+  assert.equal(provider.destroy(), true);
+  await flush();
+  assert.equal(ha.activeConnectionSubscriptions(), 0);
+  assert.equal(ha.activeDomainSubscriptions("weather"), 0);
+  assert.equal(ha.activeEntitySubscriptions("sensor.outdoor_old"), 0);
+  assert.equal(runtime.cleared.length, 1);
 });

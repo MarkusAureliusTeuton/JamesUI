@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { create } from "../custom_components/jamesui/frontend/modules/layout.home-hero-deck/index.js";
 import { createFakeDocument } from "./helpers/fake-dom.js";
 
-const SLOT_NAMES = ["hero", "widget-left", "widget-right-main", "widget-right-footer"];
+const SLOT_NAMES = ["hero", "content"];
 
 function setup(config = {}) {
   const document = createFakeDocument();
@@ -37,13 +37,9 @@ test("mount creates one canonical structure with stable slot markers and default
   assert.equal(deck.getAttribute("data-jui-layout-region"), "deck");
   assert.equal(heroRegion.children[0], instance.getSlot("hero"));
 
-  const left = deck.children[0];
-  const right = deck.children[1];
-  assert.equal(left.getAttribute("data-jui-layout-region"), "left");
-  assert.equal(right.getAttribute("data-jui-layout-region"), "right");
-  assert.equal(left.children[0], instance.getSlot("widget-left"));
-  assert.equal(right.children[0], instance.getSlot("widget-right-main"));
-  assert.equal(right.children[1], instance.getSlot("widget-right-footer"));
+  assert.equal(deck.children.length, 1);
+  assert.equal(deck.children[0], instance.getSlot("content"));
+  assert.equal(instance.getSlot("widget-left"), null);
 
   for (const name of SLOT_NAMES) {
     assert.equal(instance.getSlot(name).getAttribute("data-jui-layout-slot"), name);
@@ -59,12 +55,12 @@ test("valid boundary ratios update geometry without replacing slots or children"
 
   const before = new Map(SLOT_NAMES.map((name) => [name, instance.getSlot(name)]));
   const child = document.createElement("article");
-  before.get("widget-right-main").appendChild(child);
+  before.get("content").appendChild(child);
 
   instance.update(Object.freeze({ module: Object.freeze({ id: "layout.home-hero-deck" }) }), { hero_ratio: 0.50 });
   assert.equal(root.style.getPropertyValue("--jui-home-hero-ratio"), "50%");
   for (const name of SLOT_NAMES) assert.equal(instance.getSlot(name), before.get(name));
-  assert.equal(instance.getSlot("widget-right-main").children[0], child);
+  assert.equal(instance.getSlot("content").children[0], child);
 });
 
 test("rejects malformed config with exact TypeError and RangeError classes", () => {
@@ -93,12 +89,12 @@ test("invalid update is atomic and preserves ratio, slot identity and slot conte
   const root = target.querySelector('[data-jui-layout="home-hero-deck"]');
   const before = new Map(SLOT_NAMES.map((name) => [name, instance.getSlot(name)]));
   const child = document.createElement("span");
-  before.get("widget-left").appendChild(child);
+  before.get("content").appendChild(child);
 
   assert.throws(() => instance.update({}, { hero_ratio: 0.60 }), RangeError);
   assert.equal(root.style.getPropertyValue("--jui-home-hero-ratio"), "42%");
   for (const name of SLOT_NAMES) assert.equal(instance.getSlot(name), before.get(name));
-  assert.equal(instance.getSlot("widget-left").children[0], child);
+  assert.equal(instance.getSlot("content").children[0], child);
 
   assert.throws(() => instance.update({}, { unknown: true }), TypeError);
   assert.equal(root.style.getPropertyValue("--jui-home-hero-ratio"), "42%");

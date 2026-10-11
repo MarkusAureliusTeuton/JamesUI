@@ -1,6 +1,7 @@
 name: Validate JamesUI
 
 on:
+  workflow_call:
   push:
     branches: [main]
     paths-ignore:
@@ -12,7 +13,6 @@ on:
 
 jobs:
   validate:
-    if: github.event_name == 'push' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -36,9 +36,6 @@ jobs:
 
       - name: Test Home Assistant panel entrypoint
         run: python -m unittest tests/test_frontend_entrypoint.py
-
-      - name: Preserve Home Assistant bootstrap behavior
-        run: node --experimental-default-type=module --test tests/jamesui-entry-preservation.test.js
 
       - name: Guard JamesUI Core architecture
         run: python -m unittest tests/test_core_architecture.py
@@ -103,6 +100,26 @@ jobs:
             tests/jamesui-home-hero-deck.test.js \
             tests/jamesui-home-hero-deck-styles.test.js \
             tests/jamesui-home-hero-deck-loader.test.js
+
+      - name: Test JamesUI Block 14 dashboard
+        run: |
+          node --experimental-default-type=module --test \
+            tests/jamesui-grid-placement.test.js \
+            tests/jamesui-dashboard-config.test.js \
+            tests/jamesui-dashboard-controller.test.js \
+            tests/jamesui-dashboard-grid.test.js \
+            tests/jamesui-dashboard-widget-hosts.test.js \
+            tests/jamesui-dashboard-page-composer.test.js \
+            tests/jamesui-dashboard-edit-session.test.js \
+            tests/jamesui-dashboard-editor-toolbar.test.js \
+            tests/jamesui-dashboard-touch-editor.test.js \
+            tests/jamesui-dashboard-touch-events.test.js \
+            tests/jamesui-dashboard-catalog.test.js \
+            tests/jamesui-dashboard-widget-setup.test.js \
+            tests/jamesui-dashboard-resource-usage.test.js \
+            tests/jamesui-dashboard-provider-coordinator.test.js \
+            tests/jamesui-app.test.js \
+            tests/jamesui-app-entry.test.js
 
       - name: Test JamesUI Block 9 weather provider
         run: |
@@ -194,14 +211,20 @@ jobs:
       - name: Validate Alpine atmosphere assets
         run: python -m unittest tests/test_alpine_assets.py
 
-      - name: Test home status model
-        run: node --experimental-default-type=module --test tests/jamesui-home.test.js
 
-      - name: Test V11 Start visual polish
-        run: node --experimental-default-type=module --test tests/jamesui-v11-style.test.js
+  browser-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-      - name: Test Start background settings
-        run: node --experimental-default-type=module --test tests/jamesui-background.test.js
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
 
-      - name: Test Start calendar and scene data
-        run: node --experimental-default-type=module --test tests/jamesui-home-data.test.js
+      - name: Install pinned Chromium test environment
+        run: |
+          npm install --no-save --no-package-lock playwright@1.58.2
+          npx playwright install --with-deps chromium
+
+      - name: Test actual browser startup and portrait layout
+        run: node tests/browser/smoke.mjs
