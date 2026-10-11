@@ -439,28 +439,16 @@ class CoreArchitectureTest(unittest.TestCase):
         self.assertIn("z-index: 100", design_styles)
         self.assertNotIn("z-index: 100", styles)
 
-    def test_production_entry_remains_on_legacy_runtime_during_block_10(self):
-        source = Path("custom_components/jamesui/frontend/jamesui-entry.js").read_text(encoding="utf-8")
-        self.assertIn("jamesui-panel.js", source)
-        self.assertIn("jamesui-home-entry.js", source)
-        self.assertNotIn("frontend/core", source)
-        self.assertNotIn("frontend/ha", source)
-        self.assertNotIn("frontend/design", source)
-        self.assertNotIn("frontend/icons", source)
-        self.assertNotIn("frontend/modules", source)
-        self.assertNotIn("layout.home-hero-deck", source)
-        self.assertNotIn("provider.weather", source)
-        self.assertNotIn("widget.weather-today", source)
-        self.assertNotRegex(source, r"(?:^|[\"'/])core/index\.js")
-        self.assertNotIn("module-loader", source)
-        self.assertNotIn("module-registry", source)
-        self.assertNotIn("capability-registry", source)
-        self.assertNotIn("action-registry", source)
-        self.assertNotIn("home-assistant-adapter", source)
-        self.assertNotIn("config-service", source)
-        self.assertNotIn("design-system", source)
-        self.assertNotIn("icon-registry", source)
-        self.assertNotRegex(source, r"(?:^|[\"'/])icon\.js")
+    def test_primary_panel_is_next_only(self):
+        consts = Path("custom_components/jamesui/const.py").read_text(encoding="utf-8")
+        setup = Path("custom_components/jamesui/__init__.py").read_text(encoding="utf-8")
+        entry = Path("custom_components/jamesui/frontend/jamesui-1-preview-entry.js").read_text(encoding="utf-8")
+        self.assertIn('FRONTEND_FILE = "jamesui-1-preview-entry.js"', consts)
+        self.assertIn('PANEL_ELEMENT = "jamesui-next-panel"', consts)
+        self.assertIn('const TAG = "jamesui-next-panel"', entry)
+        self.assertNotIn("jamesui-panel.js", entry)
+        self.assertNotIn("jamesui-home-entry.js", entry)
+        self.assertEqual(setup.count("async_register_built_in_panel("), 1)
 
 
 if __name__ == "__main__":
