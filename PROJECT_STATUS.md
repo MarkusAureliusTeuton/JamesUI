@@ -4,6 +4,14 @@ _Last updated: 2026-10-11_
 
 This file is the persistent **single source of truth for the current execution state**. Architecture details live in approved specs, retained behavior in the baseline, and block-specific implementation detail in plans/tests.
 
+## HACS-Betarelease veröffentlicht – 2026-10-11
+
+**Veröffentlicht:** [JamesUI Next v1.0.0b1](https://github.com/MarkusAureliusTeuton/JamesUI/releases/tag/v1.0.0b1), GitHub-*Prerelease* aus Commit `e7b7cf7db6cec5dc4eddedc8ed020cbea52d3421` des Next-Branches, **ohne Merge nach `main`**. Vor der Veröffentlichung waren beide vollständigen Jobs (`verify / validate` und `verify / browser-smoke`) erfolgreich: [GitHub Actions 38145743857](https://github.com/MarkusAureliusTeuton/JamesUI/actions/runs/38145743857).
+
+**HACS-Installationsweg:** HACS → JamesUI → Erneut herunterladen → Beta-Versionen anzeigen → `v1.0.0b1` → Home Assistant neu starten. Das installierte JamesUI öffnet `/jamesui`; die Next-Konfiguration liegt separat in `jamesui.next.config`. Vor Installation HA-Backup erstellen.
+
+**Offen:** Die Beta wurde nicht in der realen HA-/KNX-Installation oder auf OnePlus Pad 2/Fully Kiosk abgenommen. PR #27 bleibt Draft. Die Veröffentlichung bedeutet noch keine Freigabe für den Produktivbetrieb.
+
 ## Bereinigungsstand – 2026-10-11
 
 **Verifiziert:** Commit `13753f26082adcee83d394fd64e9911554cfe4d7`, [GitHub Actions 38144228027](https://github.com/MarkusAureliusTeuton/JamesUI/actions/runs/38144228027): `validate` und `browser-smoke` erfolgreich. 40 r11-only Dateien gelöscht, Next auf `jamesui-entry.js` + `jamesui-app.js` konzentriert, r11-Optionen-Projektion und Legacy-Konfigurationsendpunkte entfernt. Alle acht genutzten Alpine-WebP-Bilder erhalten. Keine realen HA-/Tablet-Abnahmetests und kein Update der installierten HA-Instanz.
