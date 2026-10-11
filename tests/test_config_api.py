@@ -267,8 +267,6 @@ class ConfigApiTest(unittest.IsolatedAsyncioTestCase):
         hass = FakeHass(self.const.DOMAIN, service)
         self.api.async_register_websocket_commands(hass)
         self.assertEqual(hass.registered, [
-            self.api.websocket_get_config,
-            self.api.websocket_update_config,
             self.api.websocket_get_structured_config,
             self.api.websocket_replace_structured_config,
         ])
