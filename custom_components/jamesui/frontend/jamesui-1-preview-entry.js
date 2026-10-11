@@ -1,6 +1,6 @@
-// Separate Home Assistant panel bootstrap; r11's entry and element remain untouched.
+// JamesUI Next is the only Home Assistant frontend entry. No r11 imports.
 (() => {
-  const TAG = "jamesui-1-preview-panel";
+  const TAG = "jamesui-next-panel";
   if (customElements.get(TAG)) return;
   class JamesUI1PreviewPanel extends HTMLElement {
     constructor() {
@@ -55,7 +55,7 @@
           if (generation !== this._generation) return;
           preview.destroy();
           this._preview = null;
-          host.textContent = "JamesUI 1.0 Testansicht nicht verfügbar: " + (error?.message ?? "Konfiguration fehlt");
+          host.textContent = "JamesUI Next nicht verfügbar: " + (error?.message ?? "Konfiguration fehlt");
         }
       }).catch(() => {
         if (generation === this._generation) host.textContent = "JamesUI 1.0 konnte nicht geladen werden";
