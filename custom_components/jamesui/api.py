@@ -220,7 +220,6 @@ async def websocket_replace_structured_config(
 
 def async_register_websocket_commands(hass: HomeAssistant) -> None:
     """Register JamesUI WebSocket commands."""
-    websocket_api.async_register_command(hass, websocket_get_config)
-    websocket_api.async_register_command(hass, websocket_update_config)
+    # Retired r11 endpoints are not registered; only Next is externally callable.
     websocket_api.async_register_command(hass, websocket_get_structured_config)
     websocket_api.async_register_command(hass, websocket_replace_structured_config)
