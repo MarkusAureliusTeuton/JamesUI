@@ -13,6 +13,7 @@ test("Block 14 preview registers widgets and matching providers but never mounts
     "provider.weather", "provider.calendar", "provider.tasks",
     "provider.house-heating", "provider.house-lighting",
     "provider.house-devices", "provider.house-energy", "provider.control-state",
+    "action.task-update",
   ]);
   assert.equal(preview.core.config.snapshot(), null);
   preview.destroy();
