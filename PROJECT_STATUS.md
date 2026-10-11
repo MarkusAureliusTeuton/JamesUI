@@ -4,9 +4,13 @@ _Last updated: 2026-10-11_
 
 This file is the persistent **single source of truth for the current execution state**. Architecture details live in approved specs, retained behavior in the baseline, and block-specific implementation detail in plans/tests.
 
+## Bereinigungsstand – 2026-10-11
+
+**Verifiziert:** Commit `13753f26082adcee83d394fd64e9911554cfe4d7`, [GitHub Actions 38144228027](https://github.com/MarkusAureliusTeuton/JamesUI/actions/runs/38144228027): `validate` und `browser-smoke` erfolgreich. 40 r11-only Dateien gelöscht, Next auf `jamesui-entry.js` + `jamesui-app.js` konzentriert, r11-Optionen-Projektion und Legacy-Konfigurationsendpunkte entfernt. Alle acht genutzten Alpine-WebP-Bilder erhalten. Keine realen HA-/Tablet-Abnahmetests und kein Update der installierten HA-Instanz.
+
 ## Aktueller Integrationsstand der Startseite – 2026-10-11
 
-**Arbeitsmodus:** Bestehende Basis/Core und Blöcke 0–14 fertigstellen; **keine neuen Funktionen**, Blöcke 15–21 bleiben zurückgestellt. r11 bleibt unverändert, PR #27 bleibt Draft.
+**Arbeitsmodus:** Bestehende Basis/Core und Blöcke 0–14 fertigstellen; **keine neuen Funktionen**, Blöcke 15–21 bleiben zurückgestellt. r11 ist vollständig aus dem aktiven Anwendungscode des Entwicklungsbranches entfernt; PR #27 bleibt Draft.
 
 | Vorhandener Bestandteil | Konkret überprüft | Noch nicht nachgewiesen |
 | --- | --- | --- |
@@ -16,11 +20,11 @@ This file is the persistent **single source of truth for the current execution s
 | Buttons und Hausstatus | HA-Zustände erscheinen im Widget; realer Browserklick führt im HA-Testadapter zu Toggle-Service und Zustandsfeedback | Echte KNX-/HA-Aktorik und Authentisierung |
 | Editor / Daten | Neuinstallation, Hero anlegen/editieren/entfernen/Undo, Raster, atomarer Save, Konfliktprüfung, Wiederherstellung | Endgültige visuelle und Hardware-Abnahme |
 
-**Zwei echte Abschlussfehler in diesem Durchlauf behoben:** (1) Wetter konnte bei leerer Startseite nicht als echter Hero eingerichtet und gespeichert werden; einschließlich Editier-/Rückbau- und Mehrclient-Konfliktschutz behoben. (2) Das bereits implementierte Aufgaben-Aktionsmodul wurde im Preview-Bootstrap nicht geladen; jetzt registriert und im kombinierten Browserablauf mit Todo-Abschluss/Undo geprüft.
+**Zwei echte Abschlussfehler in diesem Durchlauf behoben:** (1) Wetter konnte bei leerer Startseite nicht als echter Hero eingerichtet und gespeichert werden; einschließlich Editier-/Rückbau- und Mehrclient-Konfliktschutz behoben. (2) Das bereits implementierte Aufgaben-Aktionsmodul wurde beim Anwendungsstart nicht geladen; jetzt registriert und im kombinierten Browserablauf mit Todo-Abschluss/Undo geprüft.
 
 **Nachweis:** Code-HEAD `a5bf5c509016851fb75c6a290f048d0d0171a8c0`, [GitHub Actions 38115766420](https://github.com/MarkusAureliusTeuton/JamesUI/actions/runs/38115766420) – `validate` und `browser-smoke` erfolgreich. **Der Browser testet simulierte HA-Antworten, nicht die echte Installation.**
 
-**Verbleibende Abnahme:** Gegen die tatsächlichen Home-Assistant-/KNX-Daten und Serviceberechtigungen testen; Darstellung und Bedienung im OnePlus Pad 2/Fully prüfen. Bis dahin keine Produktivfreigabe und keine Umschaltung von r11. Erweiterte Optionen, weitere Seiten und Folgeblöcke sind dafür keine Voraussetzung.
+**Verbleibende Abnahme:** Gegen die tatsächlichen Home-Assistant-/KNX-Daten und Serviceberechtigungen testen; Darstellung und Bedienung im OnePlus Pad 2/Fully prüfen. Bis dahin keine Produktivfreigabe; die bereinigte Anwendung liegt nur im Entwicklungsbranch. Erweiterte Optionen, weitere Seiten und Folgeblöcke sind dafür keine Voraussetzung.
 
 ---
 ## Architekturentscheidung – JamesUI Next ausschließlich (2026-10-11)
@@ -30,7 +34,7 @@ This file is the persistent **single source of truth for the current execution s
 - **Einziger Home-Assistant-Menüeintrag:** `/jamesui` lädt die eigenständige Next-Oberfläche (registriertes Element `jamesui-next-panel`); keine zweite Preview-Seite, kein r11-Frontend-Loader.
 - **Eigenständige Konfiguration:** Neues kanonisches HA-Storage `jamesui.next.config`. Initialisierung aus leerem strukturierten Schema, **keine Übernahme von r11-Optionen oder -Zuständen**; alte HA-Dateien bleiben für Datensicherheit unberührt.
 - **API:** Nur `jamesui/config/get` und `jamesui/config/replace` werden registriert. Historische flache r11-Befehle sind nicht mehr aktiv.
-- **Alte Dateien:** r11-Quelltexte liegen vorerst noch im Git-Verlauf beziehungsweise teils unreferenziert im Branch; sie werden nicht vom Next-Einstieg geladen. Das ist keine Laufzeitabhängigkeit; weitere physische Bereinigung erfolgt separat, nicht als neue Feature-Roadmap.
+- **Dateibereinigung abgeschlossen:** Alte r11-Frontend-Laufzeit, SVG-Wettergrafiken, überholte Tests und r11-Konfigurationsprojektionscode aus dem Branch entfernt. Root-Frontend enthält ausschließlich `jamesui-entry.js` und `jamesui-app.js`; erhaltene Alpine-WebP-Bilder gehören zu Next. Alte Quelltexte bleiben nur im Git-Verlauf/historischen Dokumenten.
 - **Rollout:** Diese Änderung existiert bisher **nur im Entwicklungsbranch/PR #27**, nicht automatisch in der installierten Home-Assistant-Version. HA-Installation und OnePlus Pad 2 sind weiterhin nicht live abgenommen.
 
 ---
