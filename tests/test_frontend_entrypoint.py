@@ -13,7 +13,7 @@ class NextEntryTest(unittest.TestCase):
         self.assertNotIn("PREVIEW_PANEL_URL", consts)
         entry = (ROOT / "frontend/jamesui-entry.js").read_text(encoding="utf-8")
         self.assertIn('const TAG = "jamesui-next-panel"', entry)
-        self.assertIn("createJamesUI1Preview", entry)
+        self.assertIn("createJamesUIApp", entry)
         self.assertNotRegex(entry, r"(?m)^\s*(?:import\s+(?!\()|export\b)")
         for old_script in ("jamesui-panel.js", "jamesui-entry.js",
                            "jamesui-home-entry.js", "jamesui-v11-polish.js"):
