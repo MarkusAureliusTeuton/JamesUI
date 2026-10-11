@@ -133,7 +133,7 @@ class CoreArchitectureTest(unittest.TestCase):
     def test_dashboard_composer_receives_module_integrations_through_composition(self):
         source = (CORE_ROOT / "dashboard-page-composer.js").read_text(encoding="utf-8")
         composition = (Path("custom_components/jamesui/frontend/modules") / "dashboard-composition.js").read_text(encoding="utf-8")
-        preview = Path("custom_components/jamesui/frontend/jamesui-1-preview.js").read_text(encoding="utf-8")
+        preview = Path("custom_components/jamesui/frontend/jamesui-app.js").read_text(encoding="utf-8")
         self.assertNotIn("../modules/", source, "Core composer must not import module implementations")
         self.assertIn("integrations", source)
         self.assertIn("createDashboardHeroLayout", composition)
@@ -148,7 +148,7 @@ class CoreArchitectureTest(unittest.TestCase):
             self.assertIn(action_type, ha_source, f"HA boundary must implement action: {action_type}")
 
     def test_new_runtime_direct_ha_access_is_confined_to_ha_boundary(self):
-        # r11 remains production until cutover and intentionally still contains direct HA access.
+        # JamesUI Next exclusively owns the production runtime.
         new_runtime_non_ha_roots = (
             CORE_ROOT,
             DESIGN_ROOT,
@@ -442,8 +442,8 @@ class CoreArchitectureTest(unittest.TestCase):
     def test_primary_panel_is_next_only(self):
         consts = Path("custom_components/jamesui/const.py").read_text(encoding="utf-8")
         setup = Path("custom_components/jamesui/__init__.py").read_text(encoding="utf-8")
-        entry = Path("custom_components/jamesui/frontend/jamesui-1-preview-entry.js").read_text(encoding="utf-8")
-        self.assertIn('FRONTEND_FILE = "jamesui-1-preview-entry.js"', consts)
+        entry = Path("custom_components/jamesui/frontend/jamesui-entry.js").read_text(encoding="utf-8")
+        self.assertIn('FRONTEND_FILE = "jamesui-entry.js"', consts)
         self.assertIn('PANEL_ELEMENT = "jamesui-next-panel"', consts)
         self.assertIn('const TAG = "jamesui-next-panel"', entry)
         self.assertNotIn("jamesui-panel.js", entry)

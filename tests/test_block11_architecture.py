@@ -161,23 +161,11 @@ class Block11ArchitectureTest(unittest.TestCase):
         for token in ("<svg", "data:image", "cdn.jsdelivr", "unpkg", "http://", "https://"):
             self.assertNotIn(token, agenda_source, f"Agenda must not bypass local icon registry: {token}")
 
-    def test_block11_is_not_wired_into_legacy_start_or_production_bootstrap(self):
-        production_files = (
-            FRONTEND / "jamesui-entry.js",
-            FRONTEND / "jamesui-home-entry.js",
-            FRONTEND / "jamesui-home.js",
-            FRONTEND / "jamesui-panel.js",
-        )
-        module_ids = (
-            "provider.calendar",
-            "provider.tasks",
-            "action.task-update",
-            "widget.calendar-agenda",
-        )
-        for path in production_files:
-            source = path.read_text(encoding="utf-8")
-            for module_id in module_ids:
-                self.assertNotIn(module_id, source, f"Block 11 must not cut over production/Start yet: {path} contains {module_id}")
+    def test_primary_entry_uses_next_app_and_no_legacy_bridge(self):
+        source = (FRONTEND / "jamesui-entry.js").read_text(encoding="utf-8")
+        self.assertIn('import("./jamesui-app.js")', source)
+        for legacy in ("jamesui-home-entry.js", "jamesui-panel.js", "jamesui-v11-polish.js"):
+            self.assertNotIn(legacy, source)
 
 
 if __name__ == "__main__":

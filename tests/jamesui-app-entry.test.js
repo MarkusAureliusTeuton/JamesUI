@@ -4,11 +4,11 @@ import { readFileSync } from "node:fs";
 import vm from "node:vm";
 
 const source = readFileSync(
-  new URL("../custom_components/jamesui/frontend/jamesui-1-preview-entry.js", import.meta.url),
+  new URL("../custom_components/jamesui/frontend/jamesui-entry.js", import.meta.url),
   "utf8",
 );
 
-test("preview panel preserves HA properties assigned before asynchronous bootstrap", () => {
+test("main JamesUI panel preserves HA properties assigned before asynchronous bootstrap", () => {
   const registered = new Map();
   class HTMLElement {
     attachShadow() { this.shadowRoot = { ownerDocument: {}, replaceChildren() {} }; }
@@ -37,13 +37,13 @@ test("preview panel preserves HA properties assigned before asynchronous bootstr
   assert.equal(panel._route, route);
   assert.equal(panel._panel, metadata);
   const received = {};
-  panel._preview = {
+  panel._app = {
     core: Object.fromEntries(["hass", "narrow", "route", "panel"].map((key) => [
       key, null,
     ])),
   };
   for (const key of ["hass", "narrow", "route", "panel"]) {
-    Object.defineProperty(panel._preview.core, key, { set(value) { received[key] = value; } });
+    Object.defineProperty(panel._app.core, key, { set(value) { received[key] = value; } });
   }
   panel.narrow = false;
   panel.route = route;

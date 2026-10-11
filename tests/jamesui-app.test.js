@@ -1,12 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createJamesUI1Preview } from "../custom_components/jamesui/frontend/jamesui-1-preview.js";
+import { createJamesUIApp } from "../custom_components/jamesui/frontend/jamesui-app.js";
 import { createFakeDocument } from "./helpers/fake-dom.js";
 
-test("Block 14 preview registers widgets and matching providers but never mounts r11", () => {
+test("Block 14 app registers widgets and matching providers but never mounts r11", () => {
   const document = createFakeDocument();
-  const preview = createJamesUI1Preview({ document });
-  const ids = preview.core.moduleRegistry.list().map((item) => item.manifest.id);
+  const app = createJamesUIApp({ document });
+  const ids = app.core.moduleRegistry.list().map((item) => item.manifest.id);
   assert.deepEqual(ids, [
     "widget.weather-today", "widget.calendar-agenda",
     "widget.house-quick", "widget.dynamic-buttons",
@@ -15,22 +15,22 @@ test("Block 14 preview registers widgets and matching providers but never mounts
     "provider.house-devices", "provider.house-energy", "provider.control-state",
     "action.task-update",
   ]);
-  assert.equal(preview.core.config.snapshot(), null);
-  preview.destroy();
+  assert.equal(app.core.config.snapshot(), null);
+  app.destroy();
 });
 
-test("Block 14 opt-in preview refuses empty schema without substituting fake data", async () => {
+test("Block 14 opt-in app refuses empty schema without substituting fake data", async () => {
   const document = createFakeDocument();
-  const preview = createJamesUI1Preview({ document });
+  const app = createJamesUIApp({ document });
   // No Home Assistant transport or dashboard config supplied.
-  // The preview should reject, not fall back to legacy markup.
-  await assert.rejects(() => preview.mount(document.createElement("main")));
-  preview.destroy();
+  // The app should reject, not fall back to legacy markup.
+  await assert.rejects(() => app.mount(document.createElement("main")));
+  app.destroy();
 });
 
-test("Block 14 preview loads a configured weather provider without fabricated entity bindings", async () => {
+test("Block 14 app loads a configured weather provider without fabricated entity bindings", async () => {
   const document = createFakeDocument();
-  const preview = createJamesUI1Preview({ document });
+  const app = createJamesUIApp({ document });
   const config = {
     schema_version: 1,
     pages: { home: { kind: "dashboard", layout_id: "main", elements: [] } },
@@ -38,7 +38,7 @@ test("Block 14 preview loads a configured weather provider without fabricated en
     widget_instances: {}, dynamic_buttons: {},
     data_sources: { "provider.weather": { config: {} } }, module_settings: {},
   };
-  preview.core.hass = {
+  app.core.hass = {
     connected: true, states: {},
     callWS: async ({ type }) => {
       assert.equal(type, "jamesui/config/get");
@@ -46,15 +46,15 @@ test("Block 14 preview loads a configured weather provider without fabricated en
     },
   };
   try {
-    assert.equal(await preview.mount(document.createElement("div")), true);
-    assert.equal(preview.core.moduleLoader.isLoaded("provider.weather"), true);
-    assert.equal(preview.core.moduleLoader.isLoaded("provider.calendar"), false);
+    assert.equal(await app.mount(document.createElement("div")), true);
+    assert.equal(app.core.moduleLoader.isLoaded("provider.weather"), true);
+    assert.equal(app.core.moduleLoader.isLoaded("provider.calendar"), false);
   } finally {
-    preview.destroy();
+    app.destroy();
   }
 });
 
-test("preview renders the four Start widgets from persisted instances", async () => {
+test("app renders the four Start widgets from persisted instances", async () => {
   const document = createFakeDocument();
   // Agenda measures its row probe during mount. Supply geometry in this
   // non-browser integration fixture; visual accuracy needs browser E2E tests.
@@ -64,7 +64,7 @@ test("preview renders the four Start widgets from persisted instances", async ()
     element.getBoundingClientRect = () => ({ width: 120, height: 36, top: 0, left: 0, right: 120, bottom: 36 });
     return element;
   };
-  const preview = createJamesUI1Preview({ document });
+  const app = createJamesUIApp({ document });
   const modules = [
     "widget.calendar-agenda", "widget.house-quick", "widget.dynamic-buttons",
   ];
@@ -89,20 +89,20 @@ test("preview renders the four Start widgets from persisted instances", async ()
     },
     dynamic_buttons: {}, data_sources: {}, module_settings: {},
   };
-  preview.core.hass = {
+  app.core.hass = {
     connected: true, states: {},
     callWS: async () => ({ config }),
   };
   const target = document.createElement("div");
   const moduleFailures = [];
-  const unsubscribeHealth = preview.core.health.subscribe(({ record }) => {
+  const unsubscribeHealth = app.core.health.subscribe(({ record }) => {
     if (record?.status === "error") moduleFailures.push({ id: record.id, message: record.error?.message });
   });
   try {
     try {
-      assert.equal(await preview.mount(target), true);
+      assert.equal(await app.mount(target), true);
     } catch (error) {
-      const health = preview.core.health.list().map((record) => ({
+      const health = app.core.health.list().map((record) => ({
         id: record.id, message: record.message,
         error: record.error?.message ?? null,
       }));
@@ -111,20 +111,20 @@ test("preview renders the four Start widgets from persisted instances", async ()
     assert.ok(target.querySelector('[data-jui-layout="home-hero-deck"]'));
     assert.ok(target.querySelector('[data-role="bottom-navigation"]'));
     assert.equal(target.querySelectorAll("[data-jui-dashboard-item]").length, 3);
-    assert.equal(preview.core.moduleLoader.isLoaded("dashboard:home:hero"), true);
+    assert.equal(app.core.moduleLoader.isLoaded("dashboard:home:hero"), true);
     for (const element of elements) {
-      assert.equal(preview.core.moduleLoader.isLoaded("dashboard:" + element.id), true);
+      assert.equal(app.core.moduleLoader.isLoaded("dashboard:" + element.id), true);
       assert.equal(target.querySelector('[data-jui-dashboard-item="' + element.id + '"]').getAttribute("data-jui-widget-error"), null);
     }
   } finally {
     unsubscribeHealth();
-    preview.destroy();
+    app.destroy();
   }
 });
 
 test("configured invalid hero fails visibly instead of presenting a false successful dashboard", async () => {
   const document = createFakeDocument();
-  const preview = createJamesUI1Preview({ document });
+  const app = createJamesUIApp({ document });
   const config = {
     schema_version: 1,
     pages: { home: { kind: "dashboard", layout_id: "main", hero_widget_id: "invalid", elements: [] } },
@@ -132,21 +132,21 @@ test("configured invalid hero fails visibly instead of presenting a false succes
     widget_instances: { invalid: { module_id: "widget.not-registered", config: {} } },
     dynamic_buttons: {}, data_sources: {}, module_settings: {},
   };
-  preview.core.hass = { connected: true, states: {}, callWS: async () => ({ config }) };
+  app.core.hass = { connected: true, states: {}, callWS: async () => ({ config }) };
   try {
     await assert.rejects(
-      () => preview.mount(document.createElement("div")),
+      () => app.mount(document.createElement("div")),
       /Failed to mount dashboard hero widget/,
     );
-    assert.equal(preview.core.moduleLoader.isLoaded("dashboard:home:hero"), false);
+    assert.equal(app.core.moduleLoader.isLoaded("dashboard:home:hero"), false);
   } finally {
-    preview.destroy();
+    app.destroy();
   }
 });
 
 test("failed provider startup leaves no provider runtimes behind", async () => {
   const document = createFakeDocument();
-  const preview = createJamesUI1Preview({ document });
+  const app = createJamesUIApp({ document });
   const config = {
     schema_version: 1,
     pages: { home: { kind: "dashboard", layout_id: "main", elements: [] } },
@@ -158,22 +158,22 @@ test("failed provider startup leaves no provider runtimes behind", async () => {
     },
     module_settings: {},
   };
-  preview.core.hass = { connected: true, states: {}, callWS: async () => ({ config }) };
+  app.core.hass = { connected: true, states: {}, callWS: async () => ({ config }) };
   try {
     await assert.rejects(
-      () => preview.mount(document.createElement("div")),
+      () => app.mount(document.createElement("div")),
       /Unable to load configured provider: provider.house-lighting/,
     );
-    assert.equal(preview.core.moduleLoader.isLoaded("provider.weather"), false);
-    assert.equal(preview.core.moduleLoader.isLoaded("provider.house-lighting"), false);
+    assert.equal(app.core.moduleLoader.isLoaded("provider.weather"), false);
+    assert.equal(app.core.moduleLoader.isLoaded("provider.house-lighting"), false);
   } finally {
-    preview.destroy();
+    app.destroy();
   }
 });
 
-test("preview reuses canonical weather entity mapping migrated from r11", async () => {
+test("app reuses canonical weather entity mapping migrated from r11", async () => {
   const document = createFakeDocument();
-  const preview = createJamesUI1Preview({ document });
+  const app = createJamesUIApp({ document });
   const config = {
     schema_version: 1,
     pages: { home: { kind: "dashboard", layout_id: "main", elements: [] } },
@@ -181,28 +181,28 @@ test("preview reuses canonical weather entity mapping migrated from r11", async 
     widget_instances: {}, dynamic_buttons: {},
     data_sources: { weather: { entity_id: "weather.home" } }, module_settings: {},
   };
-  preview.core.hass = {
+  app.core.hass = {
     connected: true, states: { "weather.home": { state: "sunny", attributes: {} } },
     callWS: async () => ({ config }),
   };
   try {
-    assert.equal(await preview.mount(document.createElement("div")), true);
-    assert.equal(preview.core.moduleLoader.isLoaded("provider.weather"), true);
+    assert.equal(await app.mount(document.createElement("div")), true);
+    assert.equal(app.core.moduleLoader.isLoaded("provider.weather"), true);
   } finally {
-    preview.destroy();
+    app.destroy();
   }
 });
 
-test("preview initializes a missing home dashboard without losing migrated settings", async () => {
+test("app initializes a missing home dashboard without losing migrated settings", async () => {
   const document = createFakeDocument();
-  const preview = createJamesUI1Preview({ document });
+  const app = createJamesUIApp({ document });
   const config = {
     schema_version: 1, pages: {}, layouts: {}, widget_instances: {}, dynamic_buttons: {},
     data_sources: { weather: { entity_id: "weather.home" } },
     module_settings: { start: { background: "existing" } },
   };
   const writes = [];
-  preview.core.hass = {
+  app.core.hass = {
     connected: true, states: { "weather.home": { state: "sunny", attributes: {} } },
     callWS: async ({ type, config: next }) => {
       if (type === "jamesui/config/get") return { config };
@@ -212,50 +212,50 @@ test("preview initializes a missing home dashboard without losing migrated setti
     },
   };
   try {
-    assert.equal(await preview.mount(document.createElement("div")), true);
+    assert.equal(await app.mount(document.createElement("div")), true);
     assert.equal(writes.length, 1);
     assert.equal(writes[0].pages.home.kind, "dashboard");
     assert.equal(writes[0].layouts["jamesui-next-home"].kind, "hero-deck");
     assert.deepEqual(writes[0].data_sources, config.data_sources);
     assert.deepEqual(writes[0].module_settings, config.module_settings);
-    assert.equal(preview.core.moduleLoader.isLoaded("provider.weather"), true);
+    assert.equal(app.core.moduleLoader.isLoaded("provider.weather"), true);
   } finally {
-    preview.destroy();
+    app.destroy();
   }
 });
 
-test("preview never overwrites an existing incompatible home page", async () => {
+test("app never overwrites an existing incompatible home page", async () => {
   const document = createFakeDocument();
-  const preview = createJamesUI1Preview({ document });
+  const app = createJamesUIApp({ document });
   const config = {
     schema_version: 1, pages: { home: { kind: "legacy" } }, layouts: {},
     widget_instances: {}, dynamic_buttons: {}, data_sources: {}, module_settings: {},
   };
-  preview.core.hass = { connected: true, states: {}, callWS: async ({ type }) => {
+  app.core.hass = { connected: true, states: {}, callWS: async ({ type }) => {
     assert.equal(type, "jamesui/config/get");
     return { config };
   } };
   try {
-    await assert.rejects(() => preview.mount(document.createElement("div")), /not a dashboard/);
-  } finally { preview.destroy(); }
+    await assert.rejects(() => app.mount(document.createElement("div")), /not a dashboard/);
+  } finally { app.destroy(); }
 });
 
-test("disconnect during pending config load cannot mount a detached preview", async () => {
+test("disconnect during pending config load cannot mount a detached app", async () => {
   const document = createFakeDocument();
-  const preview = createJamesUI1Preview({ document });
+  const app = createJamesUIApp({ document });
   let resolveLoad;
   const pendingLoad = new Promise((resolve) => { resolveLoad = resolve; });
   const config = {
     schema_version: 1, pages: {}, layouts: {}, widget_instances: {},
     dynamic_buttons: {}, data_sources: {}, module_settings: {},
   };
-  preview.core.hass = {
+  app.core.hass = {
     connected: true, states: {},
     callWS: async () => pendingLoad,
   };
   const target = document.createElement("div");
-  const mounting = preview.mount(target);
-  preview.destroy();
+  const mounting = app.mount(target);
+  app.destroy();
   resolveLoad({ config });
   await assert.rejects(mounting, /destroyed/i);
   assert.equal(target.querySelector('[data-jui-layout="home-hero-deck"]'), null);
@@ -269,8 +269,8 @@ test("saved provider sources activate and update without reopening Next", async 
     layouts: { main: { kind: "hero-deck", scroll: "fixed", hero_ratio: 0.42 } },
     widget_instances: {}, dynamic_buttons: {}, data_sources: {}, module_settings: {},
   };
-  const preview = createJamesUI1Preview({ document });
-  preview.core.hass = {
+  const app = createJamesUIApp({ document });
+  app.core.hass = {
     connected: true,
     config: { time_zone: "Europe/Berlin" },
     states: {},
@@ -291,31 +291,31 @@ test("saved provider sources activate and update without reopening Next", async 
     assert.fail("Timed out waiting for provider synchronization");
   };
   try {
-    assert.equal(await preview.mount(document.createElement("div")), true);
-    assert.equal(preview.core.moduleLoader.isLoaded("provider.calendar"), false);
-    assert.equal(preview.core.moduleLoader.isLoaded("provider.tasks"), false);
+    assert.equal(await app.mount(document.createElement("div")), true);
+    assert.equal(app.core.moduleLoader.isLoaded("provider.calendar"), false);
+    assert.equal(app.core.moduleLoader.isLoaded("provider.tasks"), false);
 
-    const added = preview.core.config.snapshot();
+    const added = app.core.config.snapshot();
     added.data_sources["provider.calendar"] = { source_entity_ids: ["calendar.family"] };
     added.data_sources["provider.tasks"] = { source_entity_ids: ["todo.family"] };
-    await preview.core.config.replace(added);
-    await waitFor(() => preview.core.moduleLoader.isLoaded("provider.calendar") &&
-      preview.core.moduleLoader.isLoaded("provider.tasks"));
-    assert.equal(preview.core.capabilities.get("calendar.events")?.status, "available");
-    assert.equal(preview.core.capabilities.get("tasks.items")?.status, "available");
+    await app.core.config.replace(added);
+    await waitFor(() => app.core.moduleLoader.isLoaded("provider.calendar") &&
+      app.core.moduleLoader.isLoaded("provider.tasks"));
+    assert.equal(app.core.capabilities.get("calendar.events")?.status, "available");
+    assert.equal(app.core.capabilities.get("tasks.items")?.status, "available");
 
-    const updated = preview.core.config.snapshot();
+    const updated = app.core.config.snapshot();
     updated.data_sources["provider.calendar"].source_entity_ids.push("calendar.work");
-    await preview.core.config.replace(updated);
-    await waitFor(() => preview.core.capabilities.get("calendar.events")?.value
+    await app.core.config.replace(updated);
+    await waitFor(() => app.core.capabilities.get("calendar.events")?.value
       ?.configured_sources?.length === 2);
 
-    const removed = preview.core.config.snapshot();
+    const removed = app.core.config.snapshot();
     delete removed.data_sources["provider.calendar"];
-    await preview.core.config.replace(removed);
-    await waitFor(() => !preview.core.moduleLoader.isLoaded("provider.calendar"));
-    assert.equal(preview.core.moduleLoader.isLoaded("provider.tasks"), true);
+    await app.core.config.replace(removed);
+    await waitFor(() => !app.core.moduleLoader.isLoaded("provider.calendar"));
+    assert.equal(app.core.moduleLoader.isLoaded("provider.tasks"), true);
   } finally {
-    preview.destroy();
+    app.destroy();
   }
 });

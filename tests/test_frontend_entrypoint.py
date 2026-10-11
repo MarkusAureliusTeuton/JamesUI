@@ -8,10 +8,10 @@ ROOT = Path("custom_components/jamesui")
 class NextEntryTest(unittest.TestCase):
     def test_only_next_is_the_home_assistant_panel(self):
         consts = (ROOT / "const.py").read_text(encoding="utf-8")
-        self.assertIn('FRONTEND_FILE = "jamesui-1-preview-entry.js"', consts)
+        self.assertIn('FRONTEND_FILE = "jamesui-entry.js"', consts)
         self.assertIn('PANEL_ELEMENT = "jamesui-next-panel"', consts)
         self.assertNotIn("PREVIEW_PANEL_URL", consts)
-        entry = (ROOT / "frontend/jamesui-1-preview-entry.js").read_text(encoding="utf-8")
+        entry = (ROOT / "frontend/jamesui-entry.js").read_text(encoding="utf-8")
         self.assertIn('const TAG = "jamesui-next-panel"', entry)
         self.assertIn("createJamesUI1Preview", entry)
         self.assertNotRegex(entry, r"(?m)^\s*(?:import\s+(?!\()|export\b)")
