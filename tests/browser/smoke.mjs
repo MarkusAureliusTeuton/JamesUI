@@ -426,6 +426,43 @@ try {
 
   // A fresh installation starts with no page and no configured widgets.
   // The first-run initialization must be editable even without a tile to long-press.
+  // Complete Start composition with four simultaneously active modules and
+  // HA-style calendar/todo push subscriptions. This catches missing action
+  // registration that pure widget/unit tests cannot detect.
+  const integratedPage = await browser.newPage({
+    viewport: { width: 800, height: 1280 }, isMobile: true, hasTouch: true,
+  });
+  const integratedErrors = [];
+  integratedPage.on("pageerror", (error) => integratedErrors.push(error.message));
+  await integratedPage.goto(base + "/tests/browser/fixture.html?integrated=1", { waitUntil: "load" });
+  await integratedPage.waitForFunction(() =>
+    ["ready", "error"].includes(window.__juiTest?.status), null, { timeout: 20000 });
+  assert.equal(await integratedPage.evaluate(() => window.__juiTest.status),
+    "ready", await integratedPage.evaluate(() => window.__juiTest.error));
+  assert.equal(await integratedPage.locator('[data-jui-widget="weather-today"]').count(), 1);
+  assert.equal(await integratedPage.locator('[data-jui-widget="calendar-agenda"]').count(), 1);
+  assert.equal(await integratedPage.locator('[data-jui-widget="house-quick"]').count(), 1);
+  assert.equal(await integratedPage.locator('[data-jui-widget="dynamic-buttons"]').count(), 1);
+  await integratedPage.getByText("Familientermin", { exact: true }).waitFor({ state: "visible" });
+  await integratedPage.getByText("Blumen gießen", { exact: true }).waitFor({ state: "visible" });
+  await integratedPage.locator('[data-jui-agenda-complete]').first().click();
+  await integratedPage.waitForFunction(() =>
+    window.__juiTest.serviceCalls.some((call) =>
+      call.domain === "todo" && call.service === "update_item" &&
+      call.data.item === "task-1" && call.data.status === "completed"));
+  assert.equal(await integratedPage.locator('[data-jui-agenda-undo]').count(), 1,
+    "Successful task completion must offer the existing five-second undo");
+  await integratedPage.locator('[data-jui-agenda-undo]').click();
+  await integratedPage.waitForFunction(() =>
+    window.__juiTest.serviceCalls.some((call) =>
+      call.domain === "todo" && call.service === "update_item" &&
+      call.data.status === "needs_action"));
+  assert.equal(await integratedPage.locator('[data-jui-widget-error]').count(), 0);
+  assert.deepEqual(integratedErrors, []);
+  await integratedPage.evaluate(() => window.__juiTest.app.destroy());
+  await integratedPage.close();
+  console.log("PASS integrated weather + calendar + tasks + house + buttons");
+
   const emptyPage = await browser.newPage({ viewport: { width: 800, height: 1280 }, isMobile: true, hasTouch: true });
   const emptyErrors = [];
   emptyPage.on("pageerror", (error) => emptyErrors.push(error.message));

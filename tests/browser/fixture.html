@@ -52,6 +52,14 @@
       module_settings: {}
     };
 
+    const integrated = new URLSearchParams(location.search).has("integrated");
+    if (integrated) {
+      config.widget_instances.agenda.config.tasks_enabled = true;
+      config.widget_instances.agenda.config.task_lists = [{ entity_id: "todo.browser_fixture" }];
+      config.data_sources["provider.calendar"] = { source_entity_ids: ["calendar.browser_fixture"] };
+      config.data_sources["provider.tasks"] = { source_entity_ids: ["todo.browser_fixture"] };
+    }
+
     if (new URLSearchParams(location.search).has("empty")) {
       config = {
         schema_version: 1, pages: {}, layouts: {}, widget_instances: {},
@@ -89,6 +97,24 @@
     window.__juiTest.writes = 0;
     window.__juiTest.serviceCalls = [];
     window.__juiTest.persisted = structuredClone(config);
+    // Optional integrated fixture delivers real calendar/task subscription
+    // payloads through the HA Adapter, not direct widget method calls.
+    const berlinDateParts = new Intl.DateTimeFormat("en-US", {
+      timeZone: "Europe/Berlin", year: "numeric", month: "2-digit", day: "2-digit",
+    }).formatToParts(new Date());
+    const berlinDate = Object.fromEntries(berlinDateParts.map((p) => [p.type, p.value]));
+    const today = `${berlinDate.year}-${berlinDate.month}-${berlinDate.day}`;
+    const tomorrow = new Date(Date.UTC(
+      Number(berlinDate.year), Number(berlinDate.month) - 1, Number(berlinDate.day) + 1,
+    )).toISOString().slice(0, 10);
+    const calendarMessages = {
+      "calendar/event/subscribe": { events: [
+        { summary: "Familientermin", start: today, end: tomorrow },
+      ] },
+      "todo/item/subscribe": { items: [
+        { uid: "task-1", summary: "Blumen gießen", status: "needs_action", due: today },
+      ] },
+    };
     // Explicit local test entities; no customer entities or settings are saved.
     window.__juiTest.setHass = ({
       connected = true, light = "off", temperature = 21,
@@ -102,10 +128,30 @@
       if (!missingLight) states["light.browser_fixture"] = {
         entity_id: "light.browser_fixture", state: light, attributes: {}
       };
+      if (integrated) {
+        states["calendar.browser_fixture"] = {
+          entity_id: "calendar.browser_fixture", state: "off", attributes: {},
+        };
+        states["todo.browser_fixture"] = {
+          entity_id: "todo.browser_fixture", state: "1", attributes: { supported_features: 4 },
+        };
+      }
       app.core.hass = {
         connected, states, config: { time_zone: "Europe/Berlin" }, callWS,
+        ...(integrated ? { connection: {
+          subscribeMessage(callback, message) {
+            const payload = calendarMessages[message.type];
+            if (!payload) throw new Error("Unknown integrated subscription: " + message.type);
+            const handle = setTimeout(() => callback(structuredClone(payload)), 0);
+            return () => clearTimeout(handle);
+          },
+        } } : {}),
         callService: async (domain, service, data, target) => {
           window.__juiTest.serviceCalls.push({ domain, service, data, target });
+          if (integrated && domain === "todo" && service === "update_item" &&
+              target?.entity_id === "todo.browser_fixture" && data.item === "task-1") {
+            return {};
+          }
           if (domain !== "homeassistant" || service !== "toggle" ||
               target?.entity_id !== "light.browser_fixture") {
             throw new Error("Unsupported browser fixture service call");

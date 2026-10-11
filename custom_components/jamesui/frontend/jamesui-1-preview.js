@@ -15,6 +15,7 @@ import { MANIFEST as LIGHTING_PROVIDER } from "./modules/provider.house-lighting
 import { MANIFEST as DEVICES_PROVIDER } from "./modules/provider.house-devices/manifest.js";
 import { MANIFEST as ENERGY_PROVIDER } from "./modules/provider.house-energy/manifest.js";
 import { MANIFEST as CONTROL_PROVIDER } from "./modules/provider.control-state/manifest.js";
+import { MANIFEST as TASK_UPDATE } from "./modules/action.task-update/manifest.js";
 
 // Explicit opt-in preview. Neither the r11 panel nor its bootstrap imports this.
 export function createJamesUI1Preview({ document = globalThis.document } = {}) {
@@ -36,6 +37,7 @@ export function createJamesUI1Preview({ document = globalThis.document } = {}) {
     [DEVICES_PROVIDER, "./modules/provider.house-devices/index.js"],
     [ENERGY_PROVIDER, "./modules/provider.house-energy/index.js"],
     [CONTROL_PROVIDER, "./modules/provider.control-state/index.js"],
+    [TASK_UPDATE, "./modules/action.task-update/index.js"],
   ];
   for (const [manifest, relative] of registered) {
     core.moduleRegistry.register(manifest, {
@@ -75,6 +77,13 @@ export function createJamesUI1Preview({ document = globalThis.document } = {}) {
         // Changes activate immediately after a committed Config Store update.
         providerTarget = target;
         await providers.sync(config);
+        // The Agenda's task.update action is a real module, not a Core/HA
+        // builtin. Install it before mounting consumers so task interactions
+        // cannot be rejected solely because the handler was never registered.
+        const loadedTaskAction = await core.moduleLoader.load("action.task-update", { config: {} });
+        if (!loadedTaskAction || !core.moduleLoader.mount("action.task-update", target)) {
+          throw new Error("Unable to activate task.update action");
+        }
         core.mount(target);
         const page = target.querySelector('[data-role="page-region"]') ??
           target.querySelector("main");
