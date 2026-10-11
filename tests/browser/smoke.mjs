@@ -522,8 +522,8 @@ try {
     "light.browser_fixture");
   const newlyPlaced = await emptyPage.evaluate(() =>
     window.__juiTest.persisted.pages.home.elements.map(({ column, row }) => [column, row]));
-  assert.deepEqual(newlyPlaced, [[0, 0], [4, 0], [8, 0]],
-    "Three configured widgets must use the free 12-column row without stacking");
+  assert.deepEqual(newlyPlaced, [[0, 0], [4, 0]],
+    "The two configured deck widgets must share one row; weather belongs in the hero");
   const packed = await emptyPage.locator('[data-jui-dashboard-item]').evaluateAll((nodes) =>
     nodes.map((node) => {
       const rect = node.getBoundingClientRect();
