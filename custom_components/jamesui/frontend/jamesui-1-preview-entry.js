@@ -2,7 +2,7 @@
 (() => {
   const TAG = "jamesui-next-panel";
   if (customElements.get(TAG)) return;
-  class JamesUI1PreviewPanel extends HTMLElement {
+  class JamesUINextPanel extends HTMLElement {
     constructor() {
       super();
       this.attachShadow({ mode: "open" });
@@ -58,7 +58,7 @@
           host.textContent = "JamesUI Next nicht verfügbar: " + (error?.message ?? "Konfiguration fehlt");
         }
       }).catch(() => {
-        if (generation === this._generation) host.textContent = "JamesUI 1.0 konnte nicht geladen werden";
+        if (generation === this._generation) host.textContent = "JamesUI Next konnte nicht geladen werden";
       });
     }
     disconnectedCallback() {
@@ -67,5 +67,5 @@
       this._preview = null;
     }
   }
-  customElements.define(TAG, JamesUI1PreviewPanel);
+  customElements.define(TAG, JamesUINextPanel);
 })();
