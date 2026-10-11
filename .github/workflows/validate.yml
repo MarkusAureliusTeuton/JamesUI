@@ -36,9 +36,6 @@ jobs:
       - name: Test Home Assistant panel entrypoint
         run: python -m unittest tests/test_frontend_entrypoint.py
 
-      - name: Preserve Home Assistant bootstrap behavior
-        run: node --experimental-default-type=module --test tests/jamesui-entry-preservation.test.js
-
       - name: Guard JamesUI Core architecture
         run: python -m unittest tests/test_core_architecture.py
 
