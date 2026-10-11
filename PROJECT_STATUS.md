@@ -1,9 +1,28 @@
 # JamesUI – Project Status / Chat Handover
 
-_Last updated: 2026-10-09_
+_Last updated: 2026-10-11_
 
 This file is the persistent **single source of truth for the current execution state**. Architecture details live in approved specs, retained behavior in the baseline, and block-specific implementation detail in plans/tests.
 
+## Aktueller Integrationsstand der Startseite – 2026-10-11
+
+**Arbeitsmodus:** Bestehende Basis/Core und Blöcke 0–14 fertigstellen; **keine neuen Funktionen**, Blöcke 15–21 bleiben zurückgestellt. r11 bleibt unverändert, PR #27 bleibt Draft.
+
+| Vorhandener Bestandteil | Konkret überprüft | Noch nicht nachgewiesen |
+| --- | --- | --- |
+| Startseite / Layout | Hero-Deck, 12-Spalten-Raster, feste Navigation im Hochformat; Wetter beim Erstaufbau im Hero statt als Rasterkachel | Echte OnePlus-Pad-2-/Fully-Optik, Touch und Langlauf |
+| Wetter | Wetterdaten und Hero-Darstellung; Prognose-Overlay öffnet/schließt; manuelle Entitätsbindung | Wetter- und Forecast-Entitäten im produktiven HA |
+| Kalender und Aufgaben | Kalender- und Todo-Provider liefern im gemeinsamen Chromium-Szenario sichtbare Einträge; Aufgaben-Erledigen und Undo senden HA-Serviceaktion über registriertes `action.task-update`-Modul | Reale Google-/Synology-/HA-Kalender- und Todo-Verbindungen und Rechte |
+| Buttons und Hausstatus | HA-Zustände erscheinen im Widget; realer Browserklick führt im HA-Testadapter zu Toggle-Service und Zustandsfeedback | Echte KNX-/HA-Aktorik und Authentisierung |
+| Editor / Daten | Neuinstallation, Hero anlegen/editieren/entfernen/Undo, Raster, atomarer Save, Konfliktprüfung, Wiederherstellung | Endgültige visuelle und Hardware-Abnahme |
+
+**Zwei echte Abschlussfehler in diesem Durchlauf behoben:** (1) Wetter konnte bei leerer Startseite nicht als echter Hero eingerichtet und gespeichert werden; einschließlich Editier-/Rückbau- und Mehrclient-Konfliktschutz behoben. (2) Das bereits implementierte Aufgaben-Aktionsmodul wurde im Preview-Bootstrap nicht geladen; jetzt registriert und im kombinierten Browserablauf mit Todo-Abschluss/Undo geprüft.
+
+**Nachweis:** Code-HEAD `a5bf5c509016851fb75c6a290f048d0d0171a8c0`, [GitHub Actions 38115766420](https://github.com/MarkusAureliusTeuton/JamesUI/actions/runs/38115766420) – `validate` und `browser-smoke` erfolgreich. **Der Browser testet simulierte HA-Antworten, nicht die echte Installation.**
+
+**Verbleibende Abnahme:** Gegen die tatsächlichen Home-Assistant-/KNX-Daten und Serviceberechtigungen testen; Darstellung und Bedienung im OnePlus Pad 2/Fully prüfen. Bis dahin keine Produktivfreigabe und keine Umschaltung von r11. Erweiterte Optionen, weitere Seiten und Folgeblöcke sind dafür keine Voraussetzung.
+
+---
 ## 1. Product goal
 
 JamesUI is the permanent wall-tablet interface for the KNX/Home Assistant home.
