@@ -34,7 +34,7 @@ class NextConfigMigrationTest(unittest.TestCase):
         self.assertEqual(self.migrations.migrate_stored_config(1, config), config)
         invalid = schema.empty_config()
         invalid["layouts"] = []
-        with self.assertRaises(schema.ConfigValidationError):
+        with self.assertRaisesRegex(ValueError, "layouts: must be an object"):
             self.migrations.migrate_stored_config(1, invalid)
 
     def test_unsupported_versions_are_rejected_without_migrating_old_data(self):
