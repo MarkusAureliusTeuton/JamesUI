@@ -194,7 +194,7 @@ export function createDashboardEditSession({ controller, configService, pageId, 
         const result = await configService.update((latest) => {
           const previous = validateDashboardPage(latest, pageId);
           const original = validateDashboardPage(baseline, pageId);
-          if (previous.hero_widget_id !== original.hero_widget_id ||
+          if (latest.pages[pageId].hero_widget_id !== baseline.pages[pageId].hero_widget_id ||
               previous.elements.length !== original.elements.length ||
               previous.elements.some((item, index) =>
                 item.id !== original.elements[index].id ||
