@@ -22,7 +22,7 @@ test("preview panel preserves HA properties assigned before asynchronous bootstr
     document: { createElement: () => ({ style: {} }) },
   });
   vm.runInContext(source, context);
-  const Panel = registered.get("jamesui-1-preview-panel");
+  const Panel = registered.get("jamesui-next-panel");
   assert.ok(Panel);
   const panel = new Panel();
   const hass = { states: {} };
