@@ -1,5 +1,7 @@
 # JamesUI Next – Integrations- und Abnahme-Gates
 
+**Aktuelle Bereinigungsfreigabe (11.10.2026):** Die rein technische Repository-Bereinigung ist abgeschlossen: `13753f26082adcee83d394fd64e9911554cfe4d7`, [GitHub Actions 38144228027](https://github.com/MarkusAureliusTeuton/JamesUI/actions/runs/38144228027) beide Jobs grün. Der frühere Next-Vorschau-Einstieg heißt nun `jamesui-entry.js` / `jamesui-app.js`; r11-Skripte, Wetter-SVGs, r11-only Tests und Python-Optionen-Projektion sind entfernt. Alle alten Parallelbetrieb-Aussagen weiter unten sind Archivstände und nicht mehr gültig. **Nur die Live-HA-/KNX- und Tablet-Abnahme ist weiterhin offen.**
+
 > **Verbindliche Aktualisierung vom 11.10.2026:** JamesUI Next ist jetzt im Entwicklungsbranch der **einzige reguläre Einstieg** unter `/jamesui`. Die frühere opt-in-Preview-/r11-Parallelstrategie ist abgelöst. Next liest und schreibt ausschließlich `jamesui.next.config`; keine r11-Optionsmigration. Registriert werden ausschließlich strukturierte Next-WebSocket-Befehle. Letzte grüne Prüfung: [Run 38122522828](https://github.com/MarkusAureliusTeuton/JamesUI/actions/runs/38122522828), Commit `cd144f4f19d228f8f4de7d570b42c6f88f507c9f`. Die weiter unten stehenden r11-/Preview-Aussagen sind historische Zwischenstände. **Reale HA-/KNX-/OnePlus-/Fully-Freigabe weiterhin offen.** Der Branch ist noch nicht in Home Assistant installiert.
 
 **Stand:** 2026-10-10 · Feature-Branch `feat/jamesui-1-0-block-14-start-configuration` · Draft-PR #27. **Keine HA-/Tablet-Freigabe.**
