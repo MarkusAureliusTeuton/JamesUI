@@ -23,6 +23,17 @@ This file is the persistent **single source of truth for the current execution s
 **Verbleibende Abnahme:** Gegen die tatsächlichen Home-Assistant-/KNX-Daten und Serviceberechtigungen testen; Darstellung und Bedienung im OnePlus Pad 2/Fully prüfen. Bis dahin keine Produktivfreigabe und keine Umschaltung von r11. Erweiterte Optionen, weitere Seiten und Folgeblöcke sind dafür keine Voraussetzung.
 
 ---
+## Architekturentscheidung – JamesUI Next ausschließlich (2026-10-11)
+
+**Benutzerentscheidung:** Die alte r11-Anwendung darf nicht länger verwendet werden. Die frühere Regel „r11 als produktive Rückfallebene behalten“ ist damit für den neuen Branch ausdrücklich aufgehoben.
+
+- **Einziger Home-Assistant-Menüeintrag:** `/jamesui` lädt die eigenständige Next-Oberfläche (registriertes Element `jamesui-next-panel`); keine zweite Preview-Seite, kein r11-Frontend-Loader.
+- **Eigenständige Konfiguration:** Neues kanonisches HA-Storage `jamesui.next.config`. Initialisierung aus leerem strukturierten Schema, **keine Übernahme von r11-Optionen oder -Zuständen**; alte HA-Dateien bleiben für Datensicherheit unberührt.
+- **API:** Nur `jamesui/config/get` und `jamesui/config/replace` werden registriert. Historische flache r11-Befehle sind nicht mehr aktiv.
+- **Alte Dateien:** r11-Quelltexte liegen vorerst noch im Git-Verlauf beziehungsweise teils unreferenziert im Branch; sie werden nicht vom Next-Einstieg geladen. Das ist keine Laufzeitabhängigkeit; weitere physische Bereinigung erfolgt separat, nicht als neue Feature-Roadmap.
+- **Rollout:** Diese Änderung existiert bisher **nur im Entwicklungsbranch/PR #27**, nicht automatisch in der installierten Home-Assistant-Version. HA-Installation und OnePlus Pad 2 sind weiterhin nicht live abgenommen.
+
+---
 ## 1. Product goal
 
 JamesUI is the permanent wall-tablet interface for the KNX/Home Assistant home.
